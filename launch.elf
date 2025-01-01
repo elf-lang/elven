@@ -1,0 +1,2 @@
+elf.change_work_dir("W:\\MicroRJ\\ninja-world")
+load "main.elf"

@@ -1,0 +1,6 @@
+[submodule "elf"]
+	path = elf
+	url = https://github.com/MicroRJ/elf
+[submodule "kit"]
+	path = kit
+	url = https://github.com/rxi/kit
