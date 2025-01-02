@@ -135,8 +135,8 @@ int elf_kit_step(elState *S) {
 	// for(int i =0; i < 100; i ++) {
 	// 	kit_draw_rect(ctx,(kit_Color){255,255,255,255},(kit_Rect){0,0,200,200});
 	// }
-	kit_draw_text(ctx,KIT_BLACK,elf_tpf("FPS: %.2f",1.0/dt),100,0);
-	kit_draw_text(ctx,KIT_WHITE,elf_tpf("FPS: %.2f",1.0/dt),100,1);
+	kit_draw_text(ctx,KIT_BLACK,elf_tpf("FPS: %.2f",1.0/dt),0,0);
+	kit_draw_text(ctx,KIT_WHITE,elf_tpf("FPS: %.2f",1.0/dt),0,1);
 
 	int b = kit_step(ctx, &dt);
 	kit_clear(ctx,KIT_BLACK);
