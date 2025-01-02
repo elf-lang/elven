@@ -1,2 +1,2 @@
-elf.change_work_dir("W:\\MicroRJ\\ninja-world")
+elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "main.elf"

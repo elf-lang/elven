@@ -12,6 +12,14 @@ typedef elf_Int    elInteger;
 double dt;
 kit_Context *ctx;
 
+int elf_kit_create(elState *S) {
+	elString *name = elf_get_str(S,0);
+	int w = elf_get_int(S,1);
+	int h = elf_get_int(S,2);
+	ctx = kit_create(name->text, w, h, KIT_SCALE4X|KIT_FPS144);
+	return 0;
+}
+
 int elf_kit_create_image(elState *S) {
 	int w = elf_get_int(S,0);
 	int h = elf_get_int(S,1);
@@ -24,42 +32,50 @@ int elf_kit_create_image(elState *S) {
 	elf_add_tab(S,tab);
 	return 1;
 }
-int elf_kit_load_image_file(elState *S) {
-	char *filename = elf_get_txt(S,0);
-	kit_Image *img = kit_load_image_file(filename);
-
+int elf_kit_load_image(elState *S) {
+	char *name = elf_get_txt(S,0);
+	kit_Image *img = kit_load_image_file(name);
 	elf_Table *tab = elf_new_table(S);
 	elf_tsets_int(tab,elf_new_string(S,"handle"),(elf_Int)(img));
-	elf_tsets_int(tab,elf_new_string(S,"width"),img->w);
-	elf_tsets_int(tab,elf_new_string(S,"height"),img->h);
+	elf_tsets_int(tab,elf_new_string(S,"width"),!img ? 0 : img->w);
+	elf_tsets_int(tab,elf_new_string(S,"height"),!img ? 0 : img->h);
 	elf_add_tab(S,tab);
 	return 1;
 }
 
+/* Todo: for speed, might be worth splitting this up with state */
 int elf_kit_draw_image(elState *S) {
 	kit_Image *img;
-	int x=0,y=0;
-	int r=255,g=255,b=255,a=255;
-	int src_x=0,src_y=0,src_w,src_h;
+	int mul_r=255,mul_g=255,mul_b=255,mul_a=255;
+	int add_r=255,add_g=255,add_b=255,add_a=255;
+	int src_x=0,src_y=0,src_w=0,src_h=0;
+	int dst_x=0,dst_y=0,dst_w=0,dst_h=0;
 	int i = 0;
+
 	int nargs = elf_get_num_args(S);
 	if (nargs >= 1) { nargs -= 1;
 		elf_Table *tab = elf_get_tab(S,i++);
 		img = (kit_Image *) elf_tgets_int(tab,elf_new_string(S,"handle"));
-		src_w = img->w;
-		src_h = img->h;
+		dst_w = src_w = img->w;
+		dst_h = src_h = img->h;
 	} else goto _nop;
-	if (nargs >= 2) { nargs -= 2;
-		x = elf_get_int(S,i++);
-		y = elf_get_int(S,i++);
-	} else goto _nop;
-	if (nargs >= 3) { nargs -= 3;
-		r = elf_get_int(S,i++);
-		g = elf_get_int(S,i++);
-		b = elf_get_int(S,i++);
+	if (nargs >= 4) { nargs -= 4;
+		mul_r = elf_get_int(S,i++);
+		mul_g = elf_get_int(S,i++);
+		mul_b = elf_get_int(S,i++);
+		mul_a = elf_get_int(S,i++);
 	} else goto _draw;
-	if (nargs >= 1) { nargs -= 1;
-		a = elf_get_int(S,i++);
+	if (nargs >= 4) { nargs -= 4;
+		add_r = elf_get_int(S,i++);
+		add_g = elf_get_int(S,i++);
+		add_b = elf_get_int(S,i++);
+		add_a = elf_get_int(S,i++);
+	} else goto _draw;
+	if (nargs >= 4) { nargs -= 4;
+		dst_x = elf_get_int(S,i++);
+		dst_y = elf_get_int(S,i++);
+		dst_w = elf_get_int(S,i++);
+		dst_h = elf_get_int(S,i++);
 	} else goto _draw;
 	if (nargs >= 4) { nargs -= 4;
 		src_x = elf_get_int(S,i++);
@@ -69,7 +85,11 @@ int elf_kit_draw_image(elState *S) {
 	} else goto _draw;
 
 	_draw:
-	kit_draw_image2(ctx,(kit_Color){r,g,b,a},img,x,y,(kit_Rect){src_x,src_y,src_w,src_h});
+	kit_draw_image3(ctx
+	,(kit_Color){mul_b,mul_g,mul_r,mul_a}
+	,(kit_Color){add_b,add_g,add_r,add_a}, img
+	,(kit_Rect){dst_x,dst_y,dst_w,dst_h}
+	,(kit_Rect){src_x,src_y,src_w,src_h});
 	_nop:
 	return 0;
 }
@@ -79,6 +99,16 @@ void       kit_destroy_image(kit_Image *img);
 
 
 // int elf_kit_get_char(elState *S);
+
+int elf_kit_get_mouse_pos(elState *S) {
+	int x,y;
+	kit_mouse_pos(ctx,&x,&y);
+	elf_Table *tab = elf_new_table(S);
+	elf_tsets_int(tab,elf_new_string(S,"x"),x);
+	elf_tsets_int(tab,elf_new_string(S,"y"),y);
+	elf_add_tab(S,tab);
+	return 1;
+}
 int elf_kit_key_down(elState *S) {
 	int key = elf_get_int(S,0);
 	elf_add_int(S,kit_key_down(ctx,key));
@@ -99,15 +129,6 @@ int elf_kit_key_released(elState *S) {
 // int elf_kit_mouse_down(elState *S, int button);
 // int elf_kit_mouse_pressed(elState *S, int button);
 // int elf_kit_mouse_released(elState *S, int button);
-
-
-int elf_kit_create(elState *S) {
-	elString *name = elf_get_str(S,0);
-	int w = elf_get_int(S,1);
-	int h = elf_get_int(S,2);
-	ctx = kit_create(name->text, 256, 128, KIT_SCALE4X|KIT_FPS144);
-	return 0;
-}
 
 int elf_kit_step(elState *S) {
 
@@ -157,6 +178,7 @@ int elf_kit_draw_text(elState *S) {
 
 int main() {
 	elf_global_initialize();
+	elf_gsetx_cfn(&elf.R,"elf.kit.get_mouse_pos",elf_kit_get_mouse_pos);
 	elf_gsetx_cfn(&elf.R,"elf.kit.is_key_down",elf_kit_key_down);
 	elf_gsetx_cfn(&elf.R,"elf.kit.is_key_pressed",elf_kit_key_pressed);
 	elf_gsetx_cfn(&elf.R,"elf.kit.is_key_released",elf_kit_key_released);
@@ -166,7 +188,7 @@ int main() {
 	elf_gsetx_cfn(&elf.R,"elf.kit.draw_text",elf_kit_draw_text);
 	elf_gsetx_cfn(&elf.R,"elf.kit.get_delta_time",elf_kit_get_delta_time);
 	elf_gsetx_cfn(&elf.R,"elf.kit.create_image",elf_kit_create_image);
-	elf_gsetx_cfn(&elf.R,"elf.kit.load_image_file",elf_kit_load_image_file);
+	elf_gsetx_cfn(&elf.R,"elf.kit.load_image",elf_kit_load_image);
 	elf_gsetx_cfn(&elf.R,"elf.kit.draw_image",elf_kit_draw_image);
 
 	elf_add_cfn(&elf.R,core_lib_load_file);
