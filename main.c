@@ -1,3 +1,4 @@
+#define _DEBUG
 #define ELF_KEEPWINDOWS
 #define ELF_NOMAIN
 #include "elf\elf-web.c"
@@ -16,7 +17,7 @@ int elf_kit_create(elState *S) {
 	elString *name = elf_get_str(S,0);
 	int w = elf_get_int(S,1);
 	int h = elf_get_int(S,2);
-	ctx = kit_create(name->text, w, h, KIT_SCALE4X|KIT_FPS144);
+	ctx = kit_create(name->text, w, h, KIT_SCALE2X|KIT_FPS144);
 	return 0;
 }
 
