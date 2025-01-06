@@ -1,26 +1,38 @@
+let hello_world = fun() ? {
+	elf.pf("hello, world!")
+}
+hello_world()
+fun() ? {
+	elf.pf("a")
+	fun() ? { elf.pf("b")
+		fun() ? { elf.pf("c")
+		}()
+	}()
+}()
+
+this_is_a_global = 777
+elf.pf(this_is_a_global)
+
+let things = {1,2,3,4}
+elf.pf(things)
+
 for i = 0...10 ? {
 	elf.pf("WELCOME!, ", i)
 }
 for i = 1,3,5,7,13 ? {
 	elf.pf("WELCOME!, ", i)
 }
-
-
-
-
-// let i = 0
-// while i < 10 ? {
-// 	elf.pf("WELCOME!")
-// 	i = i + 1
-// }
-
+let i = 0
+while i < 10 ? {
+	elf.pf("WELCOME!, ", i)
+	i = i + 1
+}
 
 if 0 ? {
 	elf.pf("ONE")
 } else {
 	elf.pf("CYPHER")
 }
-
 
 {
 	let a = 1
