@@ -1,0 +1,39 @@
+test_error = false
+
+a = false
+if a ? {
+	elf.pf("ERROR!: ", #line_number)
+	test_error = true
+}
+a = 0
+if a ? {
+	elf.pf("ERROR!: ", #line_number)
+	test_error = true
+}
+
+
+if 0 ? {
+	elf.pf("ERROR!: ", #line_number)
+	test_error=true
+}
+iff 1 ? {
+	elf.pf("ERROR!: ", #line_number)
+	test_error=true
+}
+test_error=true
+if 0 ? {
+	elf.pf("ERROR!: ", #line_number)
+} elif 0 ? {
+	elf.pf("ERROR!: ", #line_number)
+} elif 0 ? {
+	elf.pf("ERROR!: ", #line_number)
+} elif 1 ? {
+	test_error=false
+} else {
+	elf.pf("ERROR!: ", #line_number)
+	test_error=true
+}
+
+if test_error ? {
+	elf.pf("ERROR!: ", #line_number)
+}

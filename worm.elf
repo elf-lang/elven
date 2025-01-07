@@ -1,0 +1,74 @@
+/* wormy thing */
+circles = {}
+add_circle = fun(x,y) ? {
+	circles:add {
+		x = x
+		y = y
+		vx = 0
+		vy = 0
+	}
+}
+for i = 0...10 ? {
+	add_circle(i*10,64)
+}
+
+let time = 1.0 / 144.0
+let total_time = 0
+
+apply_force = fun(p,x,y) ? {
+	p.vx += x
+	p.vy += y
+}
+get_perp = fun(dx,dy) ? {
+	let p_x = - dy
+	let p_y = + dx
+	let l = sqrt(p_x*p_x + p_y*p_y)
+	p_x /= l
+	p_y /= l
+	leave {x=p_x,y=p_y}
+}
+
+draw_circ = fun(x,y,r) ? {
+	.draw_rect(x-r,y-r,r*2,r*2,255,255,255,255)
+}
+
+get_dir = fun(dst,src) ? {
+	let sx = dst.x - src.x
+	let sy = dst.y - src.y
+	let l = sqrt(sx*sx + sy*sy)
+	let dx = sx / l
+	let dy = sy / l
+	leave {x=dx,y=dy}
+}
+physics_clock = fun(p,time) ? {
+	p.x += p.vx * time
+	p.y += p.vy * time
+	p.vx -= p.vx * 4.0 * time
+	p.vy -= p.vy * 4.0 * time
+}
+while .step() ? {
+
+	let p = circles:idx(0)
+	let d = get_dir(.get_mouse_pos(),p)
+	let perp = get_perp(d.x,d.y)
+	let phase = total_time * 3.14
+	let weave = 0
+	weave += sin(phase * 1) * 1.4
+	weave += sin(phase * 3) * 1.1
+	apply_force(p,perp.x*weave,perp.y*weave)
+	apply_force(p,d.x,d.y)
+	physics_clock(p,time)
+	total_time += time
+
+	for i = 1...circles:tally() ? {
+		let c = circles:idx(i)
+		let dir = get_dir(p,c)
+		c.x = p.x - dir.x * 6
+		c.y = p.y - dir.y * 6
+		p = c
+	}
+	for i = 0...circles:tally() ? {
+		let it = circles:idx(i)
+		draw_circ(it.x,it.y,3,3, 255,255,255,255)
+	}
+}

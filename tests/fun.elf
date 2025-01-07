@@ -1,0 +1,14 @@
+let expr = fun() ? (7)
+elf.pf("7: ", expr())
+
+let hello_world = fun() ? {
+	elf.pf("hello, world!")
+}
+hello_world()
+fun() ? {
+	elf.pf("a")
+	fun() ? { elf.pf("b")
+		fun() ? { elf.pf("c")
+		}()
+	}()
+}()

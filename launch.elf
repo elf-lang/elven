@@ -1,0 +1,77 @@
+load "tests\\nil.elf"
+load "tests\\if.elf"
+load "tests\\fun.elf"
+load "tests\\loops.elf"
+load "tests\\prec.elf"
+
+//	-  set_line functio to avoid having to pass in the
+//		line every single time
+//	-	xx nil and and nil or
+//	-	break / continue, they should take the for loop
+//		as the operand
+//	- 	defer blocks, do while loops
+//	-	allow the user to refer to for loops by name
+// -  proper assignments!
+//	-  change declaration syntax, from 'let' to ':='
+//	-  what happens when you have multiple expressions
+//		on a single line? They just get evaluated, or discarded,
+//		but that should be a syntax error
+// -  fix stupid bytecode!
+// -  get rid of yield, delay, and leave instructions they
+//		are no longer in use!
+//	-  make first register be the function itself, allow the
+//		to user to have full access to the return registers,
+//		make the very first register be the 'this' pointer,
+//		and the second register should be the function, so
+//		that way, this is the default return value?
+//	- 	then (might have to move elif generation to the generator?)
+//	-  multi-returns
+//	- 	xx elifs
+// -	xx fields, indices, metafield (postfix expressions)
+// -  xx array for-loops, generic for loops
+// -	xx function parameters, 'this'
+//	-	re-introduce groups, we need them for proper code gen now
+// -	closures
+//	-	get games working again
+//	-  fix short circuiting bug
+// -	merge module and state?
+// -	clean up, delete old files
+// 		- 	get rid of elf-web.c
+// 		- 	get rid of jit toy we have 'c66' as a
+//				much better reference
+// 		- 	get rid of error.h, or make it better
+//	-  figure out whether we want function types or not,
+//		then:
+//			- 	determine what a file really is and whether we
+//				need them...
+//			- 	Will prototypes always remain loaded, can get
+//				rid of the unused ones?
+//			-	If files are a thing, will a file keep all prototypes
+//				loaded, even when not in use?
+//			- 	If there are no files, do we keep the source code for
+//				each file?
+//			-	If prototypes are dynamic, will they become objects too?
+//				Or will they get treated separately?
+// 		-	Will bytecode be allocated per prototype or still be
+//				emitted to the same buffer?
+// - 	organize library, organize elf.h
+//		-	figure what the API for the core
+//			library will be, setup some constraints
+//			it should adhere to.
+//		-	core lib function that tells you whether
+//			an object is visible, and tells the path.
+//
+// - bytecode should be much smaller
+//
+// - use linear allocator for internal stuff, like
+//	allocating instructions and stuff...
+//
+// networking library
+// trace-recording
+// self-optimization
+//		- inlining
+//		- optimize table lookups
+//		- optimize object allocation
+// x64 compilation?
+//
+//
