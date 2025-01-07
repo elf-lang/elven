@@ -1,0 +1,10 @@
+fib = fun(n) ? {
+	if n < 2 ? ret n
+	let x = fib(n - 1)
+	let y = fib(n - 2)
+	ret x + y
+}
+f = fib(10)
+elf.pf("FIB: ", f)
+f = fib(25)
+elf.pf("FIB: ", f)

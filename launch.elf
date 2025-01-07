@@ -1,31 +1,102 @@
+elf.change_work_dir("W:\\MicroRJ\\ninja-world")
+load "main.elf"
+// load "monster.elf"
+#eof
+
 load "tests\\nil.elf"
 load "tests\\if.elf"
 load "tests\\fun.elf"
 load "tests\\loops.elf"
 load "tests\\prec.elf"
 
-//	-  set_line functio to avoid having to pass in the
-//		line every single time
-//	-	xx nil and and nil or
-//	-	break / continue, they should take the for loop
+
+
+// - 	GOAL TODAY:
+//	- 	x-- get games working!
+//
+//	- 	parse.c: defer blocks, do while loops
+//
+//	- 	parse.c: range expression desugaring
+//	-	parse.c: ternary expressions
+//	-	parse.c: conditionals, introduce conditional
+//		expression, they wrap some other expression,
+//		if the expression is nil, the rest isn't executed
+//		and the result is nil, so the user can pair it
+//		up with the nil or operator.
+//
+//		parse?:name()
+//		parse:name?()
+//		parse?.name
+//
+//
+//	-	xx break / continue, they should take the for loop
 //		as the operand
-//	- 	defer blocks, do while loops
-//	-	allow the user to refer to for loops by name
-// -  proper assignments!
+//
+//	-	x- parse.c: infinite ranges, nameless loops
+//	-	xxx- parser.c: clean up parser
+//
 //	-  change declaration syntax, from 'let' to ':='
-//	-  what happens when you have multiple expressions
-//		on a single line? They just get evaluated, or discarded,
+//	-  set_line function to avoid having to pass in the
+//		line every single time
+//
+//	-	core.c: calling a function should not be recursive
+//	-	parse.c: type annotations
+//	-  gen.c: specialized bytecode for known types
+//	-	parse.c: default parameter values
+//	-  core.c & parse.c & gen.c: array index instrinsics!
+//	-	parse.c: make it so that global references aren't implicit,
+//		this tends to not be a big problem but it does get
+//		annoying
+//	-	lib_sockets.c: sockets...
+//	-	lib_threads.c: threading...
+//	-	parse.c: meta postprocessor?
+//	-	core.c: generate profiling data so that we can
+//		visualize it, John Blow style.
+//	- 	help.h: rename to base.h, put core type defs
+//		in there
+//	- 	core.c: calling functions should not be recursive
+//	-	core.c: figure out what to do with the vector
+//		values idea, do we want every value to
+//		be a vector? (postpone)
+//	-	parse.c: block strings, inplace formatted strings
+//		shader =
+//		"""
+//		void main() {
+//			gl_FragColor = vec3(1,2,3)
+//		}
+//		"""
+// - 	add an end of line token instead of
+//		using passive hinting? (postpone)
+// - 	revise the table core lib, should
+//		we just add the array type?
+//	-  can we get color logging?
+//	-  x- delete un-used files, elf-web.c,lcrtlib.c,elf-cli.c?
+//	-  cleanup core file
+//	-	clean up globals
+//	-	proper test suite
+//	- 	#array, #index, #value registers
+
+//	-	xx !! and ??
+//	-	allow the user to refer to for loops by name
+// -  xx proper assignments!
+//	-  parse.c: #syntax What happens when you have multiple expressions
+//		on a single line?
+//		They just get evaluated, or discarded,
 //		but that should be a syntax error
-// -  fix stupid bytecode!
-// -  get rid of yield, delay, and leave instructions they
+//
+//
+// -  byte.c: fix stupid bytecode!
+// -  byte.h & core.c: get rid of yield, delay, and leave instructions they
 //		are no longer in use!
-//	-  make first register be the function itself, allow the
-//		to user to have full access to the return registers,
-//		make the very first register be the 'this' pointer,
-//		and the second register should be the function, so
-//		that way, this is the default return value?
-//	- 	then (might have to move elif generation to the generator?)
-//	-  multi-returns
+//	- 	parse.c & gen.c: 'then' branch will require us to
+//		move the entire if elif thing to the generator.
+//	-  parse.c & gen.c: multi-returns
+//	-  parse.c & gen.c: change the calling convetion so that
+//		the 'this' param comes first, then the function then
+//		arguments, and fully expose these registers.
+//		Putting 'this' as the first argument means it'll be
+//		the default return value without having to emit additional
+//		code. (postpone)
 //	- 	xx elifs
 // -	xx fields, indices, metafield (postfix expressions)
 // -  xx array for-loops, generic for loops

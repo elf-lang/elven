@@ -16,3 +16,14 @@ let array = {1,3,5,7,13}
 for i = array[0...5], 1, 2, 3, 0...4 ? {
 	elf.pf(" -> ", i)
 }
+for i = 0...10 ? {
+	elf.pf("WELCOME!, ", i)
+	continue
+	if i > 5 ? {
+		break
+	}
+}
+#eof
+for i = ... ? {
+	elf.pf("INF!")
+}

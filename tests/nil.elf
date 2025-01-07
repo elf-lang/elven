@@ -1,3 +1,7 @@
+let a = nil
+a = a ?? 7
+elf.pf("7: ", a)
+
 a = nil ?? 7
 elf.pf("7: ", a)
 
