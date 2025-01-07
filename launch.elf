@@ -1,6 +1,25 @@
-elf.change_work_dir("W:\\MicroRJ\\ninja-world")
+elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "main.elf"
 // load "monster.elf"
+#eof
+
+Number = {
+	__new = fun(num) ? {
+		this.num = num ?? 0
+	}
+	__add1 = fun(num) ? {
+		ret new Number(this.num + num)
+	}
+}
+let some_thing = new Number()
+some_thing += 1
+elf.pf(some_thing)
+#eof
+
+defer {
+	elf.pf("AT THE END")
+}
+elf.pf("AT THE START")
 #eof
 
 load "tests\\nil.elf"
@@ -14,7 +33,11 @@ load "tests\\prec.elf"
 // - 	GOAL TODAY:
 //	- 	x-- get games working!
 //
-//	- 	parse.c: defer blocks, do while loops
+// -	xx closures, we need capts
+//
+//	- 	x- parse.c: defer blocks, do while loops
+//		we need to fix defer blocks so that they
+//		are actually emitted properly...
 //
 //	- 	parse.c: range expression desugaring
 //	-	parse.c: ternary expressions
@@ -28,6 +51,7 @@ load "tests\\prec.elf"
 //		parse:name?()
 //		parse?.name
 //
+//	-  sublime syntax highlight
 //
 //	-	xx break / continue, they should take the for loop
 //		as the operand
@@ -102,8 +126,6 @@ load "tests\\prec.elf"
 // -  xx array for-loops, generic for loops
 // -	xx function parameters, 'this'
 //	-	re-introduce groups, we need them for proper code gen now
-// -	closures
-//	-	get games working again
 //	-  fix short circuiting bug
 // -	merge module and state?
 // -	clean up, delete old files
