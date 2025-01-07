@@ -1,13 +1,10 @@
 elf.include("elf.kit")
 .create("launch",512,512)
 
-//
+
 // vA = vV / vT
 // vV = vA * vT
 // vA = dV / dT
-//
-//
-//
 
 let TIME = 1.0 / 144.0
 total_time = 0

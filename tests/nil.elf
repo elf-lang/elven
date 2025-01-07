@@ -1,0 +1,10 @@
+a = nil ?? 7
+elf.pf("7: ", a)
+
+b = nil
+b ?= 7
+elf.pf("7: ", a)
+
+a  = 7
+a ?= 1
+elf.pf("7: ", a)
