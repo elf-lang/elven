@@ -1,4 +1,3 @@
-// elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "image.elf"
 #eof
 elf.change_work_dir("W:\\MicroRJ\\platformer")
@@ -42,6 +41,17 @@ load "tests\\prec.elf"
 //		we need to fix defer blocks so that they
 //		are actually emitted properly...
 //
+//	- 	core.c: active prefixes, so the user can
+//		enable a prefix, and every global symbol
+//		from then on will have that prefix, the
+//		prefix must adhere to certain rules!
+//
+//	-	core.c: add better error logging, especially
+//		for when the parser generates code to call
+//		the __new function and it isn't present because
+//		the user didn't define it, the core will just
+//		say, "cannot call nil", like what does that
+//		even mean!
 //	- 	parse.c: range expression desugaring
 //	-	parse.c: ternary expressions
 //	-	parse.c: conditionals, introduce conditional
@@ -55,6 +65,8 @@ load "tests\\prec.elf"
 //		parse?.name
 //
 //	-  sublime syntax highlight
+//
+//	-	core.c: revise the core API!
 //
 //	-	xx break / continue, they should take the for loop
 //		as the operand
