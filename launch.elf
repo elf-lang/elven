@@ -1,3 +1,6 @@
+// elf.change_work_dir("W:\\MicroRJ\\platformer")
+load "image.elf"
+#eof
 elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "main.elf"
 // load "monster.elf"

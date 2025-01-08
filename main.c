@@ -5,20 +5,33 @@
 #include "timeapi.h"
 #define KIT_IMPL
 #include "kit\kit.h"
+#include "windows.h"
 
 typedef elf_State  elState;
 typedef elf_String elString;
 typedef elf_Int    elInteger;
 
 double dt;
-kit_Context *ctx;
 
+void tseti(elState *S, elf_Table *table, char *name, elf_i64 value) {
+	elf_table_set(table,VSTR(elf_new_string(S,name)),VINT(value));
+}
+
+void upd(elf_Table *w, kit_Context *c){
+	tseti(S,w,"@ptr",(elf_i64)c);
+	tseti(S,w,"w",c->win_w);
+	tseti(S,w,"h",c->win_h);
+}
+
+kit_Context *ctx;
 int elf_kit_create(elState *S) {
-	elString *name = elf_get_str(S,0);
+	char *name = elf_get_txt(S,0);
 	int w = elf_get_int(S,1);
 	int h = elf_get_int(S,2);
-	ctx = kit_create(name->text, w, h, KIT_SCALE2X|KIT_FPS144);
-	return 0;
+	kit_Context *c=ctx=kit_create(name, w, h, KIT_SCALE2X|KIT_FPS144);
+	elf_Table *window=elf_new_table(S);
+	upd(window,c);
+	return 1;
 }
 
 int elf_kit_create_image(elState *S) {
@@ -99,39 +112,10 @@ kit_Image * kit_load_image_mem(void *data, int len);
 void       kit_destroy_image(kit_Image *img);
 
 
-// int elf_kit_get_char(elState *S);
-
-int elf_kit_get_mouse_pos(elState *S) {
-	int x,y;
-	kit_mouse_pos(ctx,&x,&y);
-	elf_Table *tab = elf_new_table(S);
-	elf_tsets_int(tab,elf_new_string(S,"x"),x);
-	elf_tsets_int(tab,elf_new_string(S,"y"),y);
-	elf_add_tab(S,tab);
-	return 1;
-}
-int elf_kit_key_down(elState *S) {
-	int key = elf_get_int(S,0);
-	elf_add_int(S,kit_key_down(ctx,key));
-	return 1;
-}
-int elf_kit_key_pressed(elState *S) {
-	int key = elf_get_int(S,0);
-	elf_add_int(S,kit_key_pressed(ctx,key));
-	return 1;
-}
-int elf_kit_key_released(elState *S) {
-	int key = elf_get_int(S,0);
-	elf_add_int(S,kit_key_released(ctx,key));
-	return 1;
-}
-// int elf_kit_mouse_pos(elState *S, int *x, int *y);
-// int elf_kit_mouse_delta(elState *S, int *x, int *y);
-// int elf_kit_mouse_down(elState *S, int button);
-// int elf_kit_mouse_pressed(elState *S, int button);
-// int elf_kit_mouse_released(elState *S, int button);
 
 int elf_kit_step(elState *S) {
+
+
 
 	// for(int i =0; i < 100; i ++) {
 	// 	kit_draw_rect(ctx,(kit_Color){255,255,255,255},(kit_Rect){0,0,200,200});
@@ -179,10 +163,10 @@ int elf_kit_draw_text(elState *S) {
 
 int main() {
 	elf_global_initialize();
-	elf_gsetx_cfn(&elf.R,"elf.kit.get_mouse_pos",elf_kit_get_mouse_pos);
-	elf_gsetx_cfn(&elf.R,"elf.kit.is_key_down",elf_kit_key_down);
-	elf_gsetx_cfn(&elf.R,"elf.kit.is_key_pressed",elf_kit_key_pressed);
-	elf_gsetx_cfn(&elf.R,"elf.kit.is_key_released",elf_kit_key_released);
+	// elf_gsetx_cfn(&elf.R,"elf.kit.get_mouse_pos",elf_kit_get_mouse_pos);
+	// elf_gsetx_cfn(&elf.R,"elf.kit.is_key_down",elf_kit_key_down);
+	// elf_gsetx_cfn(&elf.R,"elf.kit.is_key_pressed",elf_kit_key_pressed);
+	// elf_gsetx_cfn(&elf.R,"elf.kit.is_key_released",elf_kit_key_released);
 	elf_gsetx_cfn(&elf.R,"elf.kit.create",elf_kit_create);
 	elf_gsetx_cfn(&elf.R,"elf.kit.step",elf_kit_step);
 	elf_gsetx_cfn(&elf.R,"elf.kit.draw_rect",elf_kit_draw_rect);

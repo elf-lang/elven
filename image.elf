@@ -1,0 +1,14 @@
+elf.include("elf.kit")
+.create("Image Viewer",512,512)
+let image = .load_image("image.png")
+
+dragging = false
+while .step() ? {
+	.draw_image(image
+	, 255,255,255,255
+	,   0,  0,  0,  0
+	, 0 + 256 - image.width*0.5
+	, 0 + 256 - image.height*0.5, image.width, image.height
+	, 0,0,image.width,image.height)
+
+}
