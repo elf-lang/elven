@@ -1,5 +1,6 @@
-window = new elf.gfx.Window("Image Viewer",128,128)
-image  = elf.gfx.load_image("image.png")
+window ::= new elf.gfx.Window("Image Viewer",128,128)
+image  ::= elf.gfx.load_image("image.png")
+
 PRESSED = elf.gfx.Window.PRESSED
 DOWN = elf.gfx.Window.DOWN
 
@@ -19,12 +20,16 @@ while window:poll() ? {
 	}
 	// elf.pf("x: ", window.mouse_x)
 	// elf.pf("y: ", window.mouse_y)
-	window:draw_image(image
-	, 255,255,255,255
-	,   0,  0,  0,  0
-	, 0
-	, 0, image.width, image.height
-	, 0,0,image.width,image.height)
+	window:draw_image(
+	,	image
+	, 	255,255,255,255
+	,	  0,  0,  0,  0
+	, 	  0
+	, 	  0,   	image.width,  image.height
+	, 	  0, 0,	image.width,  image.height)
 
-	window:draw_text("Welcome", 0, 0, 255, 255, 255, 255)
+	window:draw_text(
+	,	"Welcome"
+	, 	0, 0
+	, 	255, 255, 255, 255)
 }

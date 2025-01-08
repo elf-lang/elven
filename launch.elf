@@ -46,6 +46,14 @@ load "tests\\prec.elf"
 //		from then on will have that prefix, the
 //		prefix must adhere to certain rules!
 //
+//	-	parse.c: NO_ENTITY should be 0, not -1
+//
+//	-	parse.c: introduce the preloading idea
+//		once again to optimize certain expressions:
+// 	(A.B.C).D ?= 1
+// 	^^^^^^ <- otherwise this gets expensive since
+// 	it has to be evaluated twice...
+//
 //	-	core.c: add better error logging, especially
 //		for when the parser generates code to call
 //		the __new function and it isn't present because
@@ -63,6 +71,13 @@ load "tests\\prec.elf"
 //		parse?:name()
 //		parse:name?()
 //		parse?.name
+//
+//	- 	remove the idea of a meta-call
+//		from gen, let the parse include
+//		'this'.
+//		And this will also give also remove
+//		the notion of 'this' entirely from
+//		the generator.
 //
 //	-  sublime syntax highlight
 //
@@ -114,7 +129,11 @@ load "tests\\prec.elf"
 //	-	clean up globals
 //	-	proper test suite
 //	- 	#array, #index, #value registers
-
+//		this could actually be done with
+//		entity binding, simply bind the entity
+//		to each corresponding tree,
+//
+//
 //	-	xx !! and ??
 //	-	allow the user to refer to for loops by name
 // -  xx proper assignments!
