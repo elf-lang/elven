@@ -1,38 +1,17 @@
-load "image.elf"
-#eof
-elf.change_work_dir("W:\\MicroRJ\\platformer")
+elf.change_work_dir("W:\\MicroRJ\\ninja-world")
 load "main.elf"
-// load "monster.elf"
 #eof
 
-Number = {
-	__new = fun(num) ? {
-		this.num = num ?? 0
-	}
-	__add1 = fun(num) ? {
-		ret new Number(this.num + num)
-	}
-}
-let some_thing = new Number()
-some_thing += 1
-elf.pf(some_thing)
+load "tests\\overload.elf"
 #eof
-
-defer {
-	elf.pf("AT THE END")
-}
-elf.pf("AT THE START")
-#eof
-
-load "tests\\nil.elf"
 load "tests\\if.elf"
 load "tests\\fun.elf"
 load "tests\\loops.elf"
 load "tests\\prec.elf"
 
-
-
-// - 	GOAL TODAY:
+//
+//
+// - 	GOAL TODAY (1/7/25):
 //	- 	x-- get games working!
 //
 // -	xx closures, we need capts
@@ -40,6 +19,42 @@ load "tests\\prec.elf"
 //	- 	x- parse.c: defer blocks, do while loops
 //		we need to fix defer blocks so that they
 //		are actually emitted properly...
+// 	maybe use the goto instruction along
+// 	with labels to chain these together...
+//		like every inner block will emit these
+// 	goto instructions and store them in
+// 	their blocks, and then the parent block
+// 	takes those instructions and patches adds
+// 	them to itself, until a terminating
+// 	statement is found
+//
+// {
+// 	defer { elf.pf("do this last") }
+// 	...
+// 	{
+//			{
+//				...
+//				ret 2
+//			}
+// 		...
+// 		ret 1
+// 	}
+// 	...
+// 	ret 2
+// }
+// todo: this is temporary!
+//	Whenever a block is ended, right before
+// the ending instruction we insert the
+// defer blocks, if we are an inner block
+// and we do a return, instead of actually
+// issuing the return instruction we just
+// jump to the return instruction at the
+// end of every function.
+//
+//	-	core.c: comparison optimizations
+//
+//	-	core.c: intrinsic functions for nil comparisons
+//		and jumps
 //
 //	- 	core.c: active prefixes, so the user can
 //		enable a prefix, and every global symbol

@@ -14,7 +14,7 @@ typedef elf_Int    elInteger;
 
 struct {
 	elf_State R;
-	BC_Module M;
+	elf_Module M;
 } GLOBAL elf = {{&elf.M}};
 
 
@@ -32,7 +32,6 @@ int main() {
 	elf_init(&elf.R,&elf.M);
 	lib_gfx_window_init(&elf.R);
 	lib_gfx_image_init(&elf.R);
-	// elf.R.flags = FLAG_BYTELOGGING;
 	elf_add_cfn(&elf.R,core_lib_load_file);
 	elf_add_nil(&elf.R);
 	elf_new_string(&elf.R,"launch.elf");

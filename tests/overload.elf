@@ -1,0 +1,11 @@
+Number = {
+	__new = fun(num) ? {
+		this.num = num ?? 0
+	}
+	__add1 = fun(num) ? {
+		ret new Number(this.num + num)
+	}
+}
+
+let some_thing = new Number(7)
+some_thing += 1

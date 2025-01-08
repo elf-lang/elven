@@ -66,12 +66,6 @@ int window__poll(elState *S) {
 
 	kit_Context *ctx = get_ctx(S);
 
-	// for(int i =0; i < 100; i ++) {
-	// 	kit_draw_rect(ctx,(kit_Color){255,255,255,255},(kit_Rect){0,0,200,200});
-	// }
-	// kit_draw_text(ctx,KIT_BLACK,elf_tpf("FPS: %.2f",1.0/dt),0,0);
-	// kit_draw_text(ctx,KIT_WHITE,elf_tpf("FPS: %.2f",1.0/dt),0,1);
-
 	double time;
 	int x,y;
 	int b;
@@ -112,45 +106,3 @@ int window__poll(elState *S) {
 	elf_add_int(S,b);
 	return 1;
 }
-
-// elf_gsetx_cfn(&elf.R,"elf.kit.is_key_down",elf_kit_key_down);
-// elf_gsetx_cfn(&elf.R,"elf.kit.is_key_pressed",elf_kit_key_pressed);
-// elf_gsetx_cfn(&elf.R,"elf.kit.is_key_released",elf_kit_key_released);
-// elf_gsetx_cfn(&elf.R,"elf.kit.create_image",elf_kit_create_image);
-// elf_gsetx_cfn(&elf.R,"elf.kit.load_image",elf_kit_load_image);
-
-// int elf_kit_get_char(elState *S);
-// int elf_kit_get_mouse_pos(elState *S) {
-// 	int x,y;
-// 	kit_mouse_pos(ctx,&x,&y);
-// 	elf_Table *tab = elf_new_table(S);
-// 	elf_tsets_int(tab,elf_new_string(S,"x"),x);
-// 	elf_tsets_int(tab,elf_new_string(S,"y"),y);
-// 	elf_add_tab(S,tab);
-// 	return 1;
-// }
-// int elf_kit_key_down(elState *S) {
-// 	int key = elf_get_int(S,0);
-// 	elf_add_int(S,kit_key_down(ctx,key));
-// 	return 1;
-// }
-// int elf_kit_key_pressed(elState *S) {
-// 	int key = elf_get_int(S,0);
-// 	elf_add_int(S,kit_key_pressed(ctx,key));
-// 	return 1;
-// }
-// int elf_kit_key_released(elState *S) {
-// 	int key = elf_get_int(S,0);
-// 	elf_add_int(S,kit_key_released(ctx,key));
-// 	return 1;
-// }
-// int elf_kit_mouse_down(elState *S) {
-// 	int key = elf_get_int(S,0);
-// 	elf_add_int(S,kit_key_released(ctx,key));
-// 	return 1;
-// }
-// int elf_kit_mouse_pos(elState *S, int *x, int *y);
-// int elf_kit_mouse_delta(elState *S, int *x, int *y);
-// int elf_kit_mouse_down(elState *S, int button);
-// int elf_kit_mouse_pressed(elState *S, int button);
-// int elf_kit_mouse_released(elState *S, int button);
