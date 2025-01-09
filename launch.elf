@@ -1,6 +1,7 @@
+load "image.elf"
+#eof
 elf.change_work_dir("W:\\MicroRJ\\ninja-world")
 load "main.elf"
-#eof
 
 load "tests\\overload.elf"
 #eof
@@ -10,6 +11,7 @@ load "tests\\loops.elf"
 load "tests\\prec.elf"
 
 //
+//	-	lexer.c: add support for floating point notation!
 //
 // - 	GOAL TODAY (1/7/25):
 //	- 	x-- get games working!

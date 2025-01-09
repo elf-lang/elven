@@ -1,35 +1,78 @@
-window ::= new elf.gfx.Window("Image Viewer",128,128)
-image  ::= elf.gfx.load_image("image.png")
+view  ::= new elf.gfx.Window("Image Viewer",256,256)
+view.scale = 1.0
+
+image ::= elf.gfx.load_image("image.png")
+image.pos = {x=0,y=0}
 
 PRESSED = elf.gfx.Window.PRESSED
 DOWN = elf.gfx.Window.DOWN
+RELEASED = elf.gfx.Window.RELEASED
 
 dragging = false
-while window:poll() ? {
-	if window.keys['W'] & PRESSED ? {
-		elf.pf("W")
+while view:poll() ? {
+	if view.keys['W'] & DOWN ? {
+		image.pos.y -= 1
 	}
-	if window.mouse[0] & PRESSED ? {
+	if view.keys['S'] & DOWN ? {
+		image.pos.y += 1
+	}
+	if view.keys['A'] & DOWN ? {
+		image.pos.x -= 1
+	}
+	if view.keys['D'] & DOWN ? {
+		image.pos.x += 1
+	}
+	if view.mouse[0] & PRESSED ? {
 		elf.pf("M0")
 	}
-	if window.mouse[1] & PRESSED ? {
-		elf.pf("M1")
+
+	mouse_x ::= view.mouse_x
+	mouse_y ::= view.mouse_y
+
+	if view.keys['Z'] & RELEASED || view.mouse[1] & RELEASED ? {
+		new_scale ::= view.scale + 0.1
+		// a ::= view.scale / (view.scale + 0.1)
+		a ::= 1.0 / view.scale
+
+		// a ::= view.scale / (view.scale + x)
+		// a * view.scale ::= (view.scale + x)
+		// a * view.scale - view.scale ::= x
+		// (a - 1) * view.scale ::= x
+		// a ::= x / view.scale + 1
+		//
+		// z = x / (1 / y)
+		// z * x = 1 / y
+		// z = 1 / (y * x)
+
+		a ::= view.scale * 1.0/(view.scale + 0.1)
+		image.pos.x = mouse_x - (mouse_x - image.pos.x) / a
+		image.pos.y = mouse_y - (mouse_y - image.pos.y) / a
+		view.scale = new_scale
 	}
-	if window.mouse[2] & PRESSED ? {
-		elf.pf("M2")
+	if view.mouse[2] & RELEASED ? {
+		mouse_on_image_x := (mouse_x - image.pos.x) / view.scale
+		mouse_on_image_y := (mouse_y - image.pos.y) / view.scale
+		view.scale -= 0.1
+		image.pos.x = mouse_x - mouse_on_image_x * view.scale
+		image.pos.y = mouse_y - mouse_on_image_y * view.scale
 	}
-	// elf.pf("x: ", window.mouse_x)
-	// elf.pf("y: ", window.mouse_y)
-	window:draw_image(
+
+	view:draw_image(
 	,	image
 	, 	255,255,255,255
 	,	  0,  0,  0,  0
-	, 	  0
-	, 	  0,   	image.width,  image.height
-	, 	  0, 0,	image.width,  image.height)
+	, 	  image.pos.x,  image.pos.y
+	,    image. width * view.scale
+	,    image.height * view.scale)
 
-	window:draw_text(
-	,	"Welcome"
-	, 	0, 0
-	, 	255, 255, 255, 255)
+	// view:draw_text(
+	// ,	"Welcome"
+	// , 	0, 0
+	// , 	255, 255, 255, 255)
+
+	// view:draw_rect(
+	// ,	floor((view.mouse_x - image.pos.x) / view.scale) * view.scale
+	// , 	floor((view.mouse_y - image.pos.y) / view.scale) * view.scale
+	// ,  view.scale, view.scale
+	// , 	255, 255, 255, 255 )
 }

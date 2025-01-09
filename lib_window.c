@@ -22,6 +22,10 @@ void lib_gfx_window_init(elf_State *S) {
 	,	VSTR(elf_new_string(S,"elf.gfx.Window.RELEASED"))
 	, 	VINT(KIT_INPUT_RELEASED));
 
+	elf_table_set(S->M->globals
+	,	VSTR(elf_new_string(S,"elf.gfx.Window.RELEASED"))
+	, 	VINT(KIT_INPUT_RELEASED));
+
 	lib_gfx_draw_apply(S,meta);
 
 	elf_table_set(meta
@@ -92,8 +96,8 @@ int window__poll(elState *S) {
 		,	VINT(ctx->mouse_state[i]));
 	}
 
-	SET_INT("res_x",ctx->win_w);
-	SET_INT("res_y",ctx->win_h);
+	SET_INT("res_x",ctx->screen->w);
+	SET_INT("res_y",ctx->screen->h);
 	SET_INT("mouse_x",x);
 	SET_INT("mouse_y",y);
 	SET_NUM("time",time);
