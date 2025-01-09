@@ -1,0 +1,40 @@
+Integer = {
+	UNIT					  = 1
+	SMALLEST_PRIME_EVEN = 2
+	SMALLEST_PRIME_ODD  = 3
+
+	__new = fun(value) ? {
+		this.value = value
+	}
+	get = fun() ? {
+		ret this.value
+	}
+	set = fun(value) ? {
+		this.value = value
+	}
+	is_even = fun() ? {
+		ret value % 2 == 0
+	}
+	get_smallest_prime = fun() ? {
+		value := this.value
+		if value <= 3 ? {
+			ret value
+		}
+		if value % 2 == 0 ? {
+			ret 2
+		}
+		max_factor ::= sqrt(value)
+		prime := 3
+		while value % prime != 0 ? {
+			prime += 2
+			if prime >= max_factor ? {
+				prime = value
+				break
+			}
+		}
+		ret prime
+	}
+}
+
+i := new Integer(4294967321)
+elf.pf("733: ", i:get_smallest_prime())

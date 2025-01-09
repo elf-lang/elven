@@ -2,6 +2,7 @@ load "image.elf"
 #eof
 elf.change_work_dir("W:\\MicroRJ\\ninja-world")
 load "main.elf"
+#eof
 
 load "tests\\overload.elf"
 #eof
@@ -10,6 +11,7 @@ load "tests\\fun.elf"
 load "tests\\loops.elf"
 load "tests\\prec.elf"
 
+//	- 	lib_user.c: gesture messages
 //
 //	-	lexer.c: add support for floating point notation!
 //
@@ -17,6 +19,9 @@ load "tests\\prec.elf"
 //	- 	x-- get games working!
 //
 // -	xx closures, we need capts
+//
+//	-	parse.c: for loops need to use := ::=
+//		syntax to be more consistent...
 //
 //	- 	x- parse.c: defer blocks, do while loops
 //		we need to fix defer blocks so that they

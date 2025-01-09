@@ -1,7 +1,7 @@
 // Todo: my own windows layer apparently...
 
-int window__poll(elState *S);
-int window__new(elState *S);
+int window__poll(elf_State *S);
+int window__new(elf_State *S);
 
 void lib_gfx_window_init(elf_State *S) {
 	elf_Table *meta=elf_new_table(S);
@@ -37,7 +37,7 @@ void lib_gfx_window_init(elf_State *S) {
 	, 	VCFN(window__poll));
 }
 
-int window__new(elState *S) {
+int window__new(elf_State *S) {
 	// ASSERT(elf_get_this(S)->type==GC_TAB);
 
 	elf_Table *_this=(elf_Table*)elf_get_this(S);
@@ -49,7 +49,7 @@ int window__new(elState *S) {
 	char *name = elf_get_txt(S,0);
 	int w = elf_get_int(S,1);
 	int h = elf_get_int(S,2);
-	kit_Context *c = kit_create(name, w, h, KIT_SCALE2X|KIT_FPS144);
+	kit_Context *c = kit_create(name, w, h, KIT_FPS144);
 
 	elf_table_set(_this
 	,	VSTR(elf_new_string(S,"@ptr"))
@@ -64,7 +64,7 @@ int window__new(elState *S) {
 	return 1;
 }
 
-int window__poll(elState *S) {
+int window__poll(elf_State *S) {
 	elf_Table *_this;
 	_this = (elf_Table *) elf_get_this(S);
 

@@ -3,17 +3,30 @@
 int lib_gfx_draw_rect(elState *S);
 int lib_gfx_draw_text(elState *S);
 int lib_gfx_draw_image(elState *S);
+int lib_gfx_draw_rect2(elState *S);
+int lib_gfx_draw_line(elState *S);
 
 void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
 	elf_table_set(meta
 	,	VSTR(elf_new_string(S,"draw_rect"))
 	,	VCFN(lib_gfx_draw_rect));
+
 	elf_table_set(meta
 	,	VSTR(elf_new_string(S,"draw_text"))
 	,	VCFN(lib_gfx_draw_text));
+
 	elf_table_set(meta
 	,	VSTR(elf_new_string(S,"draw_image"))
 	,	VCFN(lib_gfx_draw_image));
+
+	elf_table_set(meta
+	,	VSTR(elf_new_string(S,"draw_rect2"))
+	,	VCFN(lib_gfx_draw_rect2));
+
+
+	elf_table_set(meta
+	,	VSTR(elf_new_string(S,"draw_line"))
+	,	VCFN(lib_gfx_draw_line));
 }
 
 kit_Context *get_ctx(elf_State *S){
@@ -109,5 +122,62 @@ int lib_gfx_draw_image(elState *S) {
 	,(kit_Rect){dst_x,dst_y,dst_w,dst_h}
 	,(kit_Rect){src_x,src_y,src_w,src_h});
 	_nop:
+	return 0;
+}
+
+
+int lib_gfx_draw_line(elState *S) {
+	kit_Context *ctx = get_ctx(S);
+
+	int i = 0;
+	int x = elf_get_int(S,i++);
+	int y = elf_get_int(S,i++);
+	elf_f64 angle = elf_get_num(S,i++);
+	int l = elf_get_int(S,i++);
+
+	float u_x = cosf(angle);
+	float u_y = sinf(angle);
+
+	int dst_w = ctx->screen->w;
+
+	for (int i = 0; i < l; i ++) {
+		int yy = y+(int)(i*u_x*i);
+		int xx = x+(int)(i*u_y*i);
+		ctx->screen->pixels[dst_w * yy + xx] = KIT_WHITE;
+	}
+	return 0;
+}
+
+int lib_gfx_draw_rect2(elState *S) {
+	kit_Context *ctx = get_ctx(S);
+
+	int i = 0;
+	int x = elf_get_int(S,i++);
+	int y = elf_get_int(S,i++);
+	int w = elf_get_int(S,i++);
+	int h = elf_get_int(S,i++);
+
+	elf_f64 angle = elf_get_num(S,i++);
+
+	int r = elf_get_int(S,i++);
+	int g = elf_get_int(S,i++);
+	int b = elf_get_int(S,i++);
+	int a = elf_get_int(S,i++);
+
+
+	float u_x = cosf(angle);
+	float u_y = sinf(angle);
+	float r_x = u_y;
+	float r_y = - u_x;
+
+	int dst_w = ctx->screen->w;
+
+	for (int yofs = 0; yofs < h; yofs ++) {
+		for (int xofs = 0; xofs < w; xofs ++) {
+			int yy = y+(int)(yofs*u_x+yofs*u_y);
+			int xx = x+(int)(xofs*r_x+xofs*r_y);
+			ctx->screen->pixels[dst_w * yy + xx] = KIT_WHITE;
+		}
+	}
 	return 0;
 }

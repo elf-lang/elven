@@ -1,26 +1,52 @@
-view  ::= new elf.gfx.Window("Image Viewer",256,256)
+PI   ::= 3.14159
+TAU  ::= 6.28318
+
+view ::= new elf.gfx.Window("Image Viewer",1024,720)
 view.scale = 1.0
+view.ofs   = {x=0,y=0}
 
 image ::= elf.gfx.load_image("image.png")
-image.pos = {x=0,y=0}
 
 PRESSED = elf.gfx.Window.PRESSED
 DOWN = elf.gfx.Window.DOWN
 RELEASED = elf.gfx.Window.RELEASED
 
-dragging = false
+CELL_SIZE 	        ::= 8
+ZOOM_FACTOR         ::= 0.01
+total_time           := 0
+dragging             := false
+offset_minus_mouse   := {x=0,y=0}
+
+
+zoom_in_at_mouse ::= fun(by) ? {
+	new_scale ::= view.scale + by * view.scale
+	if new_scale <= 0 ? {
+		ret
+	}
+
+	mouse_x ::= view.mouse_x
+	mouse_y ::= view.mouse_y
+
+	a ::= view.scale / new_scale
+	if a != 0 ? {
+		view.ofs.x = mouse_x - (mouse_x - view.ofs.x) / a
+		view.ofs.y = mouse_y - (mouse_y - view.ofs.y) / a
+		view.scale = new_scale
+	}
+}
+
 while view:poll() ? {
 	if view.keys['W'] & DOWN ? {
-		image.pos.y -= 1
+		view.ofs.y -= 1
 	}
 	if view.keys['S'] & DOWN ? {
-		image.pos.y += 1
+		view.ofs.y += 1
 	}
 	if view.keys['A'] & DOWN ? {
-		image.pos.x -= 1
+		view.ofs.x -= 1
 	}
 	if view.keys['D'] & DOWN ? {
-		image.pos.x += 1
+		view.ofs.x += 1
 	}
 	if view.mouse[0] & PRESSED ? {
 		elf.pf("M0")
@@ -29,50 +55,62 @@ while view:poll() ? {
 	mouse_x ::= view.mouse_x
 	mouse_y ::= view.mouse_y
 
-	if view.keys['Z'] & RELEASED || view.mouse[1] & RELEASED ? {
-		new_scale ::= view.scale + 0.1
-		// a ::= view.scale / (view.scale + 0.1)
-		a ::= 1.0 / view.scale
-
-		// a ::= view.scale / (view.scale + x)
-		// a * view.scale ::= (view.scale + x)
-		// a * view.scale - view.scale ::= x
-		// (a - 1) * view.scale ::= x
-		// a ::= x / view.scale + 1
-		//
-		// z = x / (1 / y)
-		// z * x = 1 / y
-		// z = 1 / (y * x)
-
-		a ::= view.scale * 1.0/(view.scale + 0.1)
-		image.pos.x = mouse_x - (mouse_x - image.pos.x) / a
-		image.pos.y = mouse_y - (mouse_y - image.pos.y) / a
-		view.scale = new_scale
+	if view.mouse[1] & PRESSED ? {
+		dragging = true
+		offset_minus_mouse.x = view.ofs.x - mouse_x
+		offset_minus_mouse.y = view.ofs.y - mouse_y
 	}
-	if view.mouse[2] & RELEASED ? {
-		mouse_on_image_x := (mouse_x - image.pos.x) / view.scale
-		mouse_on_image_y := (mouse_y - image.pos.y) / view.scale
-		view.scale -= 0.1
-		image.pos.x = mouse_x - mouse_on_image_x * view.scale
-		image.pos.y = mouse_y - mouse_on_image_y * view.scale
+	if view.mouse[1] & DOWN ? {
+		if dragging ? {
+			view.ofs.x = offset_minus_mouse.x + mouse_x
+			view.ofs.y = offset_minus_mouse.y + mouse_y
+		}
 	}
+
+	if view.keys['Z'] & DOWN ? {
+		zoom_in_at_mouse(ZOOM_FACTOR)
+	}
+	if view.keys['X'] & DOWN ? {
+		zoom_in_at_mouse(-ZOOM_FACTOR)
+	}
+
+	scale ::= view.scale
 
 	view:draw_image(
 	,	image
 	, 	255,255,255,255
-	,	  0,  0,  0,  0
-	, 	  image.pos.x,  image.pos.y
-	,    image. width * view.scale
-	,    image.height * view.scale)
+	,	0,  0,  0,  0
+	, 	view.ofs.x,  view.ofs.y
+	,  image. width * scale
+	,  image.height * scale)
 
-	// view:draw_text(
-	// ,	"Welcome"
-	// , 	0, 0
-	// , 	255, 255, 255, 255)
+	cell_size ::= CELL_SIZE * scale
+	grid_size_x ::= view.res_x / cell_size + 1
+	grid_size_y ::= view.res_y / cell_size + 1
+	for y = 0...grid_size_y ? {
+		view:draw_rect(
+		, 0
+		, view.ofs.y % cell_size + y * cell_size
+		, view.res_x
+		, 1
+		, 255, 255, 255, 255*0.25)
+	}
+	for x = 0...grid_size_x ? {
+		view:draw_rect(
+		, view.ofs.x % cell_size + x * cell_size
+		, 0
+		, 1
+		, view.res_y
+		, 255, 255, 255, 255*0.25)
+	}
 
-	// view:draw_rect(
-	// ,	floor((view.mouse_x - image.pos.x) / view.scale) * view.scale
-	// , 	floor((view.mouse_y - image.pos.y) / view.scale) * view.scale
-	// ,  view.scale, view.scale
-	// , 	255, 255, 255, 255 )
+	// view:draw_rect2(
+	// , 32, 32, 32, 64
+	// , PI *.25
+	// , 255, 255, 255, 255)
+
+	// view:draw_line(
+	// , 32, 32, PI *.25, 32)
+
+	total_time += view.time
 }
