@@ -43,15 +43,15 @@ kit_Context *get_ctx(elf_State *S){
 
 int lib_gfx_draw_rect(elState *S) {
 	kit_Context *ctx = get_ctx(S);
-
-	int x = elf_get_int(S,0);
-	int y = elf_get_int(S,1);
-	int w = elf_get_int(S,2);
-	int h = elf_get_int(S,3);
-	int r = elf_get_int(S,4);
-	int g = elf_get_int(S,5);
-	int b = elf_get_int(S,6);
-	int a = elf_get_int(S,7);
+	int i = 0;
+	int x = elf_get_int(S,i++);
+	int y = elf_get_int(S,i++);
+	int w = elf_get_int(S,i++);
+	int h = elf_get_int(S,i++);
+	int r = elf_get_int(S,i++);
+	int g = elf_get_int(S,i++);
+	int b = elf_get_int(S,i++);
+	int a = elf_get_int(S,i++);
 	kit_draw_rect(ctx,(kit_Color){b,g,r,a},(kit_Rect){x,y,w,h});
 	return 0;
 }

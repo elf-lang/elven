@@ -1,0 +1,245 @@
+/* Todo: better logging, with colors, with so many warnings
+and things, its hard to tell the difference between a log
+and an error */
+/* Todo: NEW is used quite often, probably turn into an
+instruction eventually, also, for now when we do get
+metatable, and invoke __new, we don't check whether it
+is null or not, so this requires the user to provide a
+__new function, which is fine, but, we don't get an error
+saying so... */
+
+- core.c: #feature
+	let user define result value when
+	division by zero?
+
+- parse.c: #feature
+	tuple iteration in a for loop:
+	for x,y = (0,1), (2,2) ? {
+	}
+	for x,y = (0,1)...(2,2) ? {
+	}
+
+- parse.c: #feature
+'for' loop range does not allow configuring
+the step and direction, use 'by' keyword as
+suggested?
+	for i = 0...10 by 1 ? {
+
+	}
+
+- parse.c: #bug
+'?=' operator not setting parameter properly
+when parameter is nil?
+	my_fun = fun(color) ? {
+		color ?= {r=255,g=255,b=255,a=255}
+	}
+'color' is '{}'
+
+-	core.c: "attempted to get nil field" error
+message when doing array indexing with nil key,
+this is not a good error code!
+
+-	GAME API: #core
+Begin working on a standard game
+dev API to support different backends without
+having to port each and every single one.
+We have lower level apis the GPU stuff, but still
+shared across different GPU API's.
+Device standard image formats, add support for
+image loading using stb_image.h, images should
+be compatible with all backends.
+
+
+
+-	elf-ray.c: begin working on getting raylib port
+ready again
+- 	test web compilation?
+-  parse.c: we can't have cross file constants,
+why not make all title case names constant?
+That way global symbols can be defined as
+enum like.
+- 	parse.c: range expression desugaring
+-	parse.c: conditionals, introduce conditional
+expression, they wrap some other expression,
+if the expression is nil, the rest isn't executed
+and the result is nil, so the user can pair it
+up with the nil or operator.
+- 	lib_user.c: gesture messages
+-	lexer.c: add support for floating point notation!
+- 	GOAL TODAY (1/7/25):
+- 	x-- get games working!
+-	xx closures, we need capts
+-	parse.c: for loops need to use := ::=
+syntax to be more consistent...
+- 	x- parse.c: defer blocks, do while loops
+we need to fix defer blocks so that they
+are actually emitted properly...
+maybe use the goto instruction along
+with labels to chain these together...
+like every inner block will emit these
+goto instructions and store them in
+their blocks, and then the parent block
+takes those instructions and patches adds
+them to itself, until a terminating
+statement is found
+{
+defer { elf.pf("do this last") }
+...
+{
+{
+...
+ret 2
+}
+...
+ret 1
+}
+...
+ret 2
+}
+todo: this is temporary!
+Whenever a block is ended, right before
+the ending instruction we insert the
+defer blocks, if we are an inner block
+and we do a return, instead of actually
+issuing the return instruction we just
+jump to the return instruction at the
+end of every function.
+-	core.c: comparison optimizations
+-	core.c: instructions for nil conditional
+jumps...
+- 	core.c: active prefixes, so the user can
+enable a prefix, and every global symbol
+from then on will have that prefix, the
+prefix must adhere to certain rules!
+-	parse.c: NO_ENTITY should be 0, not -1
+-	parse.c: introduce the preloading idea
+once again to optimize certain expressions:
+(A.B.C).D ?= 1
+^^^^^^ <- otherwise this gets expensive since
+it has to be evaluated twice...
+-	core.c: add better error logging, especially
+for when the parser generates code to call
+the __new function and it isn't present because
+the user didn't define it, the core will just
+say, "cannot call nil", like what does that
+even mean!
+Perhaps, add an instruction for calling new...
+-	parse.c: ternary expressions
+parse?:name()
+parse:name?()
+parse?.name
+- 	remove the idea of a meta-call
+from gen, let the parse include
+'this'.
+And this will also give also remove
+the notion of 'this' entirely from
+the generator.
+-  sublime syntax highlight
+-	core.c: revise the core API!
+-	xx break / continue, they should take the for loop
+as the operand
+-	x- parse.c: infinite ranges, nameless loops
+-	xxx- parser.c: clean up parser
+-  change declaration syntax, from 'let' to ':='
+-  set_line function to avoid having to pass in the
+line every single time
+-	core.c: calling a function should not be recursive
+-	parse.c: type annotations
+-  gen.c: specialized bytecode for known types
+-	parse.c: default parameter values
+-  core.c & parse.c & gen.c: array index instrinsics!
+-	parse.c: make it so that global references aren't implicit,
+this tends to not be a big problem but it does get
+annoying
+-	lib_sockets.c: sockets...
+-	lib_threads.c: threading...
+-	parse.c: meta postprocessor?
+-	core.c: generate profiling data so that we can
+visualize it, John Blow style.
+- 	help.h: rename to base.h, put core type defs
+in there
+- 	core.c: calling functions should not be recursive
+-	core.c: figure out what to do with the vector
+values idea, do we want every value to
+be a vector? (postpone)
+-	parse.c: block strings, inplace formatted strings
+shader =
+"""
+void main() {
+gl_FragColor = vec3(1,2,3)
+}
+"""
+- 	add an end of line token instead of
+using passive hinting? (postpone)
+- 	revise the table core lib, should
+we just add the array type?
+-  can we get color logging?
+-  x- delete un-used files, elf-web.c,lcrtlib.c,elf-cli.c?
+-  cleanup core file
+-	clean up globals
+-	proper test suite
+- 	#array, #index, #value registers
+this could actually be done with
+entity binding, simply bind the entity
+to each corresponding tree,
+-	xx !! and ??
+-	allow the user to refer to for loops by name
+-  xx proper assignments!
+-  parse.c: #syntax What happens when you have multiple expressions
+on a single line?
+They just get evaluated, or discarded,
+but that should be a syntax error
+-  byte.c: fix stupid bytecode!
+-  byte.h & core.c: get rid of yield, delay, and leave instructions they
+are no longer in use!
+- 	parse.c & gen.c: 'then' branch will require us to
+move the entire if elif thing to the generator.
+-  parse.c & gen.c: multi-returns
+-  parse.c & gen.c: change the calling convetion so that
+the 'this' param comes first, then the function then
+arguments, and fully expose these registers.
+Putting 'this' as the first argument means it'll be
+the default return value without having to emit additional
+code. (postpone)
+- 	xx elifs
+-	xx fields, indices, metafield (postfix expressions)
+-  xx array for-loops, generic for loops
+-	xx function parameters, 'this'
+-	re-introduce groups, we need them for proper code gen now
+-  fix short circuiting bug
+-	merge module and state?
+-	clean up, delete old files
+- 	get rid of elf-web.c
+- 	get rid of jit toy we have 'c66' as a
+much better reference
+- 	get rid of error.h, or make it better
+-  figure out whether we want function types or not,
+then:
+- 	determine what a file really is and whether we
+need them...
+- 	Will prototypes always remain loaded, can get
+rid of the unused ones?
+-	If files are a thing, will a file keep all prototypes
+loaded, even when not in use?
+- 	If there are no files, do we keep the source code for
+each file?
+-	If prototypes are dynamic, will they become objects too?
+Or will they get treated separately?
+-	Will bytecode be allocated per prototype or still be
+emitted to the same buffer?
+- 	organize library, organize elf.h
+-	figure what the API for the core
+library will be, setup some constraints
+it should adhere to.
+-	core lib function that tells you whether
+an object is visible, and tells the path.
+- bytecode should be much smaller
+- use linear allocator for internal stuff, like
+allocating instructions and stuff...
+networking library
+trace-recording
+self-optimization
+- inlining
+- optimize table lookups
+- optimize object allocation
+x64 compilation?
