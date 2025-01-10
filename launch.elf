@@ -1,7 +1,7 @@
-load "image.elf"
-#eof
-elf.change_work_dir("W:\\MicroRJ\\ninja-world")
+elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "main.elf"
+#eof
+load "worm.elf"
 #eof
 
 load "tests\\overload.elf"
@@ -10,7 +10,25 @@ load "tests\\if.elf"
 load "tests\\fun.elf"
 load "tests\\loops.elf"
 load "tests\\prec.elf"
-
+//
+// - GOAL TODAY (1/9/25)
+//	-	begin working on getting raylib port
+//		ready again
+//	- 	test web compilation?
+//
+// -  parse.c: we can't have cross file constants,
+//		why not make all title case names constant?
+//		That way global symbols can be defined as
+//		enum like.
+//	- 	parse.c: range expression desugaring
+//	-	parse.c: conditionals, introduce conditional
+//		expression, they wrap some other expression,
+//		if the expression is nil, the rest isn't executed
+//		and the result is nil, so the user can pair it
+//		up with the nil or operator.
+//
+//
+//
 //	- 	lib_user.c: gesture messages
 //
 //	-	lexer.c: add support for floating point notation!
@@ -49,19 +67,19 @@ load "tests\\prec.elf"
 // 	...
 // 	ret 2
 // }
-// todo: this is temporary!
-//	Whenever a block is ended, right before
-// the ending instruction we insert the
-// defer blocks, if we are an inner block
-// and we do a return, instead of actually
-// issuing the return instruction we just
-// jump to the return instruction at the
-// end of every function.
+// 	todo: this is temporary!
+//		Whenever a block is ended, right before
+// 	the ending instruction we insert the
+// 	defer blocks, if we are an inner block
+// 	and we do a return, instead of actually
+// 	issuing the return instruction we just
+// 	jump to the return instruction at the
+// 	end of every function.
 //
 //	-	core.c: comparison optimizations
 //
-//	-	core.c: intrinsic functions for nil comparisons
-//		and jumps
+//	-	core.c: instructions for nil conditional
+//		jumps...
 //
 //	- 	core.c: active prefixes, so the user can
 //		enable a prefix, and every global symbol
@@ -82,13 +100,9 @@ load "tests\\prec.elf"
 //		the user didn't define it, the core will just
 //		say, "cannot call nil", like what does that
 //		even mean!
-//	- 	parse.c: range expression desugaring
+//		Perhaps, add an instruction for calling new...
+//
 //	-	parse.c: ternary expressions
-//	-	parse.c: conditionals, introduce conditional
-//		expression, they wrap some other expression,
-//		if the expression is nil, the rest isn't executed
-//		and the result is nil, so the user can pair it
-//		up with the nil or operator.
 //
 //		parse?:name()
 //		parse:name?()

@@ -17,14 +17,6 @@ struct {
 	elf_Module M;
 } GLOBAL elf = {{&elf.M}};
 
-
-void tseti(elState *S, elf_Table *table, char *name, elf_i64 value) {
-	elf_table_set(table,VSTR(elf_new_string(S,name)),VINT(value));
-}
-// void tsetn(elState *S, elf_Table *table, char *name, elf_f64 value) {
-// 	elf_table_set(table,VSTR(elf_new_string(S,name)),VNUM(value));
-// }
-
 #include "lib_image.c"
 #include "lib_draw.c"
 #include "lib_window.c"

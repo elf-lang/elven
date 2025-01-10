@@ -46,10 +46,19 @@ int window__new(elf_State *S) {
 	,	VSTR(elf_new_string(S,"elf.gfx.Window"))).x_tab;
 	ASSERT(_this->obj.meta==_meta);
 
-	char *name = elf_get_txt(S,0);
-	int w = elf_get_int(S,1);
-	int h = elf_get_int(S,2);
-	kit_Context *c = kit_create(name, w, h, KIT_FPS144);
+	int i = 0;
+	char *name = elf_get_txt(S,i++);
+	int base_res_x = elf_get_int(S,i++);
+	int base_res_y = elf_get_int(S,i++);
+	int window_scale = elf_get_int(S,i++);
+
+	int flags = KIT_FPS144;
+	if(window_scale==0)window_scale=1;
+	if(window_scale==2)flags |= KIT_SCALE2X; else
+	if(window_scale==3)flags |= KIT_SCALE3X; else
+	if(window_scale==4)flags |= KIT_SCALE4X;
+
+	kit_Context *c = kit_create(name, base_res_x, base_res_y, flags);
 
 	elf_table_set(_this
 	,	VSTR(elf_new_string(S,"@ptr"))

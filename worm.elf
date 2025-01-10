@@ -1,3 +1,5 @@
+WINDOW ::= new elf.gfx.Window("Worm Thing!",320,320)
+
 /* wormy thing */
 circles = {}
 add_circle = fun(x,y) ? {
@@ -29,7 +31,7 @@ get_perp = fun(dx,dy) ? {
 }
 
 draw_circ = fun(x,y,r) ? {
-	.draw_rect(x-r,y-r,r*2,r*2,255,255,255,255)
+	WINDOW:draw_rect(x-r,y-r,r*2,r*2,255,255,255,255)
 }
 
 get_dir = fun(dst,src) ? {
@@ -46,17 +48,15 @@ physics_clock = fun(p,time) ? {
 	p.vx -= p.vx * 4.0 * time
 	p.vy -= p.vy * 4.0 * time
 }
-while .step() ? {
+while WINDOW:poll() ? {
 
-	let p = circles:idx(0)
-	let d = get_dir(.get_mouse_pos(),p)
-	let perp = get_perp(d.x,d.y)
-	let phase = total_time * 3.14
-	let weave = 0
-	weave += sin(phase * 1) * 1.4
-	weave += sin(phase * 3) * 1.1
+	p ::= circles:idx(0)
+	d ::= get_dir({x=WINDOW.mouse_x,y=WINDOW.mouse_y},p)
+	perp ::= get_perp(d.x,d.y)
+	phase ::= total_time * 3.14
+	weave := sin(phase * 2) * 1.2
 	apply_force(p,perp.x*weave,perp.y*weave)
-	apply_force(p,d.x,d.y)
+	apply_force(p,d.x*2,d.y*2)
 	physics_clock(p,time)
 	total_time += time
 
