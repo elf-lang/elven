@@ -8,6 +8,14 @@ is null or not, so this requires the user to provide a
 __new function, which is fine, but, we don't get an error
 saying so... */
 
+- parse.c: constant declarations '::=' within table
+initializers should just be treated as locally
+scoped constants...
+Actually, why don't we allow abitrary statements
+and cull every declaration and or definition outside
+of the statements, and the user can set a key value
+pair using 'this.something'?
+
 - parse.c, core.c: named arguments?
 
 - parse.c: when parsing 'new' we use parse postfix

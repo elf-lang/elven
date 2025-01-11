@@ -52,7 +52,7 @@ int window__new(elf_State *S) {
 	int base_res_y = elf_get_int(S,i++);
 	int window_scale = elf_get_int(S,i++);
 
-	int flags = KIT_FPS144;
+	int flags = 0; // KIT_FPS144;
 	if(window_scale==0)window_scale=1;
 	if(window_scale==2)flags |= KIT_SCALE2X; else
 	if(window_scale==3)flags |= KIT_SCALE3X; else
@@ -78,12 +78,15 @@ int window__poll(elf_State *S) {
 	_this = (elf_Table *) elf_get_this(S);
 
 	kit_Context *ctx = get_ctx(S);
+	ctx->mouse_wheel_y = 0;
+	ctx->mouse_wheel_y = 0;
 
 	double time;
 	int x,y;
 	int b;
 
 	b=kit_step(ctx, &time);
+
 	kit_mouse_pos(ctx,&x,&y);
 
 #define SET(NAME,VALUE) elf_table_set(_this,VSTR(elf_new_string(S,NAME)),VALUE)
@@ -109,6 +112,8 @@ int window__poll(elf_State *S) {
 	SET_INT("res_y",ctx->screen->h);
 	SET_INT("mouse_x",x);
 	SET_INT("mouse_y",y);
+	SET_INT("mouse_wheel_x",ctx->mouse_wheel_x);
+	SET_INT("mouse_wheel_y",ctx->mouse_wheel_y);
 	SET_NUM("time",time);
 	SET_TAB("keys",keys);
 	SET_TAB("mouse",mouse);
