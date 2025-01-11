@@ -1,4 +1,6 @@
-elf.change_work_dir("C:\\work\\MicroRJ\\platformer")
+load "collision.elf"
+#eof
+elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "main.elf"
 #eof
 load "worm.elf"

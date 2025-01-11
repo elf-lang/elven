@@ -1,0 +1,197 @@
+MATH ::= {
+	PI   	= 3.14159,
+	TAU  	= 6.28318,
+	E  	= 2.71828,
+}
+UPSCALE  	::= 1
+WIND_W   	::= 320*4
+WIND_H   	::= 240*3
+ASPECT_R 	::= WIND_W / iton(WIND_H)
+CENTER_X 	::= WIND_W / 2
+CENTER_Y 	::= WIND_H / 2
+UNIT 			::= 32
+CELL 			::= UNIT
+
+Color = fun(r,g,b,a) ? ({r=r,g=g,b=b,a=a??255})
+
+VIEW ::= new elf.gfx.Window("Graph!",WIND_W,WIND_H,UPSCALE)
+PRESSED  = elf.gfx.Window.PRESSED
+DOWN 		= elf.gfx.Window.DOWN
+RELEASED = elf.gfx.Window.RELEASED
+INITIAL_OFFSET ::= {
+	x=CENTER_X,
+	y=CENTER_Y
+}
+VIEW.ofs = INITIAL_OFFSET:clone()
+VIEW.Z   = 1.0
+
+zoom_in_at_mouse ::= fun(by) ? {
+	by ?= 0.01
+	new_scale ::= VIEW.Z + VIEW.Z * by
+	if new_scale <= 0 ? {
+		ret
+	}
+
+	mouse_x ::= VIEW.mouse_x
+	mouse_y ::= VIEW.mouse_y
+
+	a ::= VIEW.Z / new_scale
+	if a != 0 ? {
+		VIEW.ofs.x = mouse_x - (mouse_x - VIEW.ofs.x) / a
+		VIEW.ofs.y = mouse_y - (mouse_y - VIEW.ofs.y) / a
+		VIEW.Z = new_scale
+	}
+}
+
+draw_grid ::= fun() ? {
+	scale 		::= VIEW.Z
+	cell_size   ::= CELL * scale
+	grid_size_x ::= WIND_W / cell_size + 1
+	grid_size_y ::= WIND_H / cell_size + 1
+
+	for y = 0...grid_size_y ? {
+		r := 255
+		g := 255
+		b := 255
+
+		VIEW:draw_rect(
+		, 0
+		, VIEW.ofs.y % cell_size + y * cell_size
+		, WIND_W
+		, 1
+		, r, g, b, 255*0.25)
+	}
+
+	for x = 0...grid_size_x ? {
+		r := 255
+		g := 255
+		b := 255
+
+		VIEW:draw_rect(
+		, VIEW.ofs.x % cell_size + x * cell_size
+		, 0
+		, 1
+		, WIND_H
+		, r, g, b, 255*0.25)
+	}
+
+	VIEW:draw_rect(
+	, VIEW.ofs.x
+	, 0
+	, 1
+	, WIND_H
+	, 255, 0, 0, 255*0.80)
+	VIEW:draw_rect(
+	, 0
+	, VIEW.ofs.y - 0
+	, WIND_W
+	, 1
+	, 0, 255, 0, 255*0.80)
+}
+
+offset_minus_mouse := {x=0,y=0}
+user_input ::= fun() ? {
+	if VIEW.keys['W'] & DOWN ? {
+		VIEW.ofs.y -= 1
+	}
+	if VIEW.keys['S'] & DOWN ? {
+		VIEW.ofs.y += 1
+	}
+	if VIEW.keys['A'] & DOWN ? {
+		VIEW.ofs.x -= 1
+	}
+	if VIEW.keys['D'] & DOWN ? {
+		VIEW.ofs.x += 1
+	}
+	if VIEW.keys['R'] & DOWN ? {
+		VIEW.ofs = INITIAL_OFFSET:clone()
+		VIEW.Z   = 1.0
+	}
+
+	mouse_x ::= VIEW.mouse_x
+	mouse_y ::= VIEW.mouse_y
+
+	if VIEW.mouse[1] & PRESSED ? {
+		dragging = true
+		offset_minus_mouse.x = VIEW.ofs.x - mouse_x
+		offset_minus_mouse.y = VIEW.ofs.y - mouse_y
+	}
+	if VIEW.mouse[1] & DOWN ? {
+		if dragging ? {
+			VIEW.ofs.x = offset_minus_mouse.x + mouse_x
+			VIEW.ofs.y = offset_minus_mouse.y + mouse_y
+		}
+	}
+
+	if VIEW.keys['Z'] & DOWN ? {
+		zoom_in_at_mouse()
+	}
+	if VIEW.keys['X'] & DOWN ? {
+		zoom_in_at_mouse(-0.01)
+	}
+}
+
+while VIEW:poll() ? {
+	user_input()
+
+	draw_grid()
+	Z ::= VIEW.Z
+
+	sources ::= {
+		{
+			f = fun(x) ? (x),
+			c = Color(255,255,0)
+		},
+		{
+			f = fun(x) ? (x * x * x),
+			c = Color(0,255,255)
+		},
+		{
+			f = fun(x) ? sin(x)
+			c = Color(64,64,255)
+		},
+		{
+			f = fun(x) ? 1.0 / (0.1 + x)
+			c = Color(64,64,255)
+		},
+		{
+			f = fun(x) ? pow(MATH.E,x)
+			c = Color(64,64,255)
+		}
+	}
+
+	for src = sources[...] ? {
+		f ::= src.f
+		c ::= src.c
+		// sample in screen space, number of samples
+		// remains the same regardless of the scale
+		for p = 0...WIND_W ? {
+			xp ::= p - VIEW.ofs.x
+			x0 ::= (xp + 0) / Z
+			x1 ::= (xp + 1) / Z
+			y0 ::= f(x0 / UNIT) * UNIT
+			y1 ::= f(x1 / UNIT) * UNIT
+			ddx ::= (x1 - x0) / (y1 - y0)
+			sy0 := VIEW.ofs.y - y0 * Z
+			sy1 := VIEW.ofs.y - y1 * Z
+			// window space clipping
+			// todo: clipping should depend on the slope,
+			// like if we're going up then x0 will be on
+			// the bottom... y1 on top and vice versa.
+			// also when we get really steep functions
+			// the lines would be huge...
+			if sy0 < 0 || sy0 > WIND_H ? {
+				continue
+			}
+			if sy1 < 0 ? {
+				sy1 = 0
+			}
+			// todo: figure out how to make this more efficient...
+			VIEW:draw_line(c.r,c.g,c.b,c.a
+			, (p+0)
+			, sy0
+			, (p+1)
+			, sy1)
+		}
+	}
+}

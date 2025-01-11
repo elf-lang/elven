@@ -5,6 +5,7 @@ int lib_gfx_draw_text(elState *S);
 int lib_gfx_draw_image(elState *S);
 int lib_gfx_draw_rect2(elState *S);
 int lib_gfx_draw_line(elState *S);
+int lib_gfx_draw_point(elState *S);
 
 void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
 	elf_table_set(meta
@@ -27,6 +28,10 @@ void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
 	elf_table_set(meta
 	,	VSTR(elf_new_string(S,"draw_line"))
 	,	VCFN(lib_gfx_draw_line));
+
+	elf_table_set(meta
+	,	VSTR(elf_new_string(S,"draw_point"))
+	,	VCFN(lib_gfx_draw_point));
 }
 
 kit_Context *get_ctx(elf_State *S){
@@ -128,23 +133,35 @@ int lib_gfx_draw_image(elState *S) {
 
 int lib_gfx_draw_line(elState *S) {
 	kit_Context *ctx = get_ctx(S);
-
 	int i = 0;
-	int x = elf_get_int(S,i++);
-	int y = elf_get_int(S,i++);
-	elf_f64 angle = elf_get_num(S,i++);
-	int l = elf_get_int(S,i++);
 
-	float u_x = cosf(angle);
-	float u_y = sinf(angle);
+	int r = elf_get_int(S,i++);
+	int g = elf_get_int(S,i++);
+	int b = elf_get_int(S,i++);
+	int a = elf_get_int(S,i++);
 
-	int dst_w = ctx->screen->w;
+	int x1 = elf_get_int(S,i++);
+	int y1 = elf_get_int(S,i++);
+	int x2 = elf_get_int(S,i++);
+	int y2 = elf_get_int(S,i++);
+	kit_draw_line(ctx, (kit_Color){b,g,r,a},x1,y1,x2,y2);
+	return 0;
+}
 
-	for (int i = 0; i < l; i ++) {
-		int yy = y+(int)(i*u_x*i);
-		int xx = x+(int)(i*u_y*i);
-		ctx->screen->pixels[dst_w * yy + xx] = KIT_WHITE;
-	}
+
+int lib_gfx_draw_point(elState *S) {
+	kit_Context *ctx = get_ctx(S);
+	int i = 0;
+
+	int r = elf_get_int(S,i++);
+	int g = elf_get_int(S,i++);
+	int b = elf_get_int(S,i++);
+	int a = elf_get_int(S,i++);
+
+	int x1 = elf_get_int(S,i++);
+	int y1 = elf_get_int(S,i++);
+
+	kit_draw_point(ctx, (kit_Color){b,g,r,a},x1,y1);
 	return 0;
 }
 
