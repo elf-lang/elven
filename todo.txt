@@ -8,31 +8,61 @@ is null or not, so this requires the user to provide a
 __new function, which is fine, but, we don't get an error
 saying so... */
 
+- parse.c, core.c: named arguments?
+
+- parse.c: when parsing 'new' we use parse postfix
+expression, which does not do proper grouping of terms,
+like for instance:
+
+;		new Rect(...):overalps()
+So figure out what to do here...
+
+
+- core.c: abs, max, min intrinsic instructions!
+
+- core.c: vector intrinsic instruction
+
+- core.c: a proper argument validator, that
+can be externalized, this would also help
+in augmenting documentation and self-optimization.
+
+
+- collision.elf: #bug fix #worstbugever
+
+- parse.c, core.c: #feature constants should
+not become closure captures...
+
+- parse.c: #feature function arrow syntax
+
+- parse.c: #feature why do relational operators
+have higher precedence than bitwise operators?
+I've never liked this!
+
 - core.c: #feature
-	let user define result value when
-	division by zero?
+let user define result value when
+division by zero?
 
 - parse.c: #feature
-	tuple iteration in a for loop:
-	for x,y = (0,1), (2,2) ? {
-	}
-	for x,y = (0,1)...(2,2) ? {
-	}
+tuple iteration in a for loop:
+for x,y = (0,1), (2,2) ? {
+}
+for x,y = (0,1)...(2,2) ? {
+}
 
 - parse.c: #feature
 'for' loop range does not allow configuring
 the step and direction, use 'by' keyword as
 suggested?
-	for i = 0...10 by 1 ? {
+for i = 0...10 by 1 ? {
 
-	}
+}
 
 - parse.c: #bug
 '?=' operator not setting parameter properly
 when parameter is nil?
-	my_fun = fun(color) ? {
-		color ?= {r=255,g=255,b=255,a=255}
-	}
+my_fun = fun(color) ? {
+color ?= {r=255,g=255,b=255,a=255}
+}
 'color' is '{}'
 
 -	core.c: "attempted to get nil field" error

@@ -1,10 +1,12 @@
-load "collision.elf"
-#eof
-elf.change_work_dir("W:\\MicroRJ\\platformer")
+elf.change_work_dir("C:\\work\\MicroRJ\\platformer")
 load "main.elf"
+#eof
+elf.change_work_dir("play")
+load "collision.elf"
 #eof
 load "worm.elf"
 #eof
+
 
 load "tests\\overload.elf"
 #eof
