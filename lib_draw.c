@@ -86,6 +86,7 @@ int lib_gfx_draw_image(elState *S) {
 	int add_r=255,add_g=255,add_b=255,add_a=255;
 	int src_x=0,src_y=0,src_w=0,src_h=0;
 	int dst_x=0,dst_y=0,dst_w=0,dst_h=0;
+	int flip_x=1,flip_y=1;
 	int i = 0;
 
 	int nargs = elf_get_num_args(S);
@@ -119,8 +120,56 @@ int lib_gfx_draw_image(elState *S) {
 		src_w = elf_get_int(S,i++);
 		src_h = elf_get_int(S,i++);
 	} else goto _draw;
+	if (nargs >= 2) { nargs -= 2;
+		flip_x = elf_get_int(S,i++) ? -1 : 1;
+		flip_y = elf_get_int(S,i++) ? -1 : 1;
+	} else goto _draw;
 
 	_draw:
+	#define MIN(A,B) ((A) < (B) ? (A) : (B))
+	#define MAX(A,B) ((A) > (B) ? (A) : (B))
+	#define CLIP(A,THE_MIN,THE_MAX) MIN(MAX(A,THE_MIN),THE_MAX)
+
+	// Todo: has to be made better!
+	float sx,sy;
+	sx = src_w / (float) dst_w;
+	sy = src_h / (float) dst_h;
+
+	int xx,yy;
+	if(dst_x < 0) xx = - dst_x, dst_w += dst_x, dst_x = 0; else xx = 0;
+	if(dst_y < 0) yy = - dst_y, dst_h += dst_y, dst_y = 0; else yy = 0;
+
+	dst_w = CLIP(dst_w, 0, ctx->screen->w - dst_x);
+	dst_h = CLIP(dst_h, 0, ctx->screen->h - dst_y);
+	ASSERT(dst_x + dst_w <= ctx->screen->w);
+	ASSERT(dst_y + dst_h <= ctx->screen->h);
+	ASSERT(dst_x >= 0);
+	ASSERT(dst_y >= 0);
+
+	if (dst_h <= 0 || dst_w <= 0) goto _nop;
+
+	ASSERT(src_x + (xx + dst_w) * sx <= img->w);
+	ASSERT(src_y + (yy + dst_h) * sy <= img->h);
+
+
+	float tex_y; // = src_y + yy * sy;
+	if(flip_y == -1) tex_y = src_y + src_h - 1 - yy * sy;
+	else 				  tex_y = src_y + 		      yy * sy;
+
+	for (int y = 0; y < dst_h; y ++) {
+		float tex_x;
+		if(flip_x == -1) tex_x = src_x + src_w - 1 - xx * sx;
+		else 				  tex_x = src_x + 		      xx * sx;
+		for (int x = 0; x < dst_w; x ++) {
+			kit_Color color = img->pixels[img->w * ((int) tex_y) + ((int) tex_x)];
+			if (color.a != 0) {
+				ctx->screen->pixels[ctx->screen->w * (dst_y + y) + (dst_x + x)] = color;
+			}
+			tex_x += sx * flip_x;
+		}
+		tex_y += sy * flip_y;
+	}
+	goto _nop;
 	kit_draw_image3(ctx
 	,(kit_Color){mul_b,mul_g,mul_r,mul_a}
 	,(kit_Color){add_b,add_g,add_r,add_a}, img

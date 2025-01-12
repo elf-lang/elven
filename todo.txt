@@ -25,8 +25,12 @@ like for instance:
 ;		new Rect(...):overalps()
 So figure out what to do here...
 
+- parse.c: multi nodes with binary expressions,
+	offset.(x,y) * 0.5 -> (offset.x * 0.5, offset.y * 0.5)
+multi node desugaring should be held off until an expression
+that is actually compatible with them can use them...
 
-- core.c: abs, max, min intrinsic instructions!
+- core.c: abs, max, min, floor, ceil, round intrinsic instructions!
 
 - core.c: vector intrinsic instruction
 
