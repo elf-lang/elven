@@ -47,7 +47,7 @@ int window__new(elf_State *S) {
 	ASSERT(_this->obj.meta==_meta);
 
 	int i = 0;
-	char *name = elf_get_txt(S,i++);
+	char *name = elf_get_text(S,i++);
 	int base_res_x = elf_get_int(S,i++);
 	int base_res_y = elf_get_int(S,i++);
 	int window_scale = elf_get_int(S,i++);
@@ -66,10 +66,10 @@ int window__new(elf_State *S) {
 
 	// call poll once
 	elf_add_cfn(S,window__poll);
-	elf_add_this(S);
+	elf_push_this(S);
 	elf_call(S,1,0);
 
-	elf_add_this(S);
+	elf_push_this(S);
 	return 1;
 }
 

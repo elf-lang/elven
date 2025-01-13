@@ -24,7 +24,7 @@ int lib_image_create_image(elState *S) {
 	elf_tsets_int(tab,elf_new_string(S,"handle"),(elf_Int)(img));
 	elf_tsets_int(tab,elf_new_string(S,"width"),w);
 	elf_tsets_int(tab,elf_new_string(S,"height"),h);
-	elf_add_tab(S,tab);
+	elf_push_table(S,tab);
 	return 1;
 }
 
@@ -64,12 +64,12 @@ int lib_image_replace_colors(elState *S) {
 
 
 int lib_image_load_image(elState *S) {
-	char *name = elf_get_txt(S,0);
+	char *name = elf_get_text(S,0);
 	kit_Image *img = kit_load_image_file(name);
 	elf_Table *tab = elf_new_table(S);
 	elf_tsets_int(tab,elf_new_string(S,"handle"),(elf_Int)(img));
 	elf_tsets_int(tab,elf_new_string(S,"width"),!img ? 0 : img->w);
 	elf_tsets_int(tab,elf_new_string(S,"height"),!img ? 0 : img->h);
-	elf_add_tab(S,tab);
+	elf_push_table(S,tab);
 	return 1;
 }

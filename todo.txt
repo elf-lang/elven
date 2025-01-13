@@ -1,12 +1,69 @@
+
+-- alloc.c: can now be removed, it's only
+ever used for doing temporary thread allocations,
+and that can be its own thing without need the
+allocator construct at all
+
+-- elf-aux.c: can be completely removed...
+it's just a bunch of code for printing stuff, getting program
+info, I think it can be put on core.c, the other line information
+stuff can be... idk
+
+-- error.h: remove
+
+-- core.c: make iton and ntoi intrinsic!
+
+-- table.c: sorting!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Todo: better logging, with colors, with so many warnings
 and things, its hard to tell the difference between a log
 and an error */
+
 /* Todo: NEW is used quite often, probably turn into an
 instruction eventually, also, for now when we do get
 metatable, and invoke __new, we don't check whether it
 is null or not, so this requires the user to provide a
 __new function, which is fine, but, we don't get an error
 saying so... */
+
+- parse.c: issue a parse time warning or error when the
+user makes reference to some undeclared entity, it's kinda
+annoying to have to wait for the program to run then get a
+nil error or some subtle weird thing...
 
 - parse.c: constant declarations '::=' within table
 initializers should just be treated as locally
@@ -26,7 +83,7 @@ like for instance:
 So figure out what to do here...
 
 - parse.c: multi nodes with binary expressions,
-	offset.(x,y) * 0.5 -> (offset.x * 0.5, offset.y * 0.5)
+offset.(x,y) * 0.5 -> (offset.x * 0.5, offset.y * 0.5)
 multi node desugaring should be held off until an expression
 that is actually compatible with them can use them...
 

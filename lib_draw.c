@@ -66,7 +66,7 @@ int lib_gfx_draw_text(elState *S) {
 	kit_Context *ctx = get_ctx(S);
 
 	int i = 0;
-	elString *string = elf_get_str(S,i++);
+	elString *string = elf_get_string(S,i++);
 	int x = elf_get_int(S,i++);
 	int y = elf_get_int(S,i++);
 	int r = elf_get_int(S,i++);
