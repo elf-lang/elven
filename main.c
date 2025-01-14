@@ -12,20 +12,17 @@ typedef elf_State  elState;
 typedef elf_String elString;
 typedef elf_Int    elInteger;
 
-struct {
-	elf_State R;
-	elf_Module M;
-} GLOBAL elf = {{&elf.M}};
-
 #include "lib_image.c"
 #include "lib_draw.c"
 #include "lib_window.c"
 int main() {
-	elf_init(&elf.R,&elf.M);
-	lib_gfx_window_init(&elf.R);
-	lib_gfx_image_init(&elf.R);
-	elf_add_cfn(&elf.R,core_lib_load_file);
-	elf_add_nil(&elf.R);
-	elf_new_string(&elf.R,"launch.elf");
-	elf_call(&elf.R,2,0);
+	elf_State R = {};
+	elf_Module M = {};
+	elf_init(&R,&M);
+	lib_gfx_window_init(&R);
+	lib_gfx_image_init(&R);
+	elf_push_function(&R,core_lib_load_file);
+	elf_push_nil(&R);
+	elf_new_string(&R,"launch.elf");
+	elf_call(&R,2,0);
 }
