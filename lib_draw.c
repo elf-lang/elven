@@ -92,7 +92,7 @@ int lib_gfx_draw_image(elState *S) {
 	int nargs = elf_get_num_args(S);
 	if (nargs >= 1) { nargs -= 1;
 		elf_Table *tab = elf_get_table(S,i++);
-		img = (kit_Image *) elf_tgets_int(tab,elf_new_string(S,"handle"));
+		img = (kit_Image *) elf_tgets_int(tab,elf_new_string(S,"@ptr"));
 		dst_w = src_w = img->w;
 		dst_h = src_h = img->h;
 	} else goto _nop;

@@ -35,7 +35,6 @@ Rect = {
 		this.y=y
 		this.w=w
 		this.h=h
-		this.is_moving = false
 		this.c=c ?? WHITE
 	}
 	test = fun() ? {
@@ -99,9 +98,7 @@ get_overlapping_rects = fun(that) ? {
 	for rect = rects[...] ? {
 		if rect != that ? {
 			if rect:overlaps(that) ? {
-				if rect.is_moving == false ? {
-					results:add(rect)
-				}
+				results:add(rect)
 			}
 		}
 	}
@@ -177,10 +174,41 @@ for i = 0...10 ? {
 // rects:add(new Rect(10*BLOCK_SIZE,CENTER_Y-BLOCK_SIZE*0.5,10*BLOCK_SIZE,BLOCK_SIZE, GREEN))
 // rects:add(new Rect(0,CENTER_Y-BLOCK_SIZE*0.5,10*BLOCK_SIZE,BLOCK_SIZE, BLUE))
 
-platform = new Rect(32,32,32,8)
-platform.is_moving = true
-rects:add(platform)
-total_time := 0
+total_time = 0
+
+platforms := {}
+platforms:add(new Rect(32,32,32,8))
+platforms:add(new Rect(64,32,32,8))
+allow_jump = false
+
+tick_platforms := fun(time) ? {
+
+	for platform = platforms[...] ? {
+		move := {
+			x=cos(total_time*0.1)*0.1
+			y=sin(total_time*0.1)*0.1
+		}
+		platform.y += move.y
+		platform.x += move.x
+		check_rects := {}
+		if Player:overlaps(platform) ? {
+			check_rects:add(Player)
+		}
+		for that = check_rects[...] ? {
+			platform.colliding = true
+			that.colliding = true
+			if platform.y < that.y ? {
+				if that.velocity.y < 0 ? {
+					that.y = platform.y + platform.h;
+					that.velocity.y = 0
+					that.x += move.x
+					allow_jump = true
+				}
+			}
+		}
+	}
+}
+
 while VIEW:poll() ? {
 	time ::= VIEW.time
 
@@ -195,7 +223,7 @@ while VIEW:poll() ? {
 	// Player.velocity.x -= Player.velocity.x * 1 * time
 
 	move ::= Player.velocity:clone()
-	if VIEW.keys['S'] & DOWN ? move.y += 2;
+	// if VIEW.keys['S'] & DOWN ? move.y -= 2;
 	if VIEW.keys['A'] & DOWN ? move.x -= 2;
 	if VIEW.keys['D'] & DOWN ? move.x += 2;
 
@@ -210,30 +238,16 @@ while VIEW:poll() ? {
 		unplace_rect(mouse_in_view_x,mouse_in_view_y)
 	}
 
-	for a = rects[...] ? {
+	for a = platforms[...],rects[...] ? {
 		a.colliding = false
 	}
 
 	a ::= Player
 	Player:move_and_collide(move,get_overlapping_rects)
 
-	platform.y += sin(total_time*0.1)*0.1
-	check_rects := {}
-	if Player:overlaps(platform) ? {
-		check_rects:add(Player)
-	}
-	for that = check_rects[...] ? {
-		platform.colliding = true
-		that.colliding = true
-		if that.y > platform.y ? {
-			if that.velocity.y < 0 ? {
-				that.y = platform.y + platform.h;
-				that.velocity.y = 0
-			}
-		}
-	}
+	tick_platforms(time)
 
-	for r = rects[...] ? {
+	for r = rects[...], platforms[...] ? {
 		r:draw()
 	}
 

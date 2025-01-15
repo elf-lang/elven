@@ -1,8 +1,34 @@
+
+elf.change_work_dir("C:\\work\\MicroRJ\\platformer")
+load "main.elf"
+#eof
+
+
+table = {}
+for i = 0...10 ? {
+	table[i] = i
+}
+elf.pf(table)
+for i = 0...10 ? {
+	elf.pf("deleting: ", i)
+	elf.pf("before: ")
+	elf.pf(table:keys())
+	table:delete(i)
+	elf.pf("after: ")
+	elf.pf(table:keys())
+}
+#eof
+
+test_table := {
+	__new = fun() ? {}
+}
+xxx := test_table.__new
+elf.flags(1<<3)
+xxx("HERE")
+
+#eof
 elf.change_work_dir("play")
 load "collision.elf"
-#eof
-elf.change_work_dir("W:\\MicroRJ\\platformer")
-load "main.elf"
 #eof
 elf.flags(1<<3)
 expr ::= elf.load_expr("test_expr.elf")

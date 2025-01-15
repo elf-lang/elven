@@ -1,4 +1,17 @@
 
+-- table.c: if we add the tomb value tag,
+now every piece of code we write will have
+to take it into account, should we instead
+have a separate flag internal to the table?
+
+-- table.c: we're in dire need of a proper
+data structures, will we have arrays or and maps
+or associative arrays?
+
+-- parse.c: and and or expressions
+if a == a or b or c ? {
+}
+
 -- alloc.c: can now be removed, it's only
 ever used for doing temporary thread allocations,
 and that can be its own thing without need the
@@ -73,9 +86,22 @@ and cull every declaration and or definition outside
 of the statements, and the user can set a key value
 pair using 'this.something'?
 
-- parse.c, core.c: named arguments?
+- parse.c, core.c: named arguments? I was thinking
+that we could flag the call instruction saying that
+it has named arguments, in which case the argument
+itself will be a map of names to values, and the
+runtime will take care of matching up the arguments
+names to the function's parameters, maybe every function
+could have a map from argument name to index...
+We'd also have fill in the gaps with nil. I think this
+way we could minimize overhead, only people that that
+want named arguments will incur the overhead at the callsite.
+And the named argument call's syntax can be:
 
-- parse.c: when parsing 'new' we use parse postfix
+;	<named-arg-call> ::= <expr> <table-initializer>
+
+
+- parse.c: #bug when parsing 'new' we use parse postfix
 expression, which does not do proper grouping of terms,
 like for instance:
 
@@ -154,10 +180,15 @@ be compatible with all backends.
 ready again
 - 	test web compilation?
 -  parse.c: we can't have cross file constants,
-why not make all title case names constant?
+why not make all uppercase case names constant?
 That way global symbols can be defined as
 enum like.
-- 	parse.c: range expression desugaring
+
+- 	parse.c: range expression desugaring, also
+support steps in range expressions, maybe do
+something like: [0...10,2] type syntax
+
+
 -	parse.c: conditionals, introduce conditional
 expression, they wrap some other expression,
 if the expression is nil, the rest isn't executed
