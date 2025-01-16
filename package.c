@@ -1,49 +1,112 @@
 
 
-static elf_String *work_dir;
-static elf_String *work_dir_stack[16];
-static int work_dir_index;
-static char *package_name;
-static elf_Table *package_info;
+int lib_package_create(elf_State *S);
+int lib_package_get_info(elf_State *S);
 
-void open_package(elf_State *S, char *name) {
-	FILE *file = fopen(name,"rb");
-	int num_entries = 0;
-	fread(&num_entries,sizeof(num_entries),1,file);
-	for (int i = 0; i < num_entries; i ++) {
-		char entry[128];
-		int offset;
-		int length;
-		fread(&offset,sizeof(offset),1,file);
-		fread(&length,sizeof(length),1,file);
-		fread(entry,sizeof(entry),1,file);
-		elf_table_set(package_info,VSTR(elf_new_string(S,entry)),VINT(offset));
+
+static elf_CBinding lib_package[] = {
+	{"create",lib_package_create},
+	{"get_info",lib_package_get_info},
+};
+
+int lib_package_get_info(elf_State *S) {
+	char *name = elf_get_text(S,0);
+	elf_Table *info = elf_new_table(S);
+
+	FILE *pack = fopen(name,"rb");
+	fseek(pack,0,SEEK_END);
+	int package_size = ftell(pack);
+	fseek(pack,0,SEEK_SET);
+	elf_debug_log("package size: %i", package_size);
+	int size,pos;
+	while (ftell(pack) < package_size) {
+		char name[128]={};
+		fread(&size,sizeof(size),1,pack);
+		fread(name,sizeof(name),1,pack);
+		pos = ftell(pack);
+		elf_debug_log("package file: %s, pos: %i, size: %i", name,pos,size);
+		elf_Table *entry = elf_new_table(S);
+		elf_table_set(entry
+		, VSTR(elf_new_string(S,"pos")), VINT(pos));
+		elf_table_set(entry
+		, VSTR(elf_new_string(S,"size")), VINT(size));
+		elf_table_set(info,VSTR(elf_new_string(S,name)),VTAB(entry));
+		fseek(pack,size,SEEK_CUR);
 	}
-	fclose(file);
+
+	fclose(pack);
+
+	elf_push_table(S,info);
+	return 1;
 }
 
 int lib_package_create(elf_State *S) {
-	char *name = elf_get_text(S,0);
-	FILE *package = fopen(name,"wb");
-	if (!package) goto esc;
+	int size,wrote,read;
+	elf_Table *info;
+	FILE *pack,*file;
+	char *name;
 
-	elf_Table *table = elf_get_table(S,1);
-	int offset = 0;
-	FOR_ARRAY(i,table->array) {
-		elf_Value v = table->array[i];
-		if (v.tag == elf_tag_str) {
-			FILE *io = fopen(v.x_str->text,"rb");
-			fseek(io,0,SEEK_END);
-			int size = ftell(io);
-			char name[128] = {};
-			strcpy(name,v.x_str->text);
-			fwrite(&offset,sizeof(offset),1,package);
-			fwrite(&size,sizeof(size),1,package);
-			fwrite(name,sizeof(name),1,package);
-			fclose(io);
-		}
+
+	name = elf_get_text(S,0);
+	if (!name) {
+		elf_debug_log("first argument should be name of package file");
+		goto esc;
+	}
+	info = elf_get_table(S,1);
+	if (!info) {
+		elf_debug_log("second argument must be package info table");
+		goto esc;
+	}
+	pack = fopen(name,"wb");
+	if (!pack) {
+		elf_debug_log("could not open package file for writting");
+		goto esc;
 	}
 
+	FOR_ARRAY(i,info->array) {
+		elf_Value v = info->array[i];
+		ASSERT(v.tag == elf_tag_str);
+
+		file=fopen(v.x_str->text,"rb");
+		if(file==0){
+			elf_debug_log("could not read file: %s", v.x_str->text);
+			goto esc;
+
+		}
+		fseek(file,0,SEEK_END);
+		size=ftell(file);
+		fseek(file,0,SEEK_SET);
+		elf_debug_log("packing file: %s, %i", v.x_str->text,size);
+
+		char name[128] = {};
+		strcpy(name,v.x_str->text);
+
+		fwrite(&size,1,sizeof(size),pack);
+		fwrite(&name,1,sizeof(name),pack);
+		char buff[4096];
+		do {
+			read=fread(buff,1,sizeof(buff),file);
+			ASSERT(read <= sizeof(buff));
+			if(read==0)break;
+			if(read<0) {
+				elf_debug_log("error while reading from package file: %i", read);
+				goto esc;
+			}
+			wrote=fwrite(buff,1,read,pack);
+			ASSERT(wrote <= read);
+			if(wrote<=0) {
+				elf_debug_log("error while writting to package file");
+				goto esc;
+			}
+			size -= wrote;
+		} while(size > 0);
+		if(size != 0) {
+			elf_debug_log("error packaging file: %i",size);
+			goto esc;
+		}
+		fclose(file);
+	}
+	fclose(pack);
 	esc:
 	return 0;
 }
