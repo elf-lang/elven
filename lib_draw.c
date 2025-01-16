@@ -1,11 +1,11 @@
 // todo: should be more of a frame buffer thing
 
-int lib_gfx_draw_rect(elState *S);
-int lib_gfx_draw_text(elState *S);
-int lib_gfx_draw_image(elState *S);
-int lib_gfx_draw_rect2(elState *S);
-int lib_gfx_draw_line(elState *S);
-int lib_gfx_draw_point(elState *S);
+int lib_gfx_draw_rect(elf_State *S);
+int lib_gfx_draw_text(elf_State *S);
+int lib_gfx_draw_image(elf_State *S);
+int lib_gfx_draw_rect2(elf_State *S);
+int lib_gfx_draw_line(elf_State *S);
+int lib_gfx_draw_point(elf_State *S);
 
 void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
 	elf_table_set(meta
@@ -46,7 +46,7 @@ kit_Context *get_ctx(elf_State *S){
 }
 
 
-int lib_gfx_draw_rect(elState *S) {
+int lib_gfx_draw_rect(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
 	int i = 0;
 	int x = elf_get_int(S,i++);
@@ -62,11 +62,11 @@ int lib_gfx_draw_rect(elState *S) {
 }
 
 
-int lib_gfx_draw_text(elState *S) {
+int lib_gfx_draw_text(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
 
 	int i = 0;
-	elString *string = elf_get_string(S,i++);
+	elf_String *string = elf_get_string(S,i++);
 	int x = elf_get_int(S,i++);
 	int y = elf_get_int(S,i++);
 	int r = elf_get_int(S,i++);
@@ -78,7 +78,7 @@ int lib_gfx_draw_text(elState *S) {
 }
 
 
-int lib_gfx_draw_image(elState *S) {
+int lib_gfx_draw_image(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
 
 	kit_Image *img;
@@ -180,7 +180,7 @@ int lib_gfx_draw_image(elState *S) {
 }
 
 
-int lib_gfx_draw_line(elState *S) {
+int lib_gfx_draw_line(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
 	int i = 0;
 
@@ -198,7 +198,7 @@ int lib_gfx_draw_line(elState *S) {
 }
 
 
-int lib_gfx_draw_point(elState *S) {
+int lib_gfx_draw_point(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
 	int i = 0;
 
@@ -214,7 +214,7 @@ int lib_gfx_draw_point(elState *S) {
 	return 0;
 }
 
-int lib_gfx_draw_rect2(elState *S) {
+int lib_gfx_draw_rect2(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
 
 	int i = 0;

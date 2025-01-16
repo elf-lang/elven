@@ -1,11 +1,11 @@
 /* todo: switch to using stb's */
 
-int lib_image_create_image(elState *S);
-int lib_image_load_image(elState *S);
-int lib_image_replace_colors(elState *S);
+int lib_image_create_image(elf_State *S);
+int lib_image_load_image(elf_State *S);
+int lib_image_replace_colors(elf_State *S);
 
 
-void lib_gfx_image_init(elf_State *S) {
+void lib_image_include(elf_State *S) {
 	elf_table_set(S->M->globals
 	,	VSTR(elf_new_string(S,"elf.gfx.load_image"))
 	,	VCFN(lib_image_load_image));
@@ -15,7 +15,7 @@ void lib_gfx_image_init(elf_State *S) {
 	,	VCFN(lib_image_replace_colors));
 }
 
-int lib_image_create_image(elState *S) {
+int lib_image_create_image(elf_State *S) {
 	int w = elf_get_int(S,0);
 	int h = elf_get_int(S,1);
 	kit_Image *img = kit_create_image(w,h);
@@ -28,7 +28,7 @@ int lib_image_create_image(elState *S) {
 	return 1;
 }
 
-int lib_image_replace_colors(elState *S) {
+int lib_image_replace_colors(elf_State *S) {
 
 	int i = 0;
 
@@ -63,7 +63,7 @@ int lib_image_replace_colors(elState *S) {
 }
 
 
-int lib_image_load_image(elState *S) {
+int lib_image_load_image(elf_State *S) {
 	char *name = elf_get_text(S,0);
 	kit_Image *img = kit_load_image_file(name);
 	elf_Table *tab = elf_new_table(S);
