@@ -58,7 +58,7 @@ int lib_image_replace_colors(elState *S) {
 		}
 	}
 
-	elf_add_int(S,num_occurrences);
+	elf_push_integer(S,num_occurrences);
 	return 1;
 }
 

@@ -1,6 +1,14 @@
-
-elf.change_work_dir("W:\\MicroRJ\\platformer")
+elf.change_work_dir("C:\\work\\MicroRJ\\platformer")
 load "main.elf"
+#eof
+
+elf.pf(elf.const_expr("{0={0=1,1=2,2=3}}"))
+elf.pf(elf.const_expr("7"))
+elf.pf(elf.const_expr("7.0"))
+elf.pf(elf.const_expr("{}"))
+elf.pf(elf.const_expr("{1,2,3}"))
+elf.pf(elf.const_expr("{0=1,1=2,2=3}"))
+
 #eof
 
 

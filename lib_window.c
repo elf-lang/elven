@@ -3,7 +3,7 @@
 int window__poll(elf_State *S);
 int window__new(elf_State *S);
 
-void lib_gfx_window_init(elf_State *S) {
+void lib_window_include(elf_State *S) {
 	elf_Table *meta=elf_new_table(S);
 
 	elf_table_set(S->M->globals
@@ -121,6 +121,6 @@ int window__poll(elf_State *S) {
 
 	kit_clear(ctx,KIT_BLACK);
 
-	elf_add_int(S,b);
+	elf_push_integer(S,b);
 	return 1;
 }
