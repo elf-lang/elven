@@ -1,4 +1,5 @@
-
+-- parse.c: to to parse a table literal is needed ASAP!
+call it, load table or something.
 -- table.c: if we add the tomb value tag,
 now every piece of code we write will have
 to take it into account, should we instead

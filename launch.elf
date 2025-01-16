@@ -1,6 +1,63 @@
 
-elf.change_work_dir("C:\\work\\MicroRJ\\platformer")
+elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "main.elf"
+#eof
+
+
+
+b := 0 || 1
+elf.flags(1<<3)
+elf.pf("0 && b: ", 7 && b)
+#eof
+
+a := 0
+b := 0
+c := 0
+elf.pf("#getmem(a): ", #getmem(a))
+elf.pf("#getmem(b): ", #getmem(b))
+elf.pf("#getmem(c): ", #getmem(c))
+elf.pf("#getmem(1): ", #getmem(1))
+elf.pf("#getmem(0 || 1): ", #getmem(0 || 1))
+
+d := 0 || 1
+elf.pf("#getmem(d): ", #getmem(d))
+elf.pf("#getexpr(d): ", #getexpr(d))
+
+
+elf.flags(1<<3)
+or01 := 0 || 1
+
+elf.pf("#getmem(or01): ", #getmem(or01))
+elf.pf("false && or01: ", false && or01)
+if false && or01 ? {
+	elf.pf("ERROR!")
+}
+
+#eof
+
+test_and = fun(a,b) ? {
+	if a ? { if b ? { --> true } }
+	--> false
+}
+test_or = fun(a,b) ? {
+	if a ? { --> true }
+	if b ? { --> true }
+	--> false
+}
+operators = {{"&&",test_and},{"||",test_or}}
+
+generate_test_expr = fun(a,b,level) ? {
+	if level > 3 ? {
+		--> a
+	}
+	text := "(" + generate_test_expr(a,0,level+1) + " " + operators:idx(0,0) + " " + generate_test_expr(b,1,level+1) + ")"
+
+	--> text
+}
+
+text := generate_test_expr(1,0,0)
+elf.pf(text)
+
 #eof
 
 
