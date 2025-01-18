@@ -1,4 +1,148 @@
-// todo: should be more of a frame buffer thing
+// display {
+// 	image
+// 	rendering_params
+// }
+// window {
+// 	display
+// 	window_params
+// 	window_data
+// }
+// info := elf.gfx.get_rendering_backend_info()
+// window := elf.gfx.create_window(320,240,"my little game",144)
+// window:set_opt(window,"fullscreen",true)
+// window:poll(window)
+// display_0 := elf.gfx.get_window_display(window)
+// display_1 := elf.gfx.create_display(320,240)
+// image_0 := elf.gfx.get_display_image(display_0)
+// elf.gfx.draw_rect(display_0,(0,0,8,8),(0,0,255,255))
+// elf.gfx.flush_display(display_0)
+
+
+// So apparently the overhead of filling out
+// tables to do this is so great that this isn't
+// even worth it...
+// elf.video.set_color()
+// elf.video.set_additive()
+// elf.video.set_rect_pos()
+// elf.video.set_rect_size()
+// elf.video.set_rect()
+// elf.video.set_image()
+// elf.video.set_rotation()
+// elf.video.draw()
+// todo: to be made better!
+typedef struct Draw_Instr {
+	kit_Color 	   color;
+	kit_Color 	additive;
+	kit_Rect 		 rect;
+	kit_Image     *image;
+	float 		rotation;
+	float  outline_width;
+} Draw_Instr;
+
+
+static kit_Color _tab_to_color(elf_State *S, elf_Table *tab) {
+	kit_Color color = {};
+	elf_Value v;
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"r")));
+	color.r=v.x_int;
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"g")));
+	color.g=v.x_int;
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"b")));
+	color.b=v.x_int;
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"a")));
+	color.a=v.x_int;
+	return color;
+}
+
+static kit_Rect _tab_to_rect(elf_State *S, elf_Table *tab) {
+	kit_Rect rect = {};
+	elf_Value v;
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"x")));
+	rect.x=VI2N(v);
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"y")));
+	rect.y=VI2N(v);
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"w")));
+	rect.w=VI2N(v);
+	v=elf_table_get(tab,VSTR(elf_alloc_string(S,"h")));
+	rect.h=VI2N(v);
+	return rect;
+}
+
+
+static kit_Context *get_ctx(elf_State *S){
+	elf_Table *_this = (elf_Table *) elf_get_this(S);
+	kit_Context *ctx = (kit_Context *) elf_table_get(_this
+	, VSTR(elf_new_string(S,"@ptr"))).x_int;
+	ASSERT(ctx != 0);
+	return ctx;
+}
+
+static int lib_video_draw(elf_State *S) {
+
+	kit_Context *ctx = get_ctx(S);
+
+	elf_Value _color = VSTR(elf_new_string(S,"color"));
+	elf_Value _rect = VSTR(elf_new_string(S,"rect"));
+	elf_Value _add = VSTR(elf_new_string(S,"additive"));
+
+	elf_Table *draws = elf_get_table(S,0);
+
+	kit_Image *cur_image = 0;
+
+	kit_Color cur_color = KIT_WHITE;
+	elf_Table *cur_color_ref = 0;
+
+	kit_Color cur_add_color = KIT_BLACK;
+	elf_Table *cur_add_color_ref = 0;
+
+	elf_Value v;
+	for (int i = 0; i < ARRAY_LENGTH(draws->array); i++) {
+		ASSERT(draws->array[i].tag == elf_tag_tab);
+		elf_Table *instr = draws->array[i].x_tab;
+
+		v = elf_table_get(instr,_rect);
+		ASSERT(v.tag == elf_tag_tab);
+		kit_Rect rect = _tab_to_rect(S,v.x_tab);
+
+		v = elf_table_get(instr,_color);
+		if(v.tag != elf_tag_nil) {
+			ASSERT(v.tag == elf_tag_tab);
+			if (v.x_tab != cur_color_ref) {
+				cur_color_ref = v.x_tab;
+				cur_color = _tab_to_color(S,v.x_tab);
+			}
+		}
+
+		v = elf_table_get(instr,_color);
+		if(v.tag != elf_tag_nil) {
+			ASSERT(v.tag == elf_tag_tab);
+			if (v.x_tab != cur_color_ref) {
+				cur_color_ref = v.x_tab;
+				cur_color = _tab_to_color(S,v.x_tab);
+			}
+		}
+
+
+		kit_draw_rect(ctx,cur_color,rect);
+
+		#if 0
+		v = elf_table_get(instr,_add);
+		if(v.tag != elf_tag_nil) {
+			ASSERT(v.tag == elf_tag_tab);
+			if (v.x_tab != cur_add_color_ref) {
+				cur_add_color_ref = v.x_tab;
+				cur_add_color = _tab_to_color(S,v.x_tab);
+			}
+		}
+		#endif
+	}
+
+	return 0;
+}
+
+
+
+
 
 int lib_gfx_draw_rect(elf_State *S);
 int lib_gfx_draw_text(elf_State *S);
@@ -8,6 +152,10 @@ int lib_gfx_draw_line(elf_State *S);
 int lib_gfx_draw_point(elf_State *S);
 
 void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
+	elf_table_set(meta
+	,	VSTR(elf_new_string(S,"draw"))
+	,	VCFN(lib_video_draw));
+
 	elf_table_set(meta
 	,	VSTR(elf_new_string(S,"draw_rect"))
 	,	VCFN(lib_gfx_draw_rect));
@@ -33,18 +181,6 @@ void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
 	,	VSTR(elf_new_string(S,"draw_point"))
 	,	VCFN(lib_gfx_draw_point));
 }
-
-kit_Context *get_ctx(elf_State *S){
-	elf_Table *_this;
-	_this = (elf_Table *) elf_get_this(S);
-
-	kit_Context *ctx;
-	ctx=(kit_Context *)elf_table_get(_this
-	, VSTR(elf_new_string(S,"@ptr"))).x_int;
-	ASSERT(ctx != 0);
-	return ctx;
-}
-
 
 int lib_gfx_draw_rect(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
@@ -77,16 +213,99 @@ int lib_gfx_draw_text(elf_State *S) {
 	return 0;
 }
 
+#if 0
+typedef struct {
+	kit_Image *src_i;
+	kit_Rect src_r;
+	kit_Rect dst_r;
+	kit_Color add;
+	kit_Color mul;
+	float ux,uy;
+	int flip_x;
+	int flip_y;
+} Draw_Image_Instr;
+
+
+void _draw_image(Draw_Image_Instr *in) {
+	float ux,uy,rx,ry;
+	ux=in->ux,uy=in->uy;
+	rx=uy,ry=-ux;
+
+	int dst_x = in->dst.x;
+	int dst_y = in->dst.y;
+	for (int y = 0; y < in->dst.h; y ++) {
+		for (int x = 0; x < in->dst.w; x ++) {
+			int d_x = ((dst_x + x) * rx + (dst_y + y) * ry);
+			int d_y = ((dst_x + x) * ux + (dst_y + y) * uy);
+			if (d_y < 0 || d_y >= ctx->screen->h) continue;
+			if (d_x < 0 || d_x >= ctx->screen->w) continue;
+
+			int sam_x = src_x + src_w * ((float) x / dst_w);
+			int sam_y = src_y + src_h * ((float) y / dst_h);
+
+			// kit_Color color = img->pixels[img->w * ((int) tex_y) + ((int) tex_x)];
+			kit_Color color = img->pixels[img->w * sam_y + sam_x];
+			if (color.a != 0) {
+				ctx->screen->pixels[ctx->screen->w * d_y + d_x] = color;
+			}
+			// tex_x += sx * flip_x;
+		}
+		// tex_y += sy * flip_y;
+	}
+}
+#endif
+
+static void rotate(kit_Image *src, kit_Image *dst, int dst_x, int dst_y, kit_Color bgcolor, double sangle, double cangle) {
+	int x, y, dx, dy;
+
+	kit_Color *srcpix = src->pixels;
+	kit_Color *dstrow = dst->pixels;
+	int srcpitch = src->w;
+	int dstpitch = dst->w;
+
+	int cy = dst->h >> 1;
+	int xd = ((src->w - dst->w) << 15);
+	int yd = ((src->h - dst->h) << 15);
+
+	int isin = (int)(sangle * 65536);
+	int icos = (int)(cangle * 65536);
+
+	int ax = dst_x + ((dst->w) << 15) - (int)(cangle * (((long long)dst->w - 1) << 15));
+	int ay = dst_y + ((dst->h) << 15) - (int)(sangle * (((long long)dst->w - 1) << 15));
+
+	int xmaxval = ((src->w) << 16) - 1;
+	int ymaxval = ((src->h) << 16) - 1;
+
+	for (y = 0; y < dst->h; y++) {
+		kit_Color *dstpos = dstrow;
+		dx = (ax + (isin * (cy - y))) + xd;
+		dy = (ay - (icos * (cy - y))) + yd;
+		for (x = 0; x < dst->w; x++) {
+			if (dx < 0 || dy < 0 || dx > xmaxval || dy > ymaxval) {
+				// *dstpos++ = bgcolor;
+			} else {
+				*dstpos++ = *(srcpix + ((dy >> 16) * srcpitch) + ((long long)dx >> 16));
+			}
+			dx += icos;
+			dy += isin;
+		}
+		dstrow += dstpitch;
+	}
+}
+
 
 int lib_gfx_draw_image(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
-
 	kit_Image *img;
 	int mul_r=255,mul_g=255,mul_b=255,mul_a=255;
 	int add_r=255,add_g=255,add_b=255,add_a=255;
 	int src_x=0,src_y=0,src_w=0,src_h=0;
 	int dst_x=0,dst_y=0,dst_w=0,dst_h=0;
 	int flip_x=1,flip_y=1;
+	float u_x,u_y;
+	u_x = 0;
+	u_y = 1;
+
 	int i = 0;
 
 	int nargs = elf_get_num_args(S);
@@ -124,50 +343,79 @@ int lib_gfx_draw_image(elf_State *S) {
 		flip_x = elf_get_int(S,i++) ? -1 : 1;
 		flip_y = elf_get_int(S,i++) ? -1 : 1;
 	} else goto _draw;
+	if (nargs >= 1) { nargs -= 1;
+		float rotation = elf_get_num(S,i++);
+		u_x = cos(rotation);
+		u_y = sin(rotation);
+	} else goto _draw;
 
 	_draw:
+
 	#define MIN(A,B) ((A) < (B) ? (A) : (B))
 	#define MAX(A,B) ((A) > (B) ? (A) : (B))
 	#define CLIP(A,THE_MIN,THE_MAX) MIN(MAX(A,THE_MIN),THE_MAX)
+
+	float r_x,r_y;
+	r_x =   u_y;
+	r_y = - u_x;
 
 	// Todo: has to be made better!
 	float sx,sy;
 	sx = src_w / (float) dst_w;
 	sy = src_h / (float) dst_h;
 
-	int xx,yy;
-	if(dst_x < 0) xx = - dst_x, dst_w += dst_x, dst_x = 0; else xx = 0;
-	if(dst_y < 0) yy = - dst_y, dst_h += dst_y, dst_y = 0; else yy = 0;
+	// todo: proper sampling...
+	// int xx,yy;
+	// if(dst_x < 0) xx = - dst_x, dst_w += dst_x, dst_x = 0; else xx = 0;
+	// if(dst_y < 0) yy = - dst_y, dst_h += dst_y, dst_y = 0; else yy = 0;
 
-	dst_w = CLIP(dst_w, 0, ctx->screen->w - dst_x);
-	dst_h = CLIP(dst_h, 0, ctx->screen->h - dst_y);
-	ASSERT(dst_x + dst_w <= ctx->screen->w);
-	ASSERT(dst_y + dst_h <= ctx->screen->h);
-	ASSERT(dst_x >= 0);
-	ASSERT(dst_y >= 0);
+	// dst_w = CLIP(dst_w, 0, ctx->screen->w - dst_x);
+	// dst_h = CLIP(dst_h, 0, ctx->screen->h - dst_y);
+	// ASSERT(dst_x + dst_w <= ctx->screen->w);
+	// ASSERT(dst_y + dst_h <= ctx->screen->h);
+	// ASSERT(dst_x >= 0);
+	// ASSERT(dst_y >= 0);
 
 	if (dst_h <= 0 || dst_w <= 0) goto _nop;
 
-	ASSERT(src_x + (xx + dst_w) * sx <= img->w);
-	ASSERT(src_y + (yy + dst_h) * sy <= img->h);
+	// ASSERT(src_x + (xx + dst_w) * sx <= img->w);
+	// ASSERT(src_y + (yy + dst_h) * sy <= img->h);
 
 
 	float tex_y; // = src_y + yy * sy;
-	if(flip_y == -1) tex_y = src_y + src_h - 1 - yy * sy;
-	else 				  tex_y = src_y + 		      yy * sy;
+	// if(flip_y == -1) tex_y = src_y + src_h - 1 - yy * sy;
+	// else 				  tex_y = src_y + 		      yy * sy;
 
 	for (int y = 0; y < dst_h; y ++) {
-		float tex_x;
-		if(flip_x == -1) tex_x = src_x + src_w - 1 - xx * sx;
-		else 				  tex_x = src_x + 		      xx * sx;
+		// float tex_x;
+		// if(flip_x == -1) tex_x = src_x + src_w - 1 - xx * sx;
+		// else 				  tex_x = src_x + 		      xx * sx;
 		for (int x = 0; x < dst_w; x ++) {
-			kit_Color color = img->pixels[img->w * ((int) tex_y) + ((int) tex_x)];
+			int d_x = (dst_x + x); // ((int)((dst_x + x) * r_x) + (int)((dst_y + y) * r_y));
+			int d_y = (dst_y + y); // ((int)((dst_x + x) * u_x) + (int)((dst_y + y) * u_y));
+
+			if (d_y < 0 || d_y >= ctx->screen->h) continue;
+			if (d_x < 0 || d_x >= ctx->screen->w) continue;
+
+			int sam_x = src_x + src_w * ((float) x / dst_w);
+			int sam_y = src_y + src_h * ((float) y / dst_h);
+
+			int tsam_x = (int)(sam_x * r_x) + (int)(sam_y * r_y);
+			int tsam_y = (int)(sam_x * u_x) + (int)(sam_y * u_y);
+
+
+			if (tsam_y < 0 || tsam_y >= img->h) continue;
+			if (tsam_x < 0 || tsam_x >= img->w) continue;
+
+
+			// kit_Color color = img->pixels[img->w * ((int) tex_y) + ((int) tex_x)];
+			kit_Color color = img->pixels[img->w * tsam_y + tsam_x];
 			if (color.a != 0) {
 				ctx->screen->pixels[ctx->screen->w * (dst_y + y) + (dst_x + x)] = color;
 			}
-			tex_x += sx * flip_x;
+			// tex_x += sx * flip_x;
 		}
-		tex_y += sy * flip_y;
+		// tex_y += sy * flip_y;
 	}
 	goto _nop;
 	kit_draw_image3(ctx

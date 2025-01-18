@@ -1,5 +1,4 @@
 
-
 int lib_package_create(elf_State *S);
 int lib_package_get_info(elf_State *S);
 
@@ -8,6 +7,41 @@ static elf_CBinding lib_package[] = {
 	{"create",lib_package_create},
 	{"get_info",lib_package_get_info},
 };
+
+
+static elf_Table *package_info;
+static FILE *package;
+
+typedef struct { int pos,size; } fileT;
+
+static void package_close(elf_State *S, FILE *file) {
+	free(file);
+}
+
+static FILE *package_open(elf_State *S, char *name) {
+	fileT *file = 0;
+	elf_Value res = elf_table_get(package_info, VSTR(elf_new_string(S,name)));
+	if (res.tag == elf_tag_tab) {
+		elf_Table *entry = res.x_tab;
+		elf_Value pos = elf_table_get(entry, VSTR(elf_new_string(S,"pos")));
+		elf_Value size = elf_table_get(entry, VSTR(elf_new_string(S,"size")));
+		ASSERT(pos.tag==elf_tag_int);
+		ASSERT(size.tag==elf_tag_int);
+		file = malloc(sizeof(*file));
+		file->pos = pos.x_int;
+		file->size = size.x_int;
+	}
+	return (FILE*) file;
+}
+
+static int package_pipe(elf_State *S, FILE *file_, int pos, int size, void *data, int write) {
+	fileT file = *(fileT *) file_;
+	fseek(package,file.pos,SEEK_SET);
+	int res;
+	if (write) res = fwrite(data,1,size,package);
+	else res = fread(data,1,size,package);
+	return res;
+}
 
 int lib_package_get_info(elf_State *S) {
 	char *name = elf_get_text(S,0);

@@ -3,12 +3,15 @@
 #include "timeapi.h"
 #define KIT_IMPL
 #include "kit\kit.h"
-#include "package.c"
-
 #include "lib_image.c"
 #include "lib_draw.c"
 #include "lib_window.c"
 #include "lib_audio.c"
+
+#include "package.c"
+
+
+
 int main() {
 	elf_State R = {};
 	elf_Module M = {};

@@ -1,5 +1,3 @@
--- parse.c: to to parse a table literal is needed ASAP!
-call it, load table or something.
 -- table.c: if we add the tomb value tag,
 now every piece of code we write will have
 to take it into account, should we instead
@@ -8,6 +6,9 @@ have a separate flag internal to the table?
 -- table.c: we're in dire need of a proper
 data structures, will we have arrays or and maps
 or associative arrays?
+
+++ parse.c: parse a table literal is needed ASAP!
+call it, load table or something.
 
 -- parse.c: and and or expressions
 if a == a or b or c ? {
