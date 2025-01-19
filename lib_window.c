@@ -58,6 +58,7 @@ int window__new(elf_State *S) {
 	if(window_scale==3)flags |= KIT_SCALE3X; else
 	if(window_scale==4)flags |= KIT_SCALE4X;
 
+	// flags |= KIT_FPSINF;
 	kit_Context *c = kit_create(name, base_res_x, base_res_y, flags);
 
 	elf_table_set(_this
@@ -121,6 +122,6 @@ int window__poll(elf_State *S) {
 
 	kit_clear(ctx,KIT_BLACK);
 
-	elf_push_integer(S,b);
+	elf_push_int(S,b);
 	return 1;
 }

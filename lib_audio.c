@@ -13,7 +13,7 @@ static ma_engine engine;
 int lib_audio_init(elf_State *S) {
 	ma_result error;
 	error = ma_engine_init(NULL,&engine);
-	elf_push_integer(S,error==MA_SUCCESS);
+	elf_push_int(S,error==MA_SUCCESS);
 	return 1;
 }
 
