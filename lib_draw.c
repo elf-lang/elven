@@ -80,9 +80,11 @@ static kit_Context *get_ctx(elf_State *S){
 
 int lib_gfx_draw_rect(elf_State *S);
 int lib_gfx_draw_text(elf_State *S);
-int lib_gfx_draw_image(elf_State *S);
+int lib_draw_image(elf_State *S);
+int lib_draw_circle(elf_State *S);
 int lib_gfx_draw_line(elf_State *S);
 int lib_gfx_draw_point(elf_State *S);
+
 int lib_gfx_set_color(elf_State *S);
 int lib_gfx_set_add_color(elf_State *S);
 int lib_gfx_set_src_image(elf_State *S);
@@ -107,7 +109,8 @@ void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
 
 	elf_table_set(meta,VSTR(elf_new_string(S,"draw_rect")),VCFN(lib_gfx_draw_rect));
 	elf_table_set(meta,VSTR(elf_new_string(S,"draw_text")),VCFN(lib_gfx_draw_text));
-	elf_table_set(meta,VSTR(elf_new_string(S,"draw_image")),VCFN(lib_gfx_draw_image));
+	elf_table_set(meta,VSTR(elf_new_string(S,"draw_image")),VCFN(lib_draw_image));
+	elf_table_set(meta,VSTR(elf_new_string(S,"draw_circle")),VCFN(lib_draw_circle));
 	elf_table_set(meta,VSTR(elf_new_string(S,"draw_line")),VCFN(lib_gfx_draw_line));
 	elf_table_set(meta,VSTR(elf_new_string(S,"draw_point")),VCFN(lib_gfx_draw_point));
 }
@@ -201,7 +204,17 @@ int lib_gfx_draw_rect(elf_State *S) {
 	return 0;
 }
 
-int lib_gfx_draw_image(elf_State *S) {
+int lib_draw_circle(elf_State *S) {
+	kit_Context *ctx = get_ctx(S);
+	kit_Image *dst = ctx->screen;
+	int x = elf_get_int(S,0) * _cur_scale.x + _cur_offset.x;
+	int y = elf_get_int(S,1) * _cur_scale.y + _cur_offset.y;
+	int r = elf_get_int(S,2) * _cur_scale.x;
+	_circle(dst,x,y,r,_cur_color);
+	return 0;
+}
+
+int lib_draw_image(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
 	kit_Image *src_i;
 	kit_Color color_to_add,color_to_mul;

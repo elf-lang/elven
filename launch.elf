@@ -1,4 +1,11 @@
-elf.change_work_dir("W:\\MicroRJ\\platformer")
+load "play\\rnd.elf"
+load "play\\sort.elf"
+elf.change_work_dir("C:\\Users\\rodri\\Downloads\\Crap\\grass_source_v1_rice")
+load "grass.elf"
+#eof
+
+
+elf.change_work_dir("C:\\work\\MicroRJ\\platformer")
 load "main.elf"
 #eof
 

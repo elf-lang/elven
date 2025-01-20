@@ -1,6 +1,5 @@
 load "rnd.elf"
-
-elf.kit.create("Foxie",512,512)
+view := new elf.gfx.Window("Foxie",512,512,0)
 
 timer = 0
 spawn_angle = 0
@@ -13,17 +12,17 @@ new_particle=fun()?{
 		vx = cos(angle) * force
 		vy = sin(angle) * force
 	}
-	leave p
+	--> p
 }
 
-let particles = {}
+particles = {}
 for i = 0...2000 ? {
 	particles:add(new_particle())
 }
 
-do {
-	let dt = elf.kit.get_delta_time()
-	let new_particles = {}
+while view:poll() ? {
+	time := view.time
+	new_particles := {}
 	for i = 0...particles:tally() ? {
 		let p = particles:idx(i)
 		let x = p.x
@@ -33,13 +32,14 @@ do {
 		// elf.kit.draw_text("BUTTON!",0,0,255,255,255,255)
 		p.x += p.vx
 		p.y += p.vy
-		p.vx -= p.vx * .2 * dt
-		p.vy -= p.vy * .2 * dt
+		p.vx -= p.vx * .2 * time
+		p.vy -= p.vy * .2 * time
 		let dx = p.x - 256
 		let dy = p.y - 256
 		let dist = sqrt(dx*dx + dy*dy)
 		let alpha = 255. - dist*100 / 255.
-		elf.kit.draw_rect(x,y,4,4,	255,0,0,alpha)
+		view:set_color(255,0,0,alpha)
+		view:draw_rect(x,y,4,4)
 		if (dist < 512) ? {
 			new_particles:add(p)
 		} else {
@@ -47,9 +47,9 @@ do {
 		}
 	}
 	particles = new_particles
-	timer += dt
+	timer += time
 	let amp = sin(3.14 * timer) +
 	cos(3.14 * timer * .5)
 	spawn_angle = amp * 3.14
-} while elf.kit.step()
+}
 

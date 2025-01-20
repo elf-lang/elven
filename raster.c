@@ -83,8 +83,8 @@ static void _rect(_rect_params *params) {
 				kit_Color color = (kit_Color){255,0,0,255};
 				if (src) {
 					// convert to u v space, then scale
-					int tex_x = pr / dst_r.w * src->w;
-					int tex_y = pu / dst_r.h * src->h;
+					int tex_x = pr / dst_r.w * src_r.w;
+					int tex_y = pu / dst_r.h * src_r.h;
 					if(flip_x) tex_x = src->w - 1 - tex_x;
 					if(flip_y) tex_y = src->h - 1 - tex_y;
 					color = src->pixels[src->w * tex_y + tex_x];
@@ -93,6 +93,50 @@ static void _rect(_rect_params *params) {
 					dst->pixels[dst->w*y+x]=color;
 				}
 			}
+		}
+	}
+}
+
+void _set(kit_Image *img, int x, int y, kit_Color color) {
+	if (x >= 0 && x < img->w && y >= 0 && y < img->h) {
+		img->pixels[img->w * y + x] = color;
+	}
+}
+
+void _circle(kit_Image *dst, int x0, int y0, int r, kit_Color color) {
+	int E = 1 - r;
+	int dx = 0;
+	int dy = -2 * r;
+	int x = 0;
+	int y = r;
+
+	_set(dst, x0, y0 + r, color);
+	_set(dst, x0, y0 - r, color);
+	_set(dst, x0 + r, y0, color);
+	_set(dst, x0 - r, y0, color);
+
+	while (x < y - 1) {
+		x++;
+
+		if (E >= 0) {
+			y--;
+			dy += 2;
+			E += dy;
+		}
+
+		dx += 2;
+		E += dx + 1;
+
+		_set(dst, x0 + x, y0 + y, color);
+		_set(dst, x0 - x, y0 + y, color);
+		_set(dst, x0 + x, y0 - y, color);
+		_set(dst, x0 - x, y0 - y, color);
+
+		if (x != y) {
+			_set(dst, x0 + y, y0 + x, color);
+			_set(dst, x0 - y, y0 + x, color);
+			_set(dst, x0 + y, y0 - x, color);
+			_set(dst, x0 - y, y0 - x, color);
 		}
 	}
 }

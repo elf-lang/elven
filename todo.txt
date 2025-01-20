@@ -1,3 +1,10 @@
+
+-- parse.c & gen.c: the parser should be the
+one adding the 'this' args.
+
+-- parse.c: unary square operator
+<unary-square> ::= ** <expr> ::= <expr> * <expr>
+
 -- table.c: if we add the tomb value tag,
 now every piece of code we write will have
 to take it into account, should we instead

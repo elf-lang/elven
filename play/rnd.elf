@@ -5,7 +5,7 @@ xorshift = fun(x) ? {
 	leave x
 }
 
-rnd__ = elf.clocktime() // 5282
+rnd__ = elf.get_clock_time() // 5282
 rnd = fun(min,max) ? {
 	if min == max ? leave min
 	rnd__ = xorshift(rnd__)
@@ -18,6 +18,8 @@ rnd_one = fun() ? {
 	if rnd__ < 0 ? rnd__ = - rnd__
 	leave rnd__ % 10000000000 / 10000000000.
 }
+
+random = rnd_one
 
 rnd_bilateral = fun() ? {
 	leave rnd_one() * 2 - 1

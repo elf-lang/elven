@@ -1,18 +1,24 @@
+// global_prefix "${elf.get_unique_file_id()}" as file
+
 MATH ::= {
 	PI   	= 3.14159,
 	TAU  	= 6.28318,
 	E  	= 2.71828,
 }
-UPSCALE  	::= 1
-WIND_W   	::= 320*4
-WIND_H   	::= 240*3
+
+max := fun(a,b) ? { if a > b ? --> a else --> b }
+min := fun(a,b) ? { if a < b ? --> a else --> b }
+
+UPSCALE  	::= 2
+WIND_W   	::= 320
+WIND_H   	::= 240
+UNIT 			::= 8
 ASPECT_R 	::= WIND_W / iton(WIND_H)
 CENTER_X 	::= WIND_W / 2
 CENTER_Y 	::= WIND_H / 2
-UNIT 			::= 32
 CELL 			::= UNIT
 
-Color = fun(r,g,b,a) ? ({r=r,g=g,b=b,a=a??255})
+_rgb = fun(r,g,b,a) ? ({r=r,g=g,b=b,a=a??255})
 
 VIEW ::= new elf.gfx.Window("Graph!",WIND_W,WIND_H,UPSCALE)
 PRESSED  = elf.gfx.Window.PRESSED
@@ -49,60 +55,31 @@ draw_grid ::= fun() ? {
 	grid_size_x ::= WIND_W / cell_size + 1
 	grid_size_y ::= WIND_H / cell_size + 1
 
+	VIEW:set_color(255,255,255,255*0.25)
 	for y = 0...grid_size_y ? {
-		r := 255
-		g := 255
-		b := 255
-
-		VIEW:draw_rect(
-		, 0
-		, VIEW.ofs.y % cell_size + y * cell_size
-		, WIND_W
-		, 1
-		, r, g, b, 255*0.25)
+		VIEW:draw_rect(0,VIEW.ofs.y%cell_size+y*cell_size,WIND_W,1)
 	}
-
 	for x = 0...grid_size_x ? {
-		r := 255
-		g := 255
-		b := 255
-
-		VIEW:draw_rect(
-		, VIEW.ofs.x % cell_size + x * cell_size
-		, 0
-		, 1
-		, WIND_H
-		, r, g, b, 255*0.25)
+		VIEW:draw_rect(VIEW.ofs.x%cell_size+x*cell_size,0,1,WIND_H)
 	}
-
-	VIEW:draw_rect(
-	, VIEW.ofs.x
-	, 0
-	, 1
-	, WIND_H
-	, 255, 0, 0, 255*0.80)
-	VIEW:draw_rect(
-	, 0
-	, VIEW.ofs.y - 0
-	, WIND_W
-	, 1
-	, 0, 255, 0, 255*0.80)
+	VIEW:set_color(255,0,0,255*0.80)
+	VIEW:draw_rect(VIEW.ofs.x,0,1,WIND_H)
+	VIEW:set_color(0,255,0,255*0.80)
+	VIEW:draw_rect(0,VIEW.ofs.y,WIND_W,1)
 }
+
+global name ?= 1
+
 
 offset_minus_mouse := {x=0,y=0}
 user_input ::= fun() ? {
-	if VIEW.keys['W'] & DOWN ? {
-		VIEW.ofs.y -= 1
-	}
-	if VIEW.keys['S'] & DOWN ? {
-		VIEW.ofs.y += 1
-	}
-	if VIEW.keys['A'] & DOWN ? {
-		VIEW.ofs.x -= 1
-	}
-	if VIEW.keys['D'] & DOWN ? {
-		VIEW.ofs.x += 1
-	}
+
+	if VIEW.keys['Z'] & DOWN ? { zoom_in_at_mouse(0.01) }
+	if VIEW.keys['X'] & DOWN ? { zoom_in_at_mouse(-0.01) }
+	if VIEW.keys['W'] & DOWN ? { VIEW.ofs.y -= 1 }
+	if VIEW.keys['S'] & DOWN ? { VIEW.ofs.y += 1 }
+	if VIEW.keys['A'] & DOWN ? { VIEW.ofs.x -= 1 }
+	if VIEW.keys['D'] & DOWN ? { VIEW.ofs.x += 1 }
 	if VIEW.keys['R'] & DOWN ? {
 		VIEW.ofs = INITIAL_OFFSET:clone()
 		VIEW.Z   = 1.0
@@ -110,7 +87,6 @@ user_input ::= fun() ? {
 
 	mouse_x ::= VIEW.mouse_x
 	mouse_y ::= VIEW.mouse_y
-
 	if VIEW.mouse[1] & PRESSED ? {
 		dragging = true
 		offset_minus_mouse.x = VIEW.ofs.x - mouse_x
@@ -122,13 +98,6 @@ user_input ::= fun() ? {
 			VIEW.ofs.y = offset_minus_mouse.y + mouse_y
 		}
 	}
-
-	if VIEW.keys['Z'] & DOWN ? {
-		zoom_in_at_mouse()
-	}
-	if VIEW.keys['X'] & DOWN ? {
-		zoom_in_at_mouse(-0.01)
-	}
 }
 
 while VIEW:poll() ? {
@@ -137,41 +106,74 @@ while VIEW:poll() ? {
 	draw_grid()
 	Z ::= VIEW.Z
 
-	sources ::= {
+	force_radius := 8.0
+	force_dropoff := 16.0
+	sources := {
+		{
+			c = _rgb(255,255,0)
+			f = fun(x) ? {
+				if x < force_radius ? {
+					--> 2
+				} else {
+					--> 1 - min((x - force_radius) / force_dropoff, 1.0)
+				}
+			},
+		},
+		{
+			f = fun(x) ? {
+				if x < 2 ? {
+					--> 4
+				} else {
+					--> 4+1 - x / 2
+				}
+			},
+			c = _rgb(255,0,255)
+		},
+	}
+	old := {
 		{
 			f = fun(x) ? (x),
-			c = Color(255,255,0)
+			c = _rgb(255,255,0)
 		},
 		{
 			f = fun(x) ? (x * x * x),
-			c = Color(0,255,255)
+			c = _rgb(0,255,255)
 		},
 		{
 			f = fun(x) ? sin(x)
-			c = Color(64,64,255)
+			c = _rgb(64,64,255)
 		},
 		{
 			f = fun(x) ? 1.0 / (0.1 + x)
-			c = Color(64,64,255)
+			c = _rgb(64,64,255)
 		},
 		{
 			f = fun(x) ? pow(MATH.E,x)
-			c = Color(64,64,255)
+			c = _rgb(64,64,255)
 		}
 	}
 
+	// todo: instead of sampling this way,
+	// we should sample starting at the
+	// origin moving away in both directions,
+	// that way we can stop sampling once we
+	// go outside the screen
 	for src = sources[...] ? {
 		f ::= src.f
 		c ::= src.c
+		VIEW:set_color(c.r,c.g,c.b,c.a)
 		// sample in screen space, number of samples
 		// remains the same regardless of the scale
 		for p = 0...WIND_W ? {
-			xp ::= p - VIEW.ofs.x
-			x0 ::= (xp + 0) / Z
-			x1 ::= (xp + 1) / Z
+			xv ::= p - VIEW.ofs.x
+			x0 ::= (xv + 0) / Z
+			x1 ::= (xv + 1) / Z
 			y0 ::= f(x0 / UNIT) * UNIT
 			y1 ::= f(x1 / UNIT) * UNIT
-			ddx ::= (x1 - x0) / (y1 - y0)
+			ddx := 0
+			if (y1 - y0) != 0 ? {
+				ddx = (x1 - x0) / (y1 - y0)
+			}
 			sy0 := VIEW.ofs.y - y0 * Z
 			sy1 := VIEW.ofs.y - y1 * Z
 			// window space clipping
@@ -187,11 +189,7 @@ while VIEW:poll() ? {
 				sy1 = 0
 			}
 			// todo: figure out how to make this more efficient...
-			VIEW:draw_line(c.r,c.g,c.b,c.a
-			, (p+0)
-			, sy0
-			, (p+1)
-			, sy1)
+			VIEW:draw_line((p+0),sy0,(p+1),sy1)
 		}
 	}
 }

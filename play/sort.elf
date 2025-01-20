@@ -1,0 +1,88 @@
+min ?= fun(x,y) ? { if x < y ? leave x else leave y }
+
+
+// QUICK SORT
+partition = fun (arr, fn, lo, hi) ? {
+	let v = arr:idx(hi)
+	let i = lo - 1
+	for j = lo..hi ? {
+		if fn(arr:idx(j),v) ? {
+			i += 1
+			arr:swap(i,j)
+		}
+	}
+	arr:swap(i + 1,hi)
+	leave i + 1
+}
+
+
+quick_sort = fun(arr, fn, lo, hi, level) ? {
+	/* todo: remove */
+	lo     ?= 0
+	hi     ?= arr:length() - 1
+	level  ?= 0
+	fn     ?= fun(a,b) ? (a < b)
+	/* Sort smaller sub-arrays first to keep
+	stack size at a minimum. */
+	while lo < hi ? {
+		let pi = partition(arr, fn, lo, hi)
+		if pi - lo < hi - pi ? {
+			quick_sort(arr, fn, lo, pi - 1, level + 1)
+			lo = pi + 1
+		} else {
+			quick_sort(arr, fn, pi + 1, hi, level + 1)
+			hi = pi - 1
+		}
+	}
+	leave arr
+}
+
+// MERGE SORT
+
+/* todo: in place merge sort? */
+
+split = fun(array) ? {
+	let mid = array:length() / 2
+	leave {
+		left  = array:slice(0,mid)
+		right = array:slice(mid)
+	}
+}
+
+merge = fun(left,right,fn) ? {
+	merged := {}
+	i := 0
+	j := 0
+	while i < left:length() && j < right:length() ? {
+		if fn(left:idx(i),right:idx(j)) ? {
+			merged:add(left:idx(i))
+			i += 1
+		} else {
+			merged:add(right:idx(j))
+			j += 1
+		}
+	}
+	while i < left:length() ? {
+		merged:add(left:idx(i))
+		i += 1
+	}
+	while j < right:length() ? {
+		merged:add(right:idx(j))
+		j += 1
+	}
+	leave merged
+}
+
+merge_sort = fun(arr,fn,level) ? {
+	level ?= 0
+	if arr:length() < 2 ? {
+		leave arr
+	}
+	let mid = arr:length() / 2
+	let left = arr:slice(0,mid)
+	let right = arr:slice(mid)
+	let sorted_left = merge_sort(left,fn,level+1)
+	let sorted_right = merge_sort(right,fn,level+1)
+	let merged = merge(sorted_left,sorted_right,fn)
+	leave merged
+}
