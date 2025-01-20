@@ -1,4 +1,4 @@
-elf.change_work_dir("C:\\work\\MicroRJ\\platformer")
+elf.change_work_dir("W:\\MicroRJ\\platformer")
 load "main.elf"
 #eof
 
