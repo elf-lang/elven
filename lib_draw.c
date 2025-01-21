@@ -73,7 +73,7 @@ static kit_Rect _tab_to_rect(elf_State *S, elf_Table *tab) {
 static kit_Context *get_ctx(elf_State *S){
 	elf_Table *_this = (elf_Table *) elf_get_this(S);
 	kit_Context *ctx = (kit_Context *) elf_table_get(_this
-	, VSTR(elf_new_string(S,"@ptr"))).x_int;
+	, VSTR(elf_push_new_string(S,"@ptr"))).x_int;
 	ASSERT(ctx != 0);
 	return ctx;
 }
@@ -95,24 +95,24 @@ int lib_gfx_set_rotation(elf_State *S);
 int lib_gfx_set_center(elf_State *S);
 
 void lib_gfx_draw_apply(elf_State *S, elf_Table *meta){
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_offset")),VCFN(lib_gfx_set_offset));
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_scale")),VCFN(lib_gfx_set_scale));
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_color")),VCFN(lib_gfx_set_color));
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_add_color")),VCFN(lib_gfx_set_add_color));
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_src_image")),VCFN(lib_gfx_set_src_image));
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_src_rect")),VCFN(lib_gfx_set_src_rect));
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_rotation")),VCFN(lib_gfx_set_rotation));
-	elf_table_set(meta,VSTR(elf_new_string(S,"set_center")),VCFN(lib_gfx_set_center));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_offset")),VCFN(lib_gfx_set_offset));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_scale")),VCFN(lib_gfx_set_scale));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_color")),VCFN(lib_gfx_set_color));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_add_color")),VCFN(lib_gfx_set_add_color));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_src_image")),VCFN(lib_gfx_set_src_image));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_src_rect")),VCFN(lib_gfx_set_src_rect));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_rotation")),VCFN(lib_gfx_set_rotation));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"set_center")),VCFN(lib_gfx_set_center));
 
 	_cur_scale.x = 1;
 	_cur_scale.y = 1;
 
-	elf_table_set(meta,VSTR(elf_new_string(S,"draw_rect")),VCFN(lib_gfx_draw_rect));
-	elf_table_set(meta,VSTR(elf_new_string(S,"draw_text")),VCFN(lib_gfx_draw_text));
-	elf_table_set(meta,VSTR(elf_new_string(S,"draw_image")),VCFN(lib_draw_image));
-	elf_table_set(meta,VSTR(elf_new_string(S,"draw_circle")),VCFN(lib_draw_circle));
-	elf_table_set(meta,VSTR(elf_new_string(S,"draw_line")),VCFN(lib_gfx_draw_line));
-	elf_table_set(meta,VSTR(elf_new_string(S,"draw_point")),VCFN(lib_gfx_draw_point));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"draw_rect")),VCFN(lib_gfx_draw_rect));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"draw_text")),VCFN(lib_gfx_draw_text));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"draw_image")),VCFN(lib_draw_image));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"draw_circle")),VCFN(lib_draw_circle));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"draw_line")),VCFN(lib_gfx_draw_line));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"draw_point")),VCFN(lib_gfx_draw_point));
 }
 
 
@@ -155,7 +155,7 @@ int lib_gfx_set_add_color(elf_State *S) {
 int lib_gfx_set_src_image(elf_State *S) {
 	// kit_Context *ctx = get_ctx(S);
 	elf_Table *tab = elf_get_table(S,0);
-	_cur_src_image = (kit_Image *) elf_tgets_int(tab,elf_new_string(S,"@ptr"));
+	_cur_src_image = (kit_Image *) elf_tgets_int(tab,elf_push_new_string(S,"@ptr"));
 	_cur_src_rect.x = 0;
 	_cur_src_rect.y = 0;
 	_cur_src_rect.w = _cur_src_image->w;

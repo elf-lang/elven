@@ -1,0 +1,136 @@
+enemies = {}
+
+gun_image := get_image_assets("gun")
+
+add_enemy = fun(pos) ? {
+	enemy := new Enemy(pos,vec2(8,15))
+	enemies:add(enemy)
+}
+
+tick_enemies = fun(time) ? {
+	new_enemies := {}
+	for enemy = enemies[...] ? {
+		kill := enemy:tick(time)
+		if kill ? {
+		} else {
+			enemy:tick(time)
+			new_enemies:add(enemy)
+		}
+	}
+	enemies = new_enemies
+}
+
+draw_enemies = fun() ? {
+	for enemy = enemies[...] ? {
+		enemy:draw()
+	}
+}
+
+
+Enemy = Entity:merge {
+	super = Entity
+	__new = fun(position,size) ? {
+		__new := this:super.__new
+		__new("enemy",position,size)
+
+		this.walking = 0
+	}
+
+	draw = fun() ? {
+		draw := this:super.draw
+		draw()
+		dir := 1
+		if this.flip_x ? {
+			dir = -1
+		}
+		image := gun_image
+		WINDOW:set_src_image(image)
+		WINDOW:draw_image(
+		, this.position.x+this.size.x*0.5-image.width*0.5+4*dir
+		, this.position.y+this.size.y*0.5-image.height*0.5
+		, image.width,image.height,this.flip_x,0)
+	}
+
+	tick = fun(time) ? {
+		move := vec()
+
+		was_walking := this.walking != 0
+		this.walking = max(0,this.walking-1)
+		if this.walking == 0 ? {
+			if random() * 1000 < 10 ? {
+				this.walking = 30 + random() * (120-30)
+			}
+
+			if was_walking ? {
+				dif := player.position - this.position
+				if abs(dif.y) < 16 ? {
+					dir := 0
+					if this.flip_x == true && dif.x < 0 ? {
+						dir = -1
+					} else
+					if this.flip_x != true && dif.x > 0 ? {
+						dir = +1
+					}
+					if dir != 0 ? {
+						pos := this.position + this.size * vec2(0.5,0.5) + vec2(7,0) * dir
+						add_shoot_effect(pos,vec2(dir,0),4)
+						add_projectile(pos,vec2(1.5,0) * dir)
+					}
+				}
+			}
+		}
+
+		move = vec()
+		if this.walking > 0 ? {
+			center := this.position + this.size * vec2(0.5,0)
+			check_pos := center - vec2(0,2)
+			if this.flip_x ? {
+				check_pos.x -= 7
+			} else {
+				check_pos.x += 7
+			}
+			if check_tile_solid(check_pos) ? {
+				if this.flip_x ? {
+					move.x = -0.5
+				} else {
+					move.x = 0.5
+				}
+				WINDOW:set_color(0,255,0,255)
+				WINDOW:draw_rect(check_pos.x,check_pos.y,1,1)
+			} else {
+				this.flip_x ^= 1
+				WINDOW:set_color(255,0,0,255)
+				WINDOW:draw_rect(check_pos.x,check_pos.y,1,1)
+			}
+		}
+
+		if move.x != 0 ? {
+			this:set_action("run")
+		} else {
+			this:set_action("idle")
+		}
+
+		tick := this:super.tick
+		tick(time)
+
+		body ::= this.body
+		collided ::= this.body:move_and_collide(move,fun() ? {
+			--> get_overlapping_rects(body)
+		})
+		if collided.left || collided.right ? {
+			this.flip_x ^= 1
+		}
+		this.position = vec2(body.x,body.y)
+
+		kill := false
+		if abs(player.dashing) >= 50 ? {
+			if player.body:overlaps(this.body) ? {
+				kill = true
+				VIEW.screen_shake = max(VIEW.screen_shake,16)
+				add_player_kills_enemy_effect(this.position+this.size*0.5)
+			}
+		}
+		--> kill
+	}
+}
+

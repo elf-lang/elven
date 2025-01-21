@@ -4,37 +4,15 @@ int window__poll(elf_State *S);
 int window__new(elf_State *S);
 
 void lib_window_include(elf_State *S) {
-	elf_Table *meta=elf_new_table(S);
-
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.Window"))
-	, 	VTAB(meta));
-
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.Window.DOWN"))
-	, 	VINT(KIT_INPUT_DOWN));
-
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.Window.PRESSED"))
-	, 	VINT(KIT_INPUT_PRESSED));
-
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.Window.RELEASED"))
-	, 	VINT(KIT_INPUT_RELEASED));
-
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.Window.RELEASED"))
-	, 	VINT(KIT_INPUT_RELEASED));
-
+	elf_table_set(S->M->globals,VSTR(elf_push_new_string(S,"elf.gfx.Window.DOWN")),VINT(KIT_INPUT_DOWN));
+	elf_table_set(S->M->globals,VSTR(elf_push_new_string(S,"elf.gfx.Window.PRESSED")),VINT(KIT_INPUT_PRESSED));
+	elf_table_set(S->M->globals,VSTR(elf_push_new_string(S,"elf.gfx.Window.RELEASED")),VINT(KIT_INPUT_RELEASED));
+	elf_table_set(S->M->globals,VSTR(elf_push_new_string(S,"elf.gfx.Window.RELEASED")),VINT(KIT_INPUT_RELEASED));
+	elf_Table *meta = elf_new_table(S);
+	elf_table_set(S->M->globals,VSTR(elf_push_new_string(S,"elf.gfx.Window")),VTAB(meta));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"__new")),VCFN(window__new));
+	elf_table_set(meta,VSTR(elf_push_new_string(S,"poll")),VCFN(window__poll));
 	lib_gfx_draw_apply(S,meta);
-
-	elf_table_set(meta
-	,	VSTR(elf_new_string(S,"__new"))
-	, 	VCFN(window__new));
-
-	elf_table_set(meta
-	,	VSTR(elf_new_string(S,"poll"))
-	, 	VCFN(window__poll));
 }
 
 int window__new(elf_State *S) {
@@ -43,7 +21,7 @@ int window__new(elf_State *S) {
 	elf_Table *_this=(elf_Table*)elf_get_this(S);
 
 	elf_Table *_meta=elf_table_get(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.Window"))).x_tab;
+	,	VSTR(elf_push_new_string(S,"elf.gfx.Window"))).x_tab;
 	ASSERT(_this->obj.meta==_meta);
 
 	int i = 0;
@@ -62,7 +40,7 @@ int window__new(elf_State *S) {
 	kit_Context *c = kit_create(name, base_res_x, base_res_y, flags);
 
 	elf_table_set(_this
-	,	VSTR(elf_new_string(S,"@ptr"))
+	,	VSTR(elf_push_new_string(S,"@ptr"))
 	,	VINT((elf_i64)c));
 
 	// call poll once
@@ -75,22 +53,19 @@ int window__new(elf_State *S) {
 }
 
 int window__poll(elf_State *S) {
-	elf_Table *_this;
-	_this = (elf_Table *) elf_get_this(S);
+	elf_Table *_this = (elf_Table *) elf_get_this(S);
 
 	kit_Context *ctx = get_ctx(S);
 	ctx->mouse_wheel_y = 0;
 	ctx->mouse_wheel_y = 0;
 
 	double time;
+	int b = kit_step(ctx, &time);
+
 	int x,y;
-	int b;
-
-	b=kit_step(ctx, &time);
-
 	kit_mouse_pos(ctx,&x,&y);
 
-#define SET(NAME,VALUE) elf_table_set(_this,VSTR(elf_new_string(S,NAME)),VALUE)
+#define SET(NAME,VALUE) elf_table_set(_this,VSTR(elf_push_new_string(S,NAME)),VALUE)
 #define SET_INT(NAME,VALUE) SET(NAME,VINT(VALUE))
 #define SET_NUM(NAME,VALUE) SET(NAME,VNUM(VALUE))
 #define SET_TAB(NAME,VALUE) SET(NAME,VTAB(VALUE))
@@ -98,15 +73,11 @@ int window__poll(elf_State *S) {
 	// todo: reuse the old table?
 	elf_Table *keys = elf_new_table(S);
 	for(int i=0; i<COUNTOF(ctx->key_state); i++){
-		elf_table_set(keys
-		, 	VINT(i)
-		,	VINT(ctx->key_state[i]));
+		elf_table_set(keys,VINT(i),VINT(ctx->key_state[i]));
 	}
 	elf_Table *mouse = elf_new_table(S);
 	for(int i=0; i<COUNTOF(ctx->mouse_state); i++){
-		elf_table_set(mouse
-		, 	VINT(i)
-		,	VINT(ctx->mouse_state[i]));
+		elf_table_set(mouse,VINT(i),VINT(ctx->mouse_state[i]));
 	}
 
 	SET_INT("res_x",ctx->screen->w);
@@ -118,10 +89,7 @@ int window__poll(elf_State *S) {
 	SET_NUM("time",time);
 	SET_TAB("keys",keys);
 	SET_TAB("mouse",mouse);
-
-
 	kit_clear(ctx,KIT_BLACK);
-
 	elf_push_int(S,b);
 	return 1;
 }

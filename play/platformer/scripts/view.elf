@@ -1,0 +1,57 @@
+VIEW = {
+	transform2d = {
+		offset = vec2(0,  0)
+		scale	 = vec2(1, -1)
+	}
+	screen_shake = 0
+	offset 		 = vec2()
+	tick = fun() ? {
+		this.screen_shake = max(0,this.screen_shake-1)
+		this.offset = this.transform2d.offset + random() * this.screen_shake - this.screen_shake * 0.5
+	}
+	//
+	// cartesian_coords = world * scale + offset * parallax
+	//
+	// (cartesian_coords - world * scale) / parallax = offset
+	//
+	//
+	//
+	//	offset = cartesian_coords - world * scale
+	//
+	// world = (cartesian_coords - offset) / scale
+	//
+	get_camera_pos = fun() ? {
+		trans2d ::= this.transform2d
+		center ::= vec2(BASE_RES_X,BASE_RES_Y) * 0.5
+		--> (center - trans2d.offset) / trans2d.scale
+	}
+	get_camera_size = fun() ? {
+		trans2d ::= this.transform2d
+		--> vec2(BASE_RES_X,BASE_RES_Y) / trans2d.scale:abs()
+	}
+	get_camera_rect = fun() ? {
+		trans2d ::= this.transform2d
+		size ::= vec2(BASE_RES_X,BASE_RES_Y) / trans2d.scale
+		pos ::= this.get_camera_pos()
+		--> new Rect(pos.x-size.x*0.5,pos.y-size.y*0.5,size.x,size.y)
+	}
+	set_camera_pos = fun(x,y) ? {
+		if EDITOR_MODE == false ? {
+			trans2d 	::= this.transform2d
+			center 	::= vec2(BASE_RES_X,BASE_RES_Y) * 0.5
+			world 	::= vec2(x,y)
+			offset 	::= center - world * trans2d.scale
+			trans2d.offset += (offset - trans2d.offset) * 0.055
+		}
+	}
+}
+
+set_camera_view = fun() ? {
+	trans2d  := VIEW.transform2d
+	scale_x  := trans2d.scale.x
+	scale_y  := trans2d.scale.y
+	offset_x := floor(VIEW.offset.x)
+	offset_y := floor(VIEW.offset.y)
+	WINDOW:set_offset(offset_x,offset_y)
+	WINDOW:set_scale(scale_x,scale_y)
+}

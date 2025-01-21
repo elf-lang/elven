@@ -1,0 +1,48 @@
+
+sparks = {}
+
+add_spark = fun(pos,angle,speed) ? {
+	spark := {}
+	spark.pos 	= pos:clone()
+	spark.angle = angle
+	spark.speed = speed
+	sparks:add(spark)
+	--> spark
+}
+
+tick_sparks = fun() ? {
+	new_sparks := {}
+	for spark = sparks[...] ? {
+		spark.pos.x += cos(spark.angle) * spark.speed
+		spark.pos.y += sin(spark.angle) * spark.speed
+		spark.speed = max(0,spark.speed - 0.1)
+		if abs(spark.speed) > 0.01 ? {
+			new_sparks:add(spark)
+		}
+	}
+	sparks = new_sparks
+}
+
+draw_sparks = fun() ? {
+	for spark = sparks[...] ? {
+		points := {
+			vec2(	spark.pos.x + cos(spark.angle) * spark.speed * 3
+			,    	spark.pos.y + sin(spark.angle) * spark.speed * 3),
+
+			vec2(	spark.pos.x + cos(spark.angle + PI * 0.5) * spark.speed * 0.5
+			, 		spark.pos.y + sin(spark.angle + PI * 0.5) * spark.speed * 0.5),
+
+			vec2(	spark.pos.x + cos(spark.angle + PI) * spark.speed * 3
+			, 		spark.pos.y + sin(spark.angle + PI) * spark.speed * 3),
+
+			vec2(	spark.pos.x + cos(spark.angle - PI * 0.5) * spark.speed * 0.5
+			, 		spark.pos.y + sin(spark.angle - PI * 0.5) * spark.speed * 0.5),
+		}
+
+		draw_line := fun(p0,p1) ? (WINDOW:draw_line(p0.x,p0.y,p1.x,p1.y))
+		draw_line(points:idx(0),points:idx(1))
+		draw_line(points:idx(1),points:idx(2))
+		draw_line(points:idx(2),points:idx(3))
+		draw_line(points:idx(3),points:idx(0))
+	}
+}

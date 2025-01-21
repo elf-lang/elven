@@ -17,6 +17,12 @@ typedef struct {float x,y;} i32x2;
 #define _mul(a,b) ((f32x2){(a).x*(b).x,(a).y*(b).y})
 #define _dot(a,b) ((a).x*(b).x + (a).y*(b).y)
 
+void _set(kit_Image *img, int x, int y, kit_Color color) {
+	if (x >= 0 && x < img->w && y >= 0 && y < img->h) {
+		img->pixels[img->w * y + x] = color;
+	}
+}
+
 typedef struct {
 	kit_Image *dst;
 	kit_Image *src;
@@ -94,12 +100,6 @@ static void _rect(_rect_params *params) {
 				}
 			}
 		}
-	}
-}
-
-void _set(kit_Image *img, int x, int y, kit_Color color) {
-	if (x >= 0 && x < img->w && y >= 0 && y < img->h) {
-		img->pixels[img->w * y + x] = color;
 	}
 }
 

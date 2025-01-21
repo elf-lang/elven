@@ -1,4 +1,4 @@
-WINDOW ::= new elf.gfx.Window("Worm Thing!",320,320)
+WINDOW ::= new elf.gfx.Window("Worm Thing!",320,320,1)
 
 /* wormy thing */
 circles = {}
@@ -31,7 +31,8 @@ get_perp = fun(dx,dy) ? {
 }
 
 draw_circ = fun(x,y,r) ? {
-	WINDOW:draw_rect(x-r,y-r,r*2,r*2,255,255,255,255)
+	WINDOW:set_color(255,255,255,255)
+	WINDOW:draw_circle(x-r,y-r,r*2)
 }
 
 get_dir = fun(dst,src) ? {
@@ -48,6 +49,7 @@ physics_clock = fun(p,time) ? {
 	p.vx -= p.vx * 4.0 * time
 	p.vy -= p.vy * 4.0 * time
 }
+
 while WINDOW:poll() ? {
 
 	p ::= circles:idx(0)
@@ -63,8 +65,8 @@ while WINDOW:poll() ? {
 	for i = 1...circles:tally() ? {
 		let c = circles:idx(i)
 		let dir = get_dir(p,c)
-		c.x = p.x - dir.x * 6
-		c.y = p.y - dir.y * 6
+		c.x = p.x - dir.x * 12
+		c.y = p.y - dir.y * 12
 		p = c
 	}
 	for i = 0...circles:tally() ? {
