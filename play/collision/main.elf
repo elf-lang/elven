@@ -1,12 +1,12 @@
-MATH ::= {
-	PI   	= 3.14159,
-	TAU  	= 6.28318,
-	E  	= 2.71828,
-}
-WHITE = {r=255,g=255,b=255,a=255}
-BLUE  = {r=32,g=32,b=200,a=255}
-GREEN = {r=0,g=128,b=32,a=255}
-RED   = {r=255,g=32,b=0,a=255}
+PI   	::= 3.14159
+TAU  	::= 6.28318
+E  	::= 2.71828
+
+rgb ::= fun(r,g,b) ? ({r=r,g=g,b=b,a=255})
+WHITE = rgb(255,255,255,255)
+BLUE  = rgb(32,32,200,255)
+GREEN = rgb(0,128,32,255)
+RED   = rgb(255,32,0,255)
 
 UPSCALE  	::= 2
 WIND_W   	::= 320
@@ -19,117 +19,139 @@ VIEW ::= new elf.gfx.Window("Collision!",WIND_W,WIND_H,UPSCALE)
 PRESSED  = elf.gfx.Window.PRESSED
 DOWN 		= elf.gfx.Window.DOWN
 RELEASED = elf.gfx.Window.RELEASED
-INITIAL_OFFSET ::= {
-	// x=CENTER_X,
-	// y=CENTER_Y
 
-	x=0,
-	y=WIND_H
+sign ::= fun(x) ? {
+	if x < 0 ? 	--> -1
+	else        --> +1
 }
-VIEW.ofs = INITIAL_OFFSET:clone()
-VIEW.Z   = 1.0
+vec2_ ::= {
+	__new=fun(x,y)?{
+		this.x=x ?? 0
+		this.y=y ?? x ?? 0
+	}
+	__add=fun(that)?(vec2(this.x+that.x,this.y+that.y))
+	__sub=fun(that)?(vec2(this.x-that.x,this.y-that.y))
+	__mul=fun(that)?(vec2(this.x*that.x,this.y*that.y))
+	__mul1=fun(that)?(vec2(this.x*that,this.y*that))
+}
+vec2 = fun(x,y) ? new vec2_(x,y)
 
-Rect = {
-	__new = fun(x,y,w,h,c) ? {
+// #test "hard binding error"
+// warnings := #getwarnings()
+// #assert warnings[0] == 0
+
+sprite ::= {
+	__new=fun(type,x,y,w,h) ? {
+		this.type=type
 		this.x=x
 		this.y=y
-		this.w=w
-		this.h=h
-		this.c=c ?? WHITE
-	}
-	test = fun() ? {
-		if (new Rect(0,0,1,1)):overlaps(new Rect(0,1,1,1)) ? {
-			elf.pf("Rect Is Wrong!")
+		this.w=w??8
+		this.h=h??8
+		this.color=WHITE
+		this.hit_dir=vec2()
+		if(type=="spikes")?{
+			this.color=RED
 		}
-		if (new Rect(0,0,1,1)):overlaps(new Rect(1,0,1,1)) ? {
-			elf.pf("Rect Is Wrong!")
+		this.v=vec2()
+		this.m=vec2()
+		this.prev_move=vec2()
+		this.moves=type!="tile"
+		elf.pf("new sprite: ", this)
+	}
+	draw=fun()?{
+		c := this.color
+		// if this.colliding ? {
+		// 	c = RED
+		// }
+		VIEW:set_color(c.r,c.g,c.b,c.a)
+		VIEW:draw_rect(
+		, this.x
+		, VIEW.res_y - this.y - this.h
+		, this.w
+		, this.h)
+	}
+	tick=fun(time)?{
+		move := this.m + this.v
+		this.hit_spikes=false
+		this.hit_dir=vec2()
+		this.prev_move=move
+		this.v -= this.v * 0.4 * time
+		this.m = vec2()
+		this:move(move)
+	}
+	overlaps=fun(that,xx,yy)?{
+		--> this.x + this.w > that.x - (xx ?? 0)
+		&&  this.y + this.h > that.y - (yy ?? 0)
+		&&  that.x + that.w > this.x - (xx ?? 0)
+		&&  that.y + that.h > this.y - (yy ?? 0)
+	}
+	reach=fun(size)?{
+		for that = static_things[...] ? {
+			if this:overlaps(that,size,0) ? {
+				--> true
+			}
 		}
+		--> false
 	}
-	overlaps = fun(that) ? {
-		--> this.x + this.w > that.x
-		&&  this.y + this.h > that.y
-		&&  that.x + that.w > this.x
-		&&  that.y + that.h > this.y
-	}
-
-	move_and_collide = fun(move,get_rects) ? {
-		for i = 0,1 ? {
-			if i == 0 ? this.x += move.x;
-			else 			this.y += move.y;
-			check_rects ::= get_rects(this)
-			for that = check_rects[...] ? {
-				this.colliding = true
-				that.colliding = true
-				if i == 0 ? {
-					if this.x < that.x ? this.x = that.x - this.w;
-					else           		this.x = that.x + that.w;
-					this.velocity.x = 0
-				} else {
-					if this.y < that.y ? this.y = that.y - this.h;
-					else           		this.y = that.y + that.h;
-					this.velocity.y = 0
+	move=fun(move)?{
+		for axis = 0,1 ? {
+			if axis == 0 ? this.x += move.x;
+			else           this.y += move.y;
+			tiles ::= {}
+			for that = static_things[...] ? {
+				if that == nil ? {
+					continue
+				}
+				if this:overlaps(that) ? {
+					if that.type == "spikes" ? {
+						this.hit_spikes = true
+					}
+					this.colliding = true
+					that.colliding = true
+					if axis == 0 ? {
+						if move.x > 0 ? {
+							this.x = that.x - this.w;
+						} else if move.x < 0 ? {
+							this.x = that.x + that.w;
+						}
+						this.hit_dir.x=sign(move.x)
+						this.v.x = 0
+					} else {
+						if move.y > 0 ? {
+							this.y = that.y - this.h;
+						} else if move.y < 0 ? {
+							this.y = that.y + that.h;
+						}
+						this.hit_dir.y=sign(move.y)
+						this.v.x = 0
+						this.v.y = 0
+					}
 				}
 			}
 		}
-	}
-	draw = fun() ? {
-		c := this.c
-		if this.colliding ? {
-			c = RED
-		}
-		VIEW:draw_rect(
-		, VIEW.ofs.x + this.x
-		, VIEW.ofs.y - this.y - this.h
-		, this.w * VIEW.Z
-		, this.h * VIEW.Z
-		, c.r,c.g,c.b,c.a)
 	}
 }
 
 BLOCK_SIZE = 16
 
-Player = new Rect(0,BLOCK_SIZE,8,15)
-Player.velocity = {x=0,y=0}
-rects = {}
-rects:add(Player)
-
-get_overlapping_rects = fun(that) ? {
-	results ::= {}
-	for rect = rects[...] ? {
-		if rect != that ? {
-			if rect:overlaps(that) ? {
-				results:add(rect)
-			}
-		}
-	}
-	--> results
-	// #worstbugever
-	// omg, for some reason instead of using
-	// a range, we  use a step, -1,0,2 will
-	// trigger the most weird fatal bug ever,
-	// please look into it, seems that also
-	// the bug goes away if we keep steps but
-	// we remove the if statement ofs_x == 0,
-	// it has to do with ofs_x, because the
-	// if statement can remain just not us
-	// checking ofs
-	for ofs_y = -1...2 ? {
-		for ofs_x = -1...2 ? {
-			if ofs_x == 0 && ofs_y == 0 ? {
-				continue
-			}
-			tile_x ::= ntoi(floor(ofs_x + that.x / BLOCK_SIZE))
-			tile_y ::= ntoi(floor(ofs_y + that.y / BLOCK_SIZE))
-			key ::= tile_y << 16 | tile_x
-			if rects[key] ? {
-				if that:overlaps(rects[key]) ? {
-					results:add(rects[key])
-				}
-			}
-		}
-	}
-	--> results
+static_things={}
+spikes={}
+sprites={}
+platforms={}
+total_time=0
+jump_buffer=1
+wall_sliding=false
+player_spawn:=vec2(BLOCK_SIZE*2,BLOCK_SIZE*2)
+new_player=fun()?{
+	player?=new sprite("player",0,0,8,15)
+	player.x=player_spawn.x
+	player.y=player_spawn.y
+	player.v=vec2()
+	player.m=vec2()
 }
+new_player()
+sprites:add(player)
+
 
 
 coords_to_tile ::= fun(x,y) ? {
@@ -148,108 +170,170 @@ unplace_rect ::= fun(x,y) ? {
 	tile_x ::= info.tile_x
 	tile_y ::= info.tile_y
 	key ::= info.key
-	if rects[key] ? {
-		rects:delete(key)
-		// rects[key] = nil
+	if static_things[key] ? {
+		static_things:delete(key)
 	}
 }
-place_rect ::= fun(x,y) ? {
+place_rect ::= fun(x,y,thing) ? {
 	info ::= coords_to_tile(x,y)
 	if info ? {
 		tile_x ::= info.tile_x
 		tile_y ::= info.tile_y
 		key ::= info.key
-		rects[key] ?= new Rect(
-		,	tile_x * BLOCK_SIZE
-		,	tile_y * BLOCK_SIZE
-		,	BLOCK_SIZE
-		,	BLOCK_SIZE
-		)
+		thing ?= new sprite("tile",0,0,BLOCK_SIZE,BLOCK_SIZE)
+		thing.x = tile_x*BLOCK_SIZE
+		thing.y = tile_y*BLOCK_SIZE
+		static_things[key] = thing
 	}
 }
 
-for i = 0...10 ? {
+for i = 0...20 ? {
 	place_rect(i*BLOCK_SIZE,0)
 }
-// rects:add(new Rect(10*BLOCK_SIZE,CENTER_Y-BLOCK_SIZE*0.5,10*BLOCK_SIZE,BLOCK_SIZE, GREEN))
-// rects:add(new Rect(0,CENTER_Y-BLOCK_SIZE*0.5,10*BLOCK_SIZE,BLOCK_SIZE, BLUE))
+for i = 0...15 ? {
+	place_rect(0,i*BLOCK_SIZE)
+}
 
-total_time = 0
+platforms:add(new sprite("platform",32,32,32,8))
+platforms:add(new sprite("platform",64,32,32,8))
 
-platforms := {}
-platforms:add(new Rect(32,32,32,8))
-platforms:add(new Rect(64,32,32,8))
-allow_jump = false
+spr_names := {"tile","spikes"}
+cur_spr := "tile"
+cur_spr_index := 0
+while VIEW:poll() ? {
+	time ::= VIEW.time
+	total_time += time
 
-tick_platforms := fun(time) ? {
+	mx ::= VIEW.mouse_x
+	my ::= VIEW.res_y - VIEW.mouse_y
+	if VIEW.keys['S'] & PRESSED ? {
+		cur_spr = spr_names:idx(cur_spr_index)
+		cur_spr_index = (cur_spr_index + 1) % spr_names:tally()
+		elf.pf("cur_spr: ", cur_spr)
+	}
+	if VIEW.mouse[1] & DOWN ? {
+		place_rect(mx,my,new sprite(cur_spr,0,0,BLOCK_SIZE,BLOCK_SIZE));
+	}
+	if VIEW.mouse[2]  & DOWN ? unplace_rect(mx,my);
 
-	for platform = platforms[...] ? {
-		move := {
-			x=cos(total_time*0.1)*0.1
-			y=sin(total_time*0.1)*0.1
+
+	input := vec2()
+	if VIEW.keys['A'] & DOWN ? input.x -= 2;
+	if VIEW.keys['D'] & DOWN ? input.x += 2;
+
+	player.v.y -= 10 * time
+	if player.hit_dir.y == -1 ? {
+		jump_buffer=1
+	}
+	if player.hit_dir.x != 0 ? {
+		if sign(input.x) == player.hit_dir.x ? {
+			wall_sliding=true
+			jump_buffer=1
 		}
-		platform.y += move.y
-		platform.x += move.x
-		check_rects := {}
-		if Player:overlaps(platform) ? {
-			check_rects:add(Player)
+	}
+	wall_support := player:reach(1)
+	if wall_support != true ? {
+		wall_sliding = false
+	}
+	player.color=WHITE
+	if wall_sliding ? {
+		player.v.y *= 0.9
+		player.color=BLUE
+	}
+
+	player.m+=input
+
+	if VIEW.keys['W'] & PRESSED ? {
+		if jump_buffer > 0 ? {
+			if wall_sliding ? {
+				player.v.x = 3 * sign(input.x)
+				player.v.y = 4
+				wall_sliding=false
+			} else {
+				player.v.y = 4
+			}
+			jump_buffer -= 1
 		}
-		for that = check_rects[...] ? {
-			platform.colliding = true
+	}
+
+
+
+	if player.hit_spikes ? {
+		new_player()
+	}
+
+	VIEW:set_color(255,255,255,255)
+	for spr = sprites[...], static_things[...], platforms[...] ? {
+		if spr != nil ? {
+			spr.colliding = false
+		}
+	}
+	for spr = sprites[...] ? {
+		if spr ? {
+			spr:tick(time)
+		}
+	}
+
+	for plat = platforms[...] ? {
+		move := vec2()
+		if plat == platforms:idx(0) ? {
+			move.y = sin(total_time*PI*0.5)*2
+		} else {
+			move.x = sin(total_time*PI*0.5)*2
+		}
+		plat.x+=move.x
+		plat.y+=move.y
+		for that = sprites[...] ? {
+			iff plat:overlaps(that) ? {
+				continue
+			}
+			plat.colliding = true
 			that.colliding = true
-			if platform.y < that.y ? {
-				if that.velocity.y < 0 ? {
-					that.y = platform.y + platform.h;
-					that.velocity.y = 0
-					that.x += move.x
-					allow_jump = true
+			if plat.y < that.y ? {
+				if that.v.y < 0 ? {
+					that.y = plat.y + plat.h;
+					that.v.y = 0
+					that.v.x = 0
+					that.m.x += move.x
+					// that.x += move.x
+					jump_buffer=1
 				}
 			}
 		}
 	}
+
+	for spr = sprites[...], static_things[...], platforms[...] ? {
+		if spr != nil ? {
+			spr:draw()
+		}
+	}
 }
 
-while VIEW:poll() ? {
-	time ::= VIEW.time
+#eof
 
-	Player.velocity.y -= 10 * time
-	if VIEW.keys['W'] & PRESSED ? {
-		Player.velocity.y = 4
+// #worstbugever
+	// omg, for some reason instead of using
+	// a range, we  use a step, -1,0,2 will
+	// trigger the most weird fatal bug ever,
+	// please look into it, seems that also
+	// the bug goes away if we keep steps but
+	// we remove the if statement ofs_x == 0,
+	// it has to do with ofs_x, because the
+	// if statement can remain just not us
+	// checking ofs
+for ofs_y = -1...2 ? {
+	for ofs_x = -1...2 ? {
+		if ofs_x == 0 && ofs_y == 0 ? {
+			continue
+		}
+		tile_x ::= ntoi(floor(ofs_x + that.x / BLOCK_SIZE))
+		tile_y ::= ntoi(floor(ofs_y + that.y / BLOCK_SIZE))
+		key ::= tile_y << 16 | tile_x
+		if rects[key] ? {
+			if that:overlaps(rects[key]) ? {
+				results:add(rects[key])
+			}
+		}
 	}
-	// if VIEW.keys['S'] & DOWN ? { Player.velocity.y += 5 * time };
-	// if VIEW.keys['A'] & DOWN ? { Player.velocity.x -= 5 * time };
-	// if VIEW.keys['D'] & DOWN ? { Player.velocity.x += 5 * time };
-	// Player.velocity.y -= Player.velocity.y * 1 * time
-	// Player.velocity.x -= Player.velocity.x * 1 * time
-
-	move ::= Player.velocity:clone()
-	// if VIEW.keys['S'] & DOWN ? move.y -= 2;
-	if VIEW.keys['A'] & DOWN ? move.x -= 2;
-	if VIEW.keys['D'] & DOWN ? move.x += 2;
-
-	mouse_in_view_x ::= (VIEW.mouse_x - VIEW.ofs.x) / VIEW.Z
-	mouse_in_view_y ::= (VIEW.ofs.y - VIEW.mouse_y) / VIEW.Z
-	// elf.pf(mouse_in_view_x, ", ", mouse_in_view_y)
-
-	if VIEW.mouse[1] & DOWN ? {
-		place_rect(mouse_in_view_x,mouse_in_view_y)
-	}
-	if VIEW.mouse[2] & DOWN ? {
-		unplace_rect(mouse_in_view_x,mouse_in_view_y)
-	}
-
-	for a = platforms[...],rects[...] ? {
-		a.colliding = false
-	}
-
-	a ::= Player
-	Player:move_and_collide(move,get_overlapping_rects)
-
-	tick_platforms(time)
-
-	for r = rects[...], platforms[...] ? {
-		r:draw()
-	}
-
-	total_time += time
 }
+--> results

@@ -37,7 +37,6 @@ scripts := {
 	"player",
 	"enemies",
 	"tilemap",
-	"grass",
 	"clouds",
 }
 
@@ -70,12 +69,10 @@ load_level = fun(index) ? {
 	if level ? {
 		tiles = level.tiles
 		offgrid_tiles = level.offgrid_tiles
-		grass_tiles = level.grass_tiles
 	}
 
 	tiles ?= {}
 	offgrid_tiles ?= {}
-	grass_tiles ?= {}
 	run_autotiler()
 
 	projectiles = {}
@@ -128,18 +125,6 @@ while WINDOW:poll() ? {
 	mouse_world_y 			:= (mouse_y - offset_y) / iton(trans2d.scale.y)
 	mouse_tile_x 			:= mouse_world_x / tile_size
 	mouse_tile_y 			:= mouse_world_y / tile_size
-
-	key := get_tile_key(mouse_tile_x,mouse_tile_y)
-	grass_tile := grass_tiles[key]
-	if grass_tile ? {
-		tile_pos := vec2(grass_tile.pos.x,grass_tile.pos.y) * tile_size
-		for blade = grass_tile.blades[...] ? {
-			blade_pos := tile_pos + vec2(tile_size*0.5 + (blade.offset*2-1)*tile_size*0.35,0)
-			dif := vec2(mouse_world_x,mouse_world_y) - blade_pos
-		}
-		elf.pf("HERE!")
-	}
-
 
 	if WINDOW.keys['Q'] & KEY_RELEASED ? {
 		EDITOR_MODE ^= 1
@@ -214,7 +199,6 @@ while WINDOW:poll() ? {
 		}
 	}
 
-	draw_grass_tiles()
 	draw_projectiles()
 	draw_sparks()
 	draw_particles()
@@ -267,7 +251,6 @@ save_level = fun() ? {
 	elf.unload(file,{
 		"tiles" = no_tombs(tiles),
 		"offgrid_tiles" = no_keys(offgrid_tiles),
-		"grass_tiles" = no_tombs(grass_tiles),
 	})
 	elf.close_file(file)
 }

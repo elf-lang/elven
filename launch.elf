@@ -2,7 +2,7 @@
 
 load "play\\rnd.elf"
 load "play\\sort.elf"
-elf.change_work_dir("play\\platformer")
+elf.change_work_dir("play\\collision")
 load "main.elf"
 #eof
 
@@ -42,29 +42,29 @@ or01 := 0 || 1
 elf.pf("#getmem(or01): ", #getmem(or01))
 elf.pf("false && or01: ", false && or01)
 if false && or01 ? {
-elf.pf("ERROR!")
+	elf.pf("ERROR!")
 }
 
 #eof
 
 test_and = fun(a,b) ? {
-if a ? { if b ? { --> true } }
---> false
+	if a ? { if b ? { --> true } }
+	--> false
 }
 test_or = fun(a,b) ? {
-if a ? { --> true }
-if b ? { --> true }
---> false
+	if a ? { --> true }
+	if b ? { --> true }
+	--> false
 }
 operators = {{"&&",test_and},{"||",test_or}}
 
 generate_test_expr = fun(a,b,level) ? {
-if level > 3 ? {
---> a
-}
-text := "(" + generate_test_expr(a,0,level+1) + " " + operators:idx(0,0) + " " + generate_test_expr(b,1,level+1) + ")"
+	if level > 3 ? {
+		--> a
+	}
+	text := "(" + generate_test_expr(a,0,level+1) + " " + operators:idx(0,0) + " " + generate_test_expr(b,1,level+1) + ")"
 
---> text
+	--> text
 }
 
 text := generate_test_expr(1,0,0)
@@ -75,21 +75,21 @@ elf.pf(text)
 
 table = {}
 for i = 0...10 ? {
-table[i] = i
+	table[i] = i
 }
 elf.pf(table)
 for i = 0...10 ? {
-elf.pf("deleting: ", i)
-elf.pf("before: ")
-elf.pf(table:keys())
-table:delete(i)
-elf.pf("after: ")
-elf.pf(table:keys())
+	elf.pf("deleting: ", i)
+	elf.pf("before: ")
+	elf.pf(table:keys())
+	table:delete(i)
+	elf.pf("after: ")
+	elf.pf(table:keys())
 }
 #eof
 
 test_table := {
-__new = fun() ? {}
+	__new = fun() ? {}
 }
 xxx := test_table.__new
 elf.flags(1<<3)

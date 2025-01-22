@@ -20,11 +20,11 @@ static void package_close(elf_State *S, FILE *file) {
 
 static FILE *package_open(elf_State *S, char *name) {
 	fileT *file = 0;
-	elf_Value res = elf_table_get(package_info, VSTR(elf_push_new_string(S,name)));
+	elf_Value res = elf_table_get(package_info, VSTR(elf_new_string(S,name)));
 	if (res.tag == elf_tag_tab) {
 		elf_Table *entry = res.x_tab;
-		elf_Value pos = elf_table_get(entry, VSTR(elf_push_new_string(S,"pos")));
-		elf_Value size = elf_table_get(entry, VSTR(elf_push_new_string(S,"size")));
+		elf_Value pos = elf_table_get(entry, VSTR(elf_new_string(S,"pos")));
+		elf_Value size = elf_table_get(entry, VSTR(elf_new_string(S,"size")));
 		ASSERT(pos.tag==elf_tag_int);
 		ASSERT(size.tag==elf_tag_int);
 		file = malloc(sizeof(*file));
@@ -61,10 +61,10 @@ int lib_package_get_info(elf_State *S) {
 		elf_debug_log("package file: %s, pos: %i, size: %i", name,pos,size);
 		elf_Table *entry = elf_new_table(S);
 		elf_table_set(entry
-		, VSTR(elf_push_new_string(S,"pos")), VINT(pos));
+		, VSTR(elf_new_string(S,"pos")), VINT(pos));
 		elf_table_set(entry
-		, VSTR(elf_push_new_string(S,"size")), VINT(size));
-		elf_table_set(info,VSTR(elf_push_new_string(S,name)),VTAB(entry));
+		, VSTR(elf_new_string(S,"size")), VINT(size));
+		elf_table_set(info,VSTR(elf_new_string(S,name)),VTAB(entry));
 		fseek(pack,size,SEEK_CUR);
 	}
 

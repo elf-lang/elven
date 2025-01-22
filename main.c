@@ -26,6 +26,6 @@ int main() {
 	elf_add_lib(&R,"elf.audio",lib_audio,_countof(lib_audio));
 	elf_push_proc(&R,core_lib_load_file);
 	elf_push_nil(&R);
-	elf_push_new_string(&R,"launch.elf");
+	elf_new_string(&R,"launch.elf");
 	elf_call(&R,2,0);
 }

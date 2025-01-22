@@ -1,0 +1,180 @@
+// simple tile editor tool,
+
+vec ?= fun() ? ({x=0,y=0})
+vec2 ?= fun(x,y) ? ({x=x,y=y})
+
+tile_placement_modes := {
+	"none", "tiles", "grass"
+}
+
+editor = {
+	current_tile_group 		= 0
+	current_tile_variant 	= 0
+	tile_placement_mode 		= 0
+	offgrid_mode            = false
+	dragging 			 		= false
+	offset_minus_mouse 		= vec()
+	tile_size               = 32
+
+	draw = fun() ? {
+		WINDOW 	::= WINDOW
+		tilemap 	::= tilemap
+
+		mouse_x 					::= WINDOW.mouse_x
+		mouse_y 					::= WINDOW.mouse_y
+		trans2d 					::= WINDOW.transform2d
+		scale 					::= trans2d.scale.x
+		offset_x 				::= trans2d.offset.x
+		offset_y 				::= trans2d.offset.y
+		tile_size 				::= this.tile_size
+		mouse_world_x 			::= (mouse_x - offset_x) / iton(trans2d.scale.x)
+		mouse_world_y 			::= (mouse_y - offset_y) / iton(trans2d.scale.y)
+		mouse_subtile_pos_x 	::= mouse_world_x / tile_size
+		mouse_subtile_pos_y 	::= mouse_world_y / tile_size
+		mouse_tile_pos_x 		::= ntoi(floor(mouse_subtile_pos_x))
+		mouse_tile_pos_y 		::= ntoi(floor(mouse_subtile_pos_y))
+
+		tile_groups ::= {}
+		if WINDOW.keys['W'] & KEY_RELEASED ? {
+			this.current_tile_group += 1
+			this.current_tile_group %= tile_groups:tally()
+		}
+
+		tile_group ::= tile_groups:idx(this.current_tile_group)
+		tile_assets ::= {}
+
+		this.current_tile_group_name = tile_group
+		current_tile_group_name ::= this.current_tile_group_name
+		tile_images ::= tile_assets[tile_group]
+
+		if WINDOW.keys['E'] & KEY_RELEASED ? {
+			this.current_tile_variant += 1
+			this.current_tile_variant %= tile_images:tally()
+		}
+
+		current_tile_image ::= tile_images:idx(this.current_tile_variant)
+
+		if WINDOW.keys['Z'] & KEY_PRESSED ? {
+			elf.pf("ZOOM IN")
+			this.zoom(1)
+		}
+		if WINDOW.keys['X'] & KEY_PRESSED ? {
+			elf.pf("ZOOM OUT")
+			this.zoom(-1)
+		}
+
+		if WINDOW.keys['C'] & KEY_PRESSED ? {
+			this.offgrid_mode ^= 1;
+		}
+		if WINDOW.keys[' '] & KEY_PRESSED ? {
+			this.tile_placement_mode += 1
+			this.tile_placement_mode %= tile_placement_modes:tally()
+		}
+		tile_placement_mode := tile_placement_modes:idx(this.tile_placement_mode)
+
+		if tile_placement_mode == "none" ? {
+			if WINDOW.mouse[1] & KEY_PRESSED ? {
+				this.dragging = true
+				this.offset_minus_mouse.x = trans2d.offset.x - mouse_x
+				this.offset_minus_mouse.y = trans2d.offset.y - mouse_y
+			}
+			if WINDOW.mouse[1] & KEY_DOWN ? {
+				if this.dragging ? {
+					trans2d.offset.x = this.offset_minus_mouse.x + mouse_x
+					trans2d.offset.y = this.offset_minus_mouse.y + mouse_y
+				}
+			}
+		} else {
+
+			if (WINDOW.mouse[1]|WINDOW.mouse[2]) & KEY_DOWN ? {
+				remove := false
+				if WINDOW.mouse[2] & KEY_DOWN ? {
+					remove = true
+				}
+
+				iff this.offgrid_mode ? {
+					pos := vec2(mouse_tile_pos_x,mouse_tile_pos_y)
+					if tile_placement_mode == "tiles" ? {
+						place_tile(mouse_tile_pos_x,mouse_tile_pos_y,this.current_tile_group_name,this.current_tile_variant,remove)
+					} else if tile_placement_mode == "grass" ? {
+						place_grass_tile(pos,this.current_tile_group_name,this.current_tile_variant,remove)
+					}
+				}
+			} else if (WINDOW.mouse[1]|WINDOW.mouse[2]) & KEY_RELEASED ? {
+				remove := false
+				if (WINDOW.mouse[2] & KEY_RELEASED) ? {
+					remove = true
+				}
+				if this.offgrid_mode ? {
+					add_offgrid_tile(vec2(mouse_subtile_pos_x,mouse_subtile_pos_y),this.current_tile_group_name,this.current_tile_variant,remove)
+				}
+			}
+		}
+
+		this.draw_grid()
+		mode := "Tile Placement: " + tile_placement_mode
+		if this.offgrid_mode ? {
+			mode += ", (offgrid)"
+		}
+
+		draw_text = fun(text,x,y) ? {
+			WINDOW:draw_text(text, x + 1, y + 1, 0, 0, 0, 255)
+			WINDOW:draw_text(text, x, y, 255, 255, 255, 255)
+		}
+		strings := {
+			mode,
+			this.current_tile_group_name + ", " + this.current_tile_variant,
+			"" + mouse_subtile_pos_x + ", " + mouse_subtile_pos_y,
+		}
+		y := 0
+		x := 0
+		for string = strings[...] ? {
+			draw_text(string,x,y)
+			y += 15
+		}
+
+		if tile_placement_mode == "tiles" ? {
+			WINDOW:set_src_image(current_tile_image)
+			WINDOW:draw_image(mouse_x,mouse_y)
+		}
+	}
+
+	draw_grid = fun() ? {
+		trans2d 		::= WINDOW.transform2d
+		scale 		::= trans2d.scale.x
+		offset_y 	:=  ntoi(floor(trans2d.offset.y))
+		offset_x 	:=  ntoi(floor(trans2d.offset.x))
+		cell_size   ::= this.tile_size * scale
+		grid_size_x ::= BASE_RES_X / cell_size + 1
+		grid_size_y ::= BASE_RES_Y / cell_size + 1
+
+		WINDOW:set_color(255,255,255,255*0.25)
+		for y = 0...grid_size_y ? {
+			WINDOW:draw_rect(0,offset_y%cell_size+y*cell_size,BASE_RES_X,1)
+		}
+		for x = 0...grid_size_x ? {
+			WINDOW:draw_rect(offset_x%cell_size+x*cell_size,0,1,BASE_RES_Y)
+		}
+		WINDOW:set_color(255,0,0,255*0.80)
+		WINDOW:draw_rect(offset_x,0,1,BASE_RES_Y)
+		WINDOW:set_color(0,255,0,255*0.80)
+		WINDOW:draw_rect(0,offset_y,BASE_RES_X,1)
+	}
+
+	zoom = fun(by) ? {
+		trans2d ::= WINDOW.transform2d
+		new_scale := trans2d.scale + vec2(1.0,-1.0) * by
+		if new_scale.x == 0.0 ? {
+			--> ;
+		}
+		if new_scale.y == 0.0 ? {
+			--> ;
+		}
+		{
+			mouse ::= vec2(WINDOW.mouse_x,WINDOW.mouse_y)
+			a ::= trans2d.scale / new_scale
+			trans2d.offset = mouse - (mouse - trans2d.offset) / a
+			trans2d.scale = new_scale
+		}
+	}
+}
