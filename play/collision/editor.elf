@@ -1,0 +1,93 @@
+
+KEY_PRESSED  ::= elf.gfx.Window.PRESSED
+KEY_DOWN 	 ::= elf.gfx.Window.DOWN
+KEY_RELEASED ::= elf.gfx.Window.RELEASED
+
+
+Editor = {
+	__new = fun(view,camera,tile_size) ? {
+		this.tile_size=tile_size
+		this.view=view
+		this.offset_minus_mouse=vec2()
+		this.camera=camera:clone()
+	}
+	do_panning = fun() ? {
+		view 		::= this.view
+		mouse_x 	::= view.mouse_x
+		mouse_y 	::= view.mouse_y
+		cam 	::= this.camera
+		offset_x ::= cam.offset.x
+		offset_y ::= cam.offset.y
+		if view.mouse[1] & KEY_PRESSED ? {
+			this.dragging = true
+			this.offset_minus_mouse.x = cam.offset.x - mouse_x
+			this.offset_minus_mouse.y = cam.offset.y - mouse_y
+		}
+		if view.mouse[1] & KEY_DOWN ? {
+			if this.dragging ? {
+				cam.offset.x = this.offset_minus_mouse.x + mouse_x
+				cam.offset.y = this.offset_minus_mouse.y + mouse_y
+			}
+		}
+	}
+	get_mouse_pos = fun() ? {
+		view ::= this.view
+		mouse_x 					::= view.mouse_x
+		mouse_y 					::= view.mouse_y
+		cam 					::= this.camera
+		scale 					::= cam.scale.x
+		offset_x 				::= cam.offset.x
+		offset_y 				::= cam.offset.y
+		tile_size 				::= this.tile_size
+		mouse_world_x 			::= (mouse_x - offset_x) / iton(cam.scale.x)
+		mouse_world_y 			::= (mouse_y - offset_y) / iton(cam.scale.y)
+		--> vec2(mouse_world_x,mouse_world_y)
+	}
+	draw = fun() ? {
+		view ::= this.view
+		mouse_x 					::= view.mouse_x
+		mouse_y 					::= view.mouse_y
+		mouse 					::= vec2(mouse_x,mouse_y)
+		cam 					   ::= this.camera
+		scale 					::= cam.scale.x
+		offset_x 				::= cam.offset.x
+		offset_y 				::= cam.offset.y
+		tile_size 				::= this.tile_size
+		mouse_world_x 			::= (mouse_x - offset_x) / iton(cam.scale.x)
+		mouse_world_y 			::= (mouse_y - offset_y) / iton(cam.scale.y)
+		mouse_subtile_pos_x 	::= mouse_world_x / tile_size
+		mouse_subtile_pos_y 	::= mouse_world_y / tile_size
+		mouse_tile_pos_x 		::= ntoi(floor(mouse_subtile_pos_x))
+		mouse_tile_pos_y 		::= ntoi(floor(mouse_subtile_pos_y))
+
+		if view.keys['Z'] & KEY_PRESSED ? {
+			this.camera:zoom_point(mouse,1)
+		}
+		if view.keys['X'] & KEY_PRESSED ? {
+			this.camera:zoom_point(mouse,-1)
+		}
+		draw_grid(view,tile_size)
+	}
+}
+
+draw_grid = fun(view,cell_size) ? {
+	cam 		::= this.camera
+	scale 		::= cam.scale.x
+	offset_y 	:=  ntoi(floor(cam.offset.y))
+	offset_x 	:=  ntoi(floor(cam.offset.x))
+	cell_size *= scale
+	grid_size_x ::= view.res_x / cell_size + 1
+	grid_size_y ::= view.res_y / cell_size + 1
+
+	view:set_color(255,255,255,255*0.25)
+	for y = 0...grid_size_y ? {
+		view:draw_rect(0,offset_y%cell_size+y*cell_size,view.res_x,1)
+	}
+	for x = 0...grid_size_x ? {
+		view:draw_rect(offset_x%cell_size+x*cell_size,0,1,view.res_y)
+	}
+	view:set_color(255,0,0,255*0.80)
+	view:draw_rect(offset_x,0,1,view.res_y)
+	view:set_color(0,255,0,255*0.80)
+	view:draw_rect(0,offset_y,view.res_x,1)
+}

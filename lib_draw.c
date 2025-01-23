@@ -89,8 +89,10 @@ int lib_gfx_set_color(elf_State *S);
 int lib_gfx_set_add_color(elf_State *S);
 int lib_gfx_set_src_image(elf_State *S);
 int lib_gfx_set_src_rect(elf_State *S);
+
 int lib_gfx_set_offset(elf_State *S);
 int lib_gfx_set_scale(elf_State *S);
+
 int lib_gfx_set_rotation(elf_State *S);
 int lib_gfx_set_center(elf_State *S);
 
@@ -130,6 +132,9 @@ int _get_rect_trans(elf_State *S, int i, kit_Rect *v) {
 	v->y = elf_get_int(S,i++) * _cur_scale.y + _cur_offset.y;
 	v->w = elf_get_int(S,i++) * fabsf(_cur_scale.x);
 	v->h = elf_get_int(S,i++) * fabsf(_cur_scale.y);
+	if (_cur_scale.y < 0) {
+		v->y -= v->h;
+	}
 	return i;
 }
 int _get_color(elf_State *S, int i, kit_Color *v) {

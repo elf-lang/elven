@@ -1,4 +1,9 @@
 
+
+-- parse.c: introduce constant entitites and
+make it so that closures don't capture these.
+
+
 -- parse.c & gen.c: the parser should be the
 one adding the 'this' args.
 
