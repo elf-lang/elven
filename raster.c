@@ -88,11 +88,13 @@ static void _rect(_rect_params *params) {
 			if (pr >= 0 && pr < dst_r.w && pu >= 0 && pu < dst_r.h) {
 				kit_Color color = (kit_Color){255,0,0,255};
 				if (src) {
+					if(flip_x) pr = dst_r.w - 1 - pr;
+					if(flip_y) pu = dst_r.h - 1 - pu;
 					// convert to u v space, then scale
 					int tex_x = pr / dst_r.w * src_r.w;
 					int tex_y = pu / dst_r.h * src_r.h;
-					if(flip_x) tex_x = src->w - 1 - tex_x;
-					if(flip_y) tex_y = src->h - 1 - tex_y;
+					tex_x += src_r.x;
+					tex_y += src_r.y;
 					color = src->pixels[src->w * tex_y + tex_x];
 				}
 				if (color.a) {

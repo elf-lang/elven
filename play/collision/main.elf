@@ -1,6 +1,7 @@
-PI   	::= 3.14159
-TAU  	::= 6.28318
-E  	::= 2.71828
+PI      ::= 3.14159
+TAU     ::= 6.28318
+E       ::= 2.71828
+k_isqrt ::= 0.70710678118 // 1.0 / sqrt(2.0)
 
 rgb ::= fun(r,g,b) ? ({r=r,g=g,b=b,a=255})
 WHITE = rgb(255,255,255,255)
@@ -8,21 +9,37 @@ BLUE  = rgb(32,32,200,255)
 GREEN = rgb(0,128,32,255)
 RED   = rgb(255,32,0,255)
 
-UPSCALE  	::= 2
-WIND_W   	::= 320
-WIND_H   	::= 240
+UPSCALE  	::= 4
+WIND_W   	::= 128 // 320
+WIND_H   	::= 128 // 240
 ASPECT_R 	::= WIND_W / iton(WIND_H)
 CENTER_X 	::= WIND_W / 2
 CENTER_Y 	::= WIND_H / 2
+TILE_SIZE 	::= 8
 
+elf.audio.init()
 VIEW ::= new elf.gfx.Window("Collision!",WIND_W,WIND_H,UPSCALE)
 PRESSED  = elf.gfx.Window.PRESSED
 DOWN 		= elf.gfx.Window.DOWN
 RELEASED = elf.gfx.Window.RELEASED
 
-sign ::= fun(x) ? {
+signz ::= fun(x) ? {
 	if x < 0 ? 	--> -1
-	else        --> +1
+	if x > 0 ? 	--> +1
+	else        -->  0
+}
+abs ::= fun(x) ? {
+	if x < 0 ? --> -x else --> x
+}
+max ::= fun(a,b) ? {
+	if a > b ? --> a else --> b
+}
+min ::= fun(a,b) ? {
+	if a < b ? --> a else --> b
+}
+appr ::= fun(src,dst,acc) ? {
+	if src > dst ? --> max(src-acc,dst)
+	else 			   --> min(src+acc,dst)
 }
 vec2_ ::= {
 	__new=fun(x,y)?{
@@ -39,64 +56,259 @@ vec2 = fun(x,y) ? new vec2_(x,y)
 // #test "hard binding error"
 // warnings := #getwarnings()
 // #assert warnings[0] == 0
+MAX_NJUMPS=1
 
+player_image := elf.gfx.load_image("player.png")
+tiles_image := elf.gfx.load_image("tiles.png")
 sprite ::= {
 	__new=fun(type,x,y,w,h) ? {
 		this.type=type
 		this.x=x
 		this.y=y
+		this.xrem=0
+		this.yrem=0
 		this.w=w??8
 		this.h=h??8
 		this.color=WHITE
-		this.hit_dir=vec2()
 		if(type=="spikes")?{
 			this.color=RED
 		}
-		this.v=vec2()
-		this.m=vec2()
-		this.prev_move=vec2()
-		this.moves=type!="tile"
-		elf.pf("new sprite: ", this)
+		this.spd=vec2()
+		this.remainingdash=0
+		this.dashaccel=vec2()
+		this.dashtargetaccel=vec2()
+		this.dash_effect_time=0
+		this.remainingjumps=MAX_NJUMPS
+		this.jumpbuffer=0
+		this.aircounter=0
+		this.xflip=0
+		this.imageframe=0
+		this.framecounter=0
+		// elf.pf("new sprite: ", this)
 	}
 	draw=fun()?{
-		c := this.color
-		// if this.colliding ? {
-		// 	c = RED
-		// }
+		c := this.color ?? WHITE
 		VIEW:set_color(c.r,c.g,c.b,c.a)
-		VIEW:draw_rect(
-		, this.x
-		, VIEW.res_y - this.y - this.h
-		, this.w
-		, this.h)
+		if this.type=="player" ? {
+			this.framecounter += 1
+			if this.framecounter>8 ?{
+				this.framecounter=0
+				this.imageframe += 1
+				this.imageframe %= 3
+			}
+			VIEW:set_src_image(player_image)
+			VIEW:set_src_rect(this.imageframe*8,0,8,8)
+			x := this.x
+			y := VIEW.res_y - this.y - this.h
+			if this.imageframe % 2 == 1 ? {
+				y -= 1
+			}
+			VIEW:draw_image(
+			, x
+			, y
+			, 8
+			, 8, this.xflip, 0)
+		}else if this.type=="tile"?{
+			VIEW:set_src_image(tiles_image)
+			VIEW:set_src_rect(0,8*2,8,8)
+			x := this.x
+			y := VIEW.res_y - this.y - this.h
+			VIEW:draw_image(x, y, 8, 8)
+		}else{
+			VIEW:draw_rect(this.x, VIEW.res_y - this.y - this.h, this.w, this.h)
+		}
 	}
 	tick=fun(time)?{
-		move := this.m + this.v
-		this.hit_spikes=false
-		this.hit_dir=vec2()
-		this.prev_move=move
-		this.v -= this.v * 0.4 * time
-		this.m = vec2()
-		this:move(move)
+		dash ::= VIEW.keys[' '] & PRESSED
+		input := vec2()
+
+		if VIEW.keys['A'] & DOWN ? input.x -= 1;
+		if VIEW.keys['D'] & DOWN ? input.x += 1;
+		if VIEW.keys['S'] & DOWN ? input.y -= 1;
+		if VIEW.keys['W'] & DOWN ? input.y += 1;
+		if VIEW.keys['W'] & PRESSED ? {
+			this.jumpbuffer = 4
+		} else if this.jumpbuffer > 0 ? {
+			this.jumpbuffer -= 1
+		}
+
+		on_ground := this:get_wall_normal(0,1).y == 1
+
+		if on_ground ? {
+			this.aircounter=0
+			this.color=RED
+			// restore jumps
+			if this.remainingjumps<MAX_NJUMPS ? {
+				this.remainingjumps=MAX_NJUMPS
+				this.color=GREEN
+			}
+		} else {
+			this.aircounter+=1
+			this.color=WHITE
+		}
+
+
+		this.dash_effect_time -=1
+		if this.remainingdash > 0 ? {
+			// init_object(smoke,this.x,this.y)
+			this.remainingdash -= 1
+			this.spd.x=appr(this.spd.x,this.dashtargetaccel.x,this.dashaccel.x)
+			this.spd.y=appr(this.spd.y,this.dashtargetaccel.y,this.dashaccel.y)
+		} else {
+			maxrun := 1
+			accel := 0.5
+			deccel := 0.13
+			on_ice := false
+
+			if on_ground ? {
+				if on_ice ? {
+					accel=0.05
+				}
+			} else {
+				accel=0.4
+			}
+			if abs(this.spd.x) > maxrun ? {
+				this.color=BLUE
+				this.spd.x=appr(this.spd.x,signz(this.spd.x)*maxrun,deccel)
+			} else {
+				// this.color=GREEN
+				this.spd.x=appr(this.spd.x,input.x*maxrun,accel)
+			}
+
+			if this.spd.x != 0 ? {
+				this.xflip = this.spd.x < 0
+			}
+
+
+			// gravity
+			maxfall := 2
+			gravity := 0.21
+			if this.spd.y >= 0.15 ? {
+				gravity *= 0.5
+			}
+			nearwall := this:get_wall_normal(1).x
+			if input.x!=0 && nearwall!=0 ? {
+				maxfall=0.4
+			}
+
+			iff on_ground ? {
+				this.spd.y=appr(this.spd.y,-maxfall,gravity)
+			}
+
+			// -- jump
+			if this.jumpbuffer>0 ? {
+				if this.aircounter==0 ? {
+					// we jumped when on the floor
+					// psfx(1)
+					elf.audio.play("Jump 1.wav")
+					this.jumpbuffer=0
+					this.aircounter=0
+					this.spd.y=2
+					// init_object(smoke,this.x,this.y+4)
+				} else if this.aircounter > 5 ? {
+					// we jumped again when in the air, check
+					// if we have wall supports, if so jump
+					// from them
+					wall_dir := this:get_wall_normal(1).x
+					if wall_dir!=0 ? {
+						elf.audio.play("Jump 1.wav")
+						elf.pf("played!")
+						// psfx(2)
+						this.jumpbuffer=0
+						this.spd.y=2
+						this.spd.x=-wall_dir*(maxrun+1)
+						// if not this.is_ice(wall_dir*3,0) {
+						// 	init_object(smoke,this.x+wall_dir*6,this.y)
+						// }
+					}
+				}
+			}
+
+			// dashing
+			if dash ? {
+				if this.remainingjumps>0 ? {
+					this.remainingjumps-=1
+					this.remainingdash=8
+					this.dash_effect_time=10
+					d_full ::= 5
+					d_half ::= d_full*k_isqrt
+					if input.x!=0 ? {
+						// todo: just normalize the input?
+						if input.y!=0 ? {
+							this.spd.x=input.x*d_half
+							this.spd.y=input.y*d_half
+						} else {
+							this.spd.x=input.x*d_full
+							this.spd.y=0
+						}
+					} else if input.y!=0 ? {
+						this.spd.x=0
+						this.spd.y=input.y*d_full
+					} else {
+						this.spd.x=this.xflip
+						this.spd.y=0
+					}
+
+					this.dashtargetaccel.x=2*signz(this.spd.x)
+					this.dashtargetaccel.y=2*signz(this.spd.y)
+					this.dashaccel.x=1.5
+					this.dashaccel.y=1.5
+					if this.spd.y!=0 ? {
+						this.dashaccel.x*=k_isqrt
+					}
+					if this.spd.x!=0 ? {
+						this.dashaccel.y*=k_isqrt
+					}
+				}else{
+					// brrt...
+				}
+			}
+
+			// move := this.m + this.spd
+		}
+		this:move(this.spd)
 	}
-	overlaps=fun(that,xx,yy)?{
-		--> this.x + this.w > that.x - (xx ?? 0)
-		&&  this.y + this.h > that.y - (yy ?? 0)
-		&&  that.x + that.w > this.x - (xx ?? 0)
-		&&  that.y + that.h > this.y - (yy ?? 0)
+	overlaps=fun(that,x_border,y_border)?{
+		x_border ?= 0
+		y_border ?= 0
+		--> this.x + this.w > that.x - x_border
+		&&  this.y + this.h > that.y - y_border
+		&&  that.x + that.w > this.x - x_border
+		&&  that.y + that.h > this.y - y_border
 	}
-	reach=fun(size)?{
+	get_wall_normal=fun(x_border,y_border)?{
+		x_border ?= 0
+		y_border ?= 0
+		normal := vec2()
 		for that = static_things[...] ? {
-			if this:overlaps(that,size,0) ? {
-				--> true
+			if that == nil ? continue;
+			if this:overlaps(that,x_border,0) ? {
+				normal.x = (this.x < that.x) * 2 - 1
+				break
 			}
 		}
-		--> false
+		for that = static_things[...] ? {
+			if that == nil ? continue;
+			if this:overlaps(that,0,y_border) ? {
+				normal.y = (this.y > that.y) * 2 - 1
+				break
+			}
+		}
+		--> normal
 	}
 	move=fun(move)?{
 		for axis = 0,1 ? {
-			if axis == 0 ? this.x += move.x;
-			else           this.y += move.y;
+			if axis == 0 ? {
+				this.xrem += move.x
+				mov := floor(this.xrem)
+				this.xrem -= mov
+				this.x += mov
+			} else {
+				this.yrem += move.y
+				mov := floor(this.yrem)
+				this.yrem -= mov
+				this.y += mov
+			}
 			tiles ::= {}
 			for that = static_things[...] ? {
 				if that == nil ? {
@@ -114,25 +326,18 @@ sprite ::= {
 						} else if move.x < 0 ? {
 							this.x = that.x + that.w;
 						}
-						this.hit_dir.x=sign(move.x)
-						this.v.x = 0
 					} else {
 						if move.y > 0 ? {
 							this.y = that.y - this.h;
 						} else if move.y < 0 ? {
 							this.y = that.y + that.h;
 						}
-						this.hit_dir.y=sign(move.y)
-						this.v.x = 0
-						this.v.y = 0
 					}
 				}
 			}
 		}
 	}
 }
-
-BLOCK_SIZE = 16
 
 static_things={}
 spikes={}
@@ -141,9 +346,9 @@ platforms={}
 total_time=0
 jump_buffer=1
 wall_sliding=false
-player_spawn:=vec2(BLOCK_SIZE*2,BLOCK_SIZE*2)
+player_spawn:=vec2(TILE_SIZE*2,TILE_SIZE*2)
 new_player=fun()?{
-	player?=new sprite("player",0,0,8,15)
+	player?=new sprite("player",0,0,8,8)
 	player.x=player_spawn.x
 	player.y=player_spawn.y
 	player.v=vec2()
@@ -155,8 +360,8 @@ sprites:add(player)
 
 
 coords_to_tile ::= fun(x,y) ? {
-	tile_x ::= ntoi(floor(x / BLOCK_SIZE))
-	tile_y ::= ntoi(floor(y / BLOCK_SIZE))
+	tile_x ::= ntoi(floor(x / TILE_SIZE))
+	tile_y ::= ntoi(floor(y / TILE_SIZE))
 	key ::= tile_y << 16 | tile_x
 	if tile_y >> 16 ? {
 		elf.pf("invalid tile coordinates, too large: x,y = ", x, ", ", y)
@@ -180,22 +385,22 @@ place_rect ::= fun(x,y,thing) ? {
 		tile_x ::= info.tile_x
 		tile_y ::= info.tile_y
 		key ::= info.key
-		thing ?= new sprite("tile",0,0,BLOCK_SIZE,BLOCK_SIZE)
-		thing.x = tile_x*BLOCK_SIZE
-		thing.y = tile_y*BLOCK_SIZE
+		thing ?= new sprite("tile",0,0,TILE_SIZE,TILE_SIZE)
+		thing.x = tile_x*TILE_SIZE
+		thing.y = tile_y*TILE_SIZE
 		static_things[key] = thing
 	}
 }
 
 for i = 0...20 ? {
-	place_rect(i*BLOCK_SIZE,0)
+	place_rect(i*TILE_SIZE,0)
 }
 for i = 0...15 ? {
-	place_rect(0,i*BLOCK_SIZE)
+	place_rect(0,i*TILE_SIZE)
 }
 
-platforms:add(new sprite("platform",32,32,32,8))
-platforms:add(new sprite("platform",64,32,32,8))
+// platforms:add(new sprite("platform",32,32,32,8))
+// platforms:add(new sprite("platform",64,32,32,8))
 
 spr_names := {"tile","spikes"}
 cur_spr := "tile"
@@ -203,7 +408,9 @@ cur_spr_index := 0
 while VIEW:poll() ? {
 	time ::= VIEW.time
 	total_time += time
-
+	// VIEW:set_color(121,37,45,255)
+	VIEW:set_color(235,150,158,255)
+	VIEW:draw_rect(0,0,VIEW.res_x,VIEW.res_y)
 	mx ::= VIEW.mouse_x
 	my ::= VIEW.res_y - VIEW.mouse_y
 	if VIEW.keys['S'] & PRESSED ? {
@@ -212,55 +419,14 @@ while VIEW:poll() ? {
 		elf.pf("cur_spr: ", cur_spr)
 	}
 	if VIEW.mouse[1] & DOWN ? {
-		place_rect(mx,my,new sprite(cur_spr,0,0,BLOCK_SIZE,BLOCK_SIZE));
+		place_rect(mx,my,new sprite(cur_spr,0,0,TILE_SIZE,TILE_SIZE));
 	}
 	if VIEW.mouse[2]  & DOWN ? unplace_rect(mx,my);
 
 
-	input := vec2()
-	if VIEW.keys['A'] & DOWN ? input.x -= 2;
-	if VIEW.keys['D'] & DOWN ? input.x += 2;
-
-	player.v.y -= 10 * time
-	if player.hit_dir.y == -1 ? {
-		jump_buffer=1
-	}
-	if player.hit_dir.x != 0 ? {
-		if sign(input.x) == player.hit_dir.x ? {
-			wall_sliding=true
-			jump_buffer=1
-		}
-	}
-	wall_support := player:reach(1)
-	if wall_support != true ? {
-		wall_sliding = false
-	}
-	player.color=WHITE
-	if wall_sliding ? {
-		player.v.y *= 0.9
-		player.color=BLUE
-	}
-
-	player.m+=input
-
-	if VIEW.keys['W'] & PRESSED ? {
-		if jump_buffer > 0 ? {
-			if wall_sliding ? {
-				player.v.x = 3 * sign(input.x)
-				player.v.y = 4
-				wall_sliding=false
-			} else {
-				player.v.y = 4
-			}
-			jump_buffer -= 1
-		}
-	}
-
-
-
-	if player.hit_spikes ? {
-		new_player()
-	}
+	// if player.hit_spikes ? {
+	// 	new_player()
+	// }
 
 	VIEW:set_color(255,255,255,255)
 	for spr = sprites[...], static_things[...], platforms[...] ? {
@@ -326,8 +492,8 @@ for ofs_y = -1...2 ? {
 		if ofs_x == 0 && ofs_y == 0 ? {
 			continue
 		}
-		tile_x ::= ntoi(floor(ofs_x + that.x / BLOCK_SIZE))
-		tile_y ::= ntoi(floor(ofs_y + that.y / BLOCK_SIZE))
+		tile_x ::= ntoi(floor(ofs_x + that.x / TILE_SIZE))
+		tile_y ::= ntoi(floor(ofs_y + that.y / TILE_SIZE))
 		key ::= tile_y << 16 | tile_x
 		if rects[key] ? {
 			if that:overlaps(rects[key]) ? {
