@@ -1,3 +1,17 @@
+// todo: this is temporay, we should
+// be able to pass in arguments later...
+
+
+// {
+// 	EDITOR_PATH=".."
+// 	prev ::= elf.get_work_dir()
+// 	elf.change_work_dir("editor")
+// 	load "main.elf"
+// 	elf.change_work_dir(prev)
+// }
+// #eof
+
+
 UPSCALE  	::= 4
 WIND_W   	::= 128 // 320
 WIND_H   	::= 128 // 240
@@ -26,6 +40,7 @@ RELEASED = elf.gfx.Window.RELEASED
 MAX_NJUMPS=1
 
 tiles_image  ::= elf.gfx.load_image("tiles.png")
+tilemap={}
 
 bubbles := {}
 wind_particles = {}
@@ -405,25 +420,12 @@ metathings={
 static_things={}
 
 coords_to_tile ::= fun(x,y) ? {
-	tile_x ::= ntoi(floor(x / TILE_SIZE))
-	tile_y ::= ntoi(floor(y / TILE_SIZE))
-	key ::= tile_y << 16 | tile_x
-	if tile_y >> 16 ? {
-		elf.pf("invalid tile coordinates, too large: x,y = ", x, ", ", y)
-		--> nil
-	} else {
-		--> {key=key,tile_x=tile_x,tile_y=tile_y}
-	}
+	tile_x ::= ntoi(floor(x))
+	tile_y ::= ntoi(floor(y))
+	key ::= "" + tile_x + ";" + tile_y
+	--> {key=key,tile_x=tile_x,tile_y=tile_y}
 }
-unplace_thing ::= fun(x,y) ? {
-	info ::= coords_to_tile(x,y)
-	tile_x ::= info.tile_x
-	tile_y ::= info.tile_y
-	key ::= info.key
-	if static_things[key] ? {
-		static_things:delete(key)
-	}
-}
+
 place_thing ::= fun(x,y,thing) ? {
 	info ::= coords_to_tile(x,y)
 	if info ? {
@@ -443,63 +445,31 @@ place_thing ::= fun(x,y,thing) ? {
 }
 
 load_level=fun()?{
-	file := elf.open_file("map.elf","rb")
-	if file==nil?{
-		for i = 0...20 ? {
-			place_thing(i*TILE_SIZE,0)
-		}
-		for i = 0...15 ? {
-			place_thing(0,i*TILE_SIZE)
-		}
-	}
+	file := elf.open_file("editor_save.elf","rb")
 	defer elf.close_file(file)
-
-	map := elf.const_expr(elf.read_file(file))
-	if map && map.tiles ? {
-		for tile = map.tiles[...]?{
-			place_thing(tile:idx(1)*TILE_SIZE,tile:idx(2)*TILE_SIZE)
-		}
-		for static = map.static[...]?{
-			meta ::= metathings[static:idx(0)]
-			if meta ? {
-				place_thing(static:idx(1)*TILE_SIZE,static:idx(2)*TILE_SIZE,new meta(0,0))
-			}else{
-				elf.err("'",static:idx(0),"': failed to instantiate thing")
+	data := elf.const_expr(elf.read_file(file))
+	if data ? {
+		tileid_to_def ::= {}
+		for group = data.groups[...] ? {
+			for tiledef = group.tiles[...] ? {
+				tileid_to_def[tiledef.id]=tiledef
+				tiledef.group=group
 			}
 		}
-	}
-}
-save_level=fun()?{
-	file := elf.open_file("map.elf","wb")
-	defer elf.close_file(file)
-	// put tiles into their own group to
-	// save on file space when exporting...
-	map := {tiles={},static={}}
-	things := static_things
-	for thing = things[...] ? {
-		if thing==nil?continue;
-		if thing.spr==nil?continue;
-		if thing:_tag=="tile"?{
-			tile:={}
-			tile:add(thing.type)
-			tile:add(ntoi(thing.spr.x/TILE_SIZE))
-			tile:add(ntoi(thing.spr.y/TILE_SIZE))
-			map.tiles:add(tile)
-		}else{
-			static:={}
-			static:add(thing:_tag)
-			static:add(ntoi(thing.spr.x/TILE_SIZE))
-			static:add(ntoi(thing.spr.y/TILE_SIZE))
-			map.static:add(static)
+		for tile = data.tiles[...]?{
+			id::=tile:idx(0)
+			def::=tileid_to_def[id]
+			tile_x::=tile:idx(1)
+			tile_y::=tile:idx(2)
+			key::=coords_to_tile(tile_x,tile_y)
+			tilemap[key]={x=tile_x,y=tile_y,tiledef=def}
+			place_thing(tile_x,tile_y)
 		}
 	}
-	elf.pf("saved: ", map.tiles:tally(), "  tiles")
-	elf.pf("saved: ", map.static:tally(), "  static things")
-	elf.unload(file,map)
 }
 
+
 load_level()
-defer save_level()
 
 get_tile:=fun(x,y)?{
 	x=ntoi(x)
@@ -619,6 +589,9 @@ while view:poll() ? {
 	}
 
 	camera ::= GAME_CAMERA
+	camera.offset.x=-ntoi(floor(player.spr.x/128.0))*128
+	camera.offset.y=(1+ntoi(floor(player.spr.y/128.0)))*128
+
 	view:set_offset(camera.offset.x,camera.offset.y)
 	view:set_scale(camera.scale.x,camera.scale.y)
 	view:set_src_image(tiles_image)
