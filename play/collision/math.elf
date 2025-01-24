@@ -28,6 +28,9 @@ vec2_={
 	}
 	clone=fun()?(vec2(this.x,this.y))
 	signz=fun()?(vec2(signz(this.x),signz(this.y)))
+	lenSq=fun()?(this.x*this.x+this.y*this.y)
+	len=fun()?(sqrt(this.x*this.x+this.y*this.y))
+	norm=fun()?(this/this:len())
 	__add=fun(that)?(vec2(this.x+that.x,this.y+that.y))
 	__sub=fun(that)?(vec2(this.x-that.x,this.y-that.y))
 	__mul=fun(that)?(vec2(this.x*that.x,this.y*that.y))

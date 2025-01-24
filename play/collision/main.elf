@@ -23,7 +23,7 @@ TILE_SIZE 	::= 8
 load "math.elf"
 
 elf.audio.init()
-VIEW ::= new elf.gfx.Window("Collision!",WIND_W,WIND_H,UPSCALE)
+VIEW=new elf.gfx.Window("Collision!",WIND_W,WIND_H,UPSCALE)
 
 // todo: if you set this to a local,
 // the editor's camera is is the same
@@ -42,6 +42,7 @@ MAX_NJUMPS=1
 tiles_image  ::= elf.gfx.load_image("tiles.png")
 tilemap={}
 
+load "entities.elf"
 bubbles := {}
 wind_particles = {}
 for i = 0...8 ? {
@@ -57,320 +58,6 @@ for i = 0...8 ? {
 	})
 }
 
-Sprite={
-	__new=fun(type,x,y,w,h,solid) ? {
-		this.type=type
-		this.x=x
-		this.y=y
-		this.xrem=0
-		this.yrem=0
-		this.w=w??8
-		this.h=h??8
-		this.color=WHITE
-		this.xflip=0
-		this.solid=solid??true
-	}
-	tick=fun()?{}
-	draw=fun()?{
-		VIEW:set_src_rect(0,8*2,8,8)
-		VIEW:draw_image(this.x,this.y,8,8)
-	}
-	tick=fun(time)?{
-	}
-	overlaps=fun(that,x_border,y_border)?{
-		x_border ?= 0
-		y_border ?= 0
-		--> this.x + this.w > that.x - x_border
-		&&  this.y + this.h > that.y - y_border
-		&&  that.x + that.w > this.x - x_border
-		&&  that.y + that.h > this.y - y_border
-	}
-	// todo: this doesn't return the wall normal for the
-	// x axis
-	get_wall_normal=fun(x_border,y_border)?{
-		x_border ?= 0
-		y_border ?= 0
-		normal := vec2()
-		for that_ = static_things[...] ? {
-			if that_ == nil ? continue;
-			that ::= that_.spr ?? that
-			if that.solid!=true ? continue
-			if this:overlaps(that,x_border,0) ? {
-				normal.x = (this.x < that.x) * 2 - 1
-				break
-			}
-		}
-		for that_ = static_things[...] ? {
-			if that_ == nil ? continue;
-			that ::= that_.spr ?? that
-			if that.solid!=true ? continue
-			if this:overlaps(that,0,y_border) ? {
-				normal.y = (this.y > that.y) * 2 - 1
-				break
-			}
-		}
-		--> normal
-	}
-	move=fun(move)?{
-		for axis = 0,1 ? {
-			if axis == 0 ? {
-				this.xrem += move.x
-				mov := floor(this.xrem)
-				this.xrem -= mov
-				this.x += mov
-			} else {
-				this.yrem += move.y
-				mov := floor(this.yrem)
-				this.yrem -= mov
-				this.y += mov
-			}
-
-			tiles ::= {}
-			for that_ = static_things[...] ? {
-				if that_ == nil ? continue;
-				that ::= that_.spr ?? that_
-				if that.solid!=true ? continue;
-				if this:overlaps(that) ? {
-					if that.type == "spikes" ? {
-						this.hit_spikes = true
-					}
-					this.colliding = true
-					that.colliding = true
-					if axis == 0 ? {
-						if move.x > 0 ? {
-							this.x = that.x - this.w;
-						} else if move.x < 0 ? {
-							this.x = that.x + that.w;
-						}
-					} else {
-						if move.y > 0 ? {
-							this.y = that.y - this.h;
-						} else if move.y < 0 ? {
-							this.y = that.y + that.h;
-						}
-					}
-				}
-			}
-
-			// negative coordinates are not valid...
-			if this.x < 0 ? this.x = 0;
-			if this.y < 0 ? this.y = 0;
-
-			// else if this.x + this.w > VIEW.res_x ? this.x = VIEW.res_x - this.w;
-			// else if this.y + this.h > VIEW.res_y ? this.y = VIEW.res_y - this.h;
-
-		}
-	}
-}
-
-Player={
-	_tag="player"
-	__new=fun(x,y)?{
-		this.spr=new Sprite(this:_tag,x,y,8,8)
-		this.imageframe=0
-		this.framecounter=0
-		this.spd=vec2()
-		this.remainingdash=0
-		this.dashaccel=vec2()
-		this.dashtargetaccel=vec2()
-		this.dash_effect_time=0
-		this.remainingjumps=MAX_NJUMPS
-		this.jumpbuffer=0
-		this.aircounter=0
-	}
-	tick=fun(time)?{
-		spr ::= this.spr
-		spr:tick(time)
-
-		dash ::= VIEW.keys[' '] & PRESSED
-		input := vec2()
-
-		if VIEW.keys['A'] & DOWN ? input.x -= 1;
-		if VIEW.keys['D'] & DOWN ? input.x += 1;
-		if VIEW.keys['S'] & DOWN ? input.y -= 1;
-		if VIEW.keys['W'] & DOWN ? input.y += 1;
-		if VIEW.keys['W'] & PRESSED ? {
-			this.jumpbuffer = 4
-		} else if this.jumpbuffer > 0 ? {
-			this.jumpbuffer -= 1
-		}
-
-		on_ground := spr:get_wall_normal(0,1).y == 1
-
-		if on_ground ? {
-			this.aircounter=0
-			this.color=RED
-			// restore jumps
-			if this.remainingjumps<MAX_NJUMPS ? {
-				this.remainingjumps=MAX_NJUMPS
-				this.color=GREEN
-			}
-		} else {
-			this.aircounter+=1
-			this.color=WHITE
-		}
-
-
-		this.dash_effect_time -=1
-		if this.remainingdash > 0 ? {
-			// init_object(smoke,this.x,this.y)
-			this.remainingdash -= 1
-			this.spd.x=appr(this.spd.x,this.dashtargetaccel.x,this.dashaccel.x)
-			this.spd.y=appr(this.spd.y,this.dashtargetaccel.y,this.dashaccel.y)
-		} else {
-			maxrun := 1
-			accel := 0.5
-			deccel := 0.13
-			on_ice := false
-
-			if on_ground ? {
-				if on_ice ? {
-					accel=0.05
-				}
-			} else {
-				accel=0.4
-			}
-			if abs(this.spd.x) > maxrun ? {
-				this.color=BLUE
-				this.spd.x=appr(this.spd.x,signz(this.spd.x)*maxrun,deccel)
-			} else {
-				// this.color=GREEN
-				this.spd.x=appr(this.spd.x,input.x*maxrun,accel)
-			}
-
-			if this.spd.x != 0 ? {
-				spr.xflip = this.spd.x < 0
-			}
-
-
-			// gravity
-			maxfall := 2
-			gravity := 0.21
-			if this.spd.y >= 0.15 ? {
-				gravity *= 0.60
-			}
-			nearwall := spr:get_wall_normal(1).x
-			if input.x!=0 && nearwall!=0 ? {
-				maxfall=0.45
-			}
-
-			iff on_ground ? {
-				this.spd.y=appr(this.spd.y,-maxfall,gravity)
-			}
-
-			// -- jump
-			if this.jumpbuffer>0 ? {
-				if this.aircounter==0 ? {
-					// we jumped when on the floor
-					// psfx(1)
-					elf.audio.play("j0.wav")
-					this.jumpbuffer=0
-					this.aircounter=0
-					this.spd.y=2
-					// init_object(smoke,this.x,this.y+4)
-				} else if this.aircounter > 5 ? {
-					// we jumped again when in the air, check
-					// if we have wall supports, if so jump
-					// from them
-					wall_dir := spr:get_wall_normal(1).x
-					if wall_dir!=0 ? {
-						elf.audio.play("j0.wav")
-						// psfx(2)
-						this.jumpbuffer=0
-						this.spd.y=2
-						this.spd.x=-wall_dir*(maxrun+1)
-						// if not this.is_ice(wall_dir*3,0) {
-						// 	init_object(smoke,this.x+wall_dir*6,this.y)
-						// }
-					}
-				}
-			}
-
-			// dashing
-			if dash ? {
-				if this.remainingjumps>0 ? {
-					elf.audio.play("dash.wav")
-					this.remainingjumps-=1
-					this.remainingdash=8
-					this.dash_effect_time=10
-					d_full ::= 5
-					d_half ::= d_full*k_isqrt
-					if input.x!=0 ? {
-						// todo: just normalize the input?
-						if input.y!=0 ? {
-							this.spd.x=input.x*d_half
-							this.spd.y=input.y*d_half
-						} else {
-							this.spd.x=input.x*d_full
-							this.spd.y=0
-						}
-					} else if input.y!=0 ? {
-						this.spd.x=0
-						this.spd.y=input.y*d_full
-					} else {
-						this.spd.x=spr.xflip
-						this.spd.y=0
-					}
-
-					this.dashtargetaccel.x=2*signz(this.spd.x)
-					this.dashtargetaccel.y=2*signz(this.spd.y)
-					this.dashaccel.x=1.5
-					this.dashaccel.y=1.5
-					if this.spd.y!=0 ? {
-						this.dashaccel.x*=k_isqrt
-					}
-					if this.spd.x!=0 ? {
-						this.dashaccel.y*=k_isqrt
-					}
-				}else{
-					// brrt...
-				}
-			}
-
-			// move := this.m + this.spd
-		}
-		spr:move(this.spd)
-	}
-	draw=fun()?{
-		spr ::= this.spr
-		// this.spr:draw()
-		this.framecounter += 1
-		if this.framecounter>8 ?{
-			this.framecounter=0
-			this.imageframe+=1
-			this.imageframe%=3
-		}
-		x := this.spr.x
-		y := this.spr.y
-		if this.imageframe%2==1 ? {
-			y-=1
-		}
-		imageframe:=this.imageframe
-		if this.spd.x==0 ? {
-			imageframe=0
-		}
-		VIEW:set_src_rect((3*8)+imageframe*8,0,8,8)
-		VIEW:draw_image(x,y,8,8,spr.xflip, 0)
-	}
-}
-
-Key={
-	_tag="key"
-	__new=fun(x,y)?{
-		this.spr=new Sprite(this:_tag,x,y,8,8,false)
-	}
-	draw=fun()?{
-		// this.spr:draw()
-		spr ::= this.spr
-		x := spr.x
-		y := spr.y + sin(total_time * PI * 0.4) * 2
-		VIEW:set_src_rect(8*2,0,8,8)
-		VIEW:draw_image(x,y,8,8,spr.xflip,0)
-	}
-	tick=fun()?{
-		this.spr:tick()
-	}
-}
 
 tile_type_to_coord:={
 	0=vec2(8,1),
@@ -466,6 +153,13 @@ load_level=fun()?{
 				if def.name=="player"?{
 					player_spawn.x=tile_x*TILE_SIZE
 					player_spawn.y=tile_y*TILE_SIZE
+				} else if def.name=="key"?{
+					skull:=new Skull(tile_x*TILE_SIZE,tile_y*TILE_SIZE)
+					skull.props={}
+					skull.props.tick=fun(time)?(skull:tick(time))
+					skull.props.draw=fun()?(skull:draw())
+					ecs_add(skull)
+					// place_thing(tile_x,tile_y,)
 				}
 			}else if def.group.name=="dirt"?{
 				key::=coords_to_tile(tile_x,tile_y)
@@ -500,14 +194,23 @@ spikes={}
 sprites={}
 platforms={}
 total_time=0
-jump_buffer=1
-wall_sliding=false
-new_player=fun()?{
-	player?=new Player(player_spawn.x,player_spawn.y)
+freeze=0
+shake=0
+spawn_player=fun()?{
+	player?=new Player(0,0)
+	player.spr.x=player_spawn.x
+	player.spr.y=player_spawn.y
+	player.dead=false
+	// player.props={tick=fun(time)?{
+	// 	player:tick(time)
+	// },draw=fun()?{
+	// 	player:draw()
+	// }}
+	// ecs_add(player)
 	player.spr.v=vec2()
 	player.spr.m=vec2()
 }
-new_player()
+spawn_player()
 sprites:add(player)
 
 
@@ -521,7 +224,6 @@ while view:poll() ? {
 
 	time ::= view.time
 	total_time += time
-
 
 	// view:set_color(121,37,45,255)
 	view:set_color(235,150,158,255)
@@ -551,91 +253,74 @@ while view:poll() ? {
 		view:draw_rect(draw_x,draw_y,1,1)
 	}
 
-	// if player.hit_spikes ? {
-	// 	new_player()
-	// }
-
 	view:set_color(255,255,255,255)
-	for spr = sprites[...], static_things[...], platforms[...] ? {
-		if spr != nil ? {
-			spr.colliding = false
-		}
-	}
-	for spr = sprites[...] ? {
-		if spr ? {
-			spr:tick(time)
-		}
-	}
-
-	for plat = platforms[...] ? {
-		move := vec2()
-		if plat == platforms:idx(0) ? {
-			move.y = sin(total_time*PI*0.5)*2
-		} else {
-			move.x = sin(total_time*PI*0.5)*2
-		}
-		plat.x+=move.x
-		plat.y+=move.y
-		for that = sprites[...] ? {
-			iff plat:overlaps(that) ? {
-				continue
-			}
-			plat.colliding = true
-			that.colliding = true
-			if plat.y < that.y ? {
-				if that.v.y < 0 ? {
-					that.y = plat.y + plat.h;
-					that.v.y = 0
-					that.v.x = 0
-					that.m.x += move.x
-					// that.x += move.x
-					jump_buffer=1
-				}
-			}
-		}
-	}
 
 	camera ::= GAME_CAMERA
 	camera.offset.x=-ntoi(floor(player.spr.x/128.0))*128
 	camera.offset.y=(1+ntoi(floor(player.spr.y/128.0)))*128
-
 	view:set_offset(camera.offset.x,camera.offset.y)
 	view:set_scale(camera.scale.x,camera.scale.y)
 	view:set_src_image(tiles_image)
+
+	if player.dead?{
+		if freeze==0?{
+			freeze=60
+		}else if freeze==1?{
+			spawn_player()
+		}
+	}
+	if freeze>0?{
+		freeze-=1
+	}
+
+	if freeze<=0?{
+		tick_ecs(time)
+		for spr = sprites[...] ? {
+			if spr ? {
+				spr:tick(time)
+			}
+		}
+	}
+
 	for spr = sprites[...], static_things[...], platforms[...] ? {
 		if spr != nil ? {
 			spr:draw()
 		}
 	}
+
+	draw_ecs()
+
 	view:set_offset(0,0)
 	view:set_scale(1,1)
 }
 
+
 #eof
 
-// #worstbugever
-	// omg, for some reason instead of using
-	// a range, we  use a step, -1,0,2 will
-	// trigger the most weird fatal bug ever,
-	// please look into it, seems that also
-	// the bug goes away if we keep steps but
-	// we remove the if statement ofs_x == 0,
-	// it has to do with ofs_x, because the
-	// if statement can remain just not us
-	// checking ofs
-for ofs_y = -1...2 ? {
-	for ofs_x = -1...2 ? {
-		if ofs_x == 0 && ofs_y == 0 ? {
+for plat = platforms[...] ? {
+	move := vec2()
+	if plat == platforms:idx(0) ? {
+		move.y = sin(total_time*PI*0.5)*2
+	} else {
+		move.x = sin(total_time*PI*0.5)*2
+	}
+	plat.x+=move.x
+	plat.y+=move.y
+	for that = sprites[...] ? {
+		iff plat:overlaps(that) ? {
 			continue
 		}
-		tile_x ::= ntoi(floor(ofs_x + that.x / TILE_SIZE))
-		tile_y ::= ntoi(floor(ofs_y + that.y / TILE_SIZE))
-		key ::= tile_y << 16 | tile_x
-		if rects[key] ? {
-			if that:overlaps(rects[key]) ? {
-				results:add(rects[key])
+		plat.colliding = true
+		that.colliding = true
+		if plat.y < that.y ? {
+			if that.v.y < 0 ? {
+				that.y = plat.y + plat.h;
+				that.v.y = 0
+				that.v.x = 0
+				that.m.x += move.x
+					// that.x += move.x
+				jump_buffer=1
 			}
 		}
 	}
 }
---> results

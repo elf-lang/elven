@@ -146,6 +146,35 @@ in augmenting documentation and self-optimization.
 
 - collision.elf: #bug fix #worstbugever
 
+#eof
+
+// #worstbugever
+	// omg, for some reason instead of using
+	// a range, we  use a step, -1,0,2 will
+	// trigger the most weird fatal bug ever,
+	// please look into it, seems that also
+	// the bug goes away if we keep steps but
+	// we remove the if statement ofs_x == 0,
+	// it has to do with ofs_x, because the
+	// if statement can remain just not us
+	// checking ofs
+for ofs_y = -1...2 ? {
+	for ofs_x = -1...2 ? {
+		if ofs_x == 0 && ofs_y == 0 ? {
+			continue
+		}
+		tile_x ::= ntoi(floor(ofs_x + that.x / TILE_SIZE))
+		tile_y ::= ntoi(floor(ofs_y + that.y / TILE_SIZE))
+		key ::= tile_y << 16 | tile_x
+		if rects[key] ? {
+			if that:overlaps(rects[key]) ? {
+				results:add(rects[key])
+			}
+		}
+	}
+}
+--> results
+
 - parse.c, core.c: #feature constants should
 not become closure captures...
 

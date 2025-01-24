@@ -72,8 +72,8 @@ RED   = rgb(255,32,0,255)
 
 // the default autotiler
 
-same  ::= fun(cen,nei) ? (nei != nil && nei.group == cen.group)
-air   ::= fun(cen,nei) ? (nei == nil || nei.group != cen.group)
+same  ::= fun(cen,nei) ? (nei != nil && nei.tiledef.group == cen.tiledef.group)
+air   ::= fun(cen,nei) ? (nei == nil || nei.tiledef.group != cen.tiledef.group)
 DEFAULT_AUTOTILER={
 	// rules = {left,right,top,bottom}
 	{param="TOP_LEFT"   , rules = {air,same,air,same}},
@@ -208,15 +208,25 @@ unplace_tile ::= fun(x,y) ? {
 	}
 }
 
+require_field=fun(table,name)?{
+	if table[name]==nil?{
+		elf.pf("requires field: ", name)
+		elf.error("crashing")
+	}
+}
 place_tile ::= fun(x,y,tiledef) ? {
+	require_field(tiledef,"id")
+	require_field(tiledef,"group")
+	require_field(tiledef,"coords")
 	info 	::= coords_to_tile(x,y)
 	key 	::= info.key
 	if static_tiles[key] == nil ? {
 		tile_x ::= info.tile_x
 		tile_y ::= info.tile_y
 		static_tiles[key]={x=tile_x,y=tile_y,tiledef=tiledef}
-		psfx()
+		--> true
 	}
+	--> false
 }
 
 load_save::=fun()?{
@@ -226,7 +236,7 @@ load_save::=fun()?{
 	data ::= elf.const_expr(contents)
 	if data!=nil?{
 		tileid_to_def ::= {}
-		for group = data.groups[...] ? {
+		for group = TILE_GROUPS[...] ? {
 			for tiledef = group.tiles[...] ? {
 				tileid_to_def[tiledef.id]=tiledef
 				tiledef.group=group
@@ -237,6 +247,7 @@ load_save::=fun()?{
 			x ::= tiledata:idx(1)
 			y ::= tiledata:idx(2)
 			def ::= tileid_to_def[id]
+			if def.group==nil?elf.pf("error:!");
 			place_tile(x,y,def)
 		}
 	}
@@ -291,7 +302,10 @@ for group = TILE_GROUPS[...] ? {
 autotile=fun(x,y) ? {
 	tile := get_tile(x,y)
 	group ::= tile.tiledef.group
-	if group==nil?elf.pf("error, invalid tile: ", tile);
+	if group==nil ? {
+		elf.pf("error, invalid tile: ", tile);
+		--> nil
+	}
 	autotiler ::= group.autotiler
 	if autotiler!=nil ? {
 		for param = autotiler[...] ? {
@@ -311,6 +325,8 @@ autotile=fun(x,y) ? {
 			--> def
 		}
 		--> group.param_to_tiledef.DEFAULT
+	}else{
+	elf.pf("HERE!")
 	}
 	--> nil
 }
@@ -404,7 +420,12 @@ while view:poll() ? {
 			// place tiles
 
 			if view.mouse[1] & KEY_DOWN ? {
-				place_tile(mouse_subtile_pos_x,mouse_subtile_pos_y,active_tile_group.tiles:idx(active_tile_index));
+				tiledef ::= active_tile_group.tiles:idx(active_tile_index)
+				tiledef.group?=active_tile_group
+				placed ::= place_tile(mouse_subtile_pos_x,mouse_subtile_pos_y,tiledef);
+				if placed?{
+					psfx()
+				}
 			} else if view.mouse[2] & KEY_DOWN ? {
 				unplace_tile(mouse_subtile_pos_x,mouse_subtile_pos_y);
 			}
@@ -479,9 +500,16 @@ while view:poll() ? {
 		strings := {
 			"group: " + active_tile_group.name + ", " + active_tile_index
 		}
+		tile := get_tile(mouse_tile_pos_x,mouse_tile_pos_y)
+		if tile ? {
+		strings:add("-- TILE")
+		strings:add("	+- " + tile.tiledef.group)
+		}
+		y := 1
 		for string = strings[...] ? {
-			view:draw_text(string,1,1, 0,0,0,255)
-			view:draw_text(string,0,0, 255,255, 255,255)
+			view:draw_text(string,1,y+1, 0,0,0,255)
+			view:draw_text(string,0,y+0, 255,255, 255,255)
+			y+=15
 		}
 	}
 

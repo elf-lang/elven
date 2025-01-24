@@ -1,0 +1,365 @@
+// Meh...
+// entities_with_prop={}
+// entities_with_tag={}
+// entities={}
+
+// ecs_rem=fun(e)?{
+// 	entities:delete(e)
+// 	props:=(e.props ?? {}):keys()
+// 	for prop=props[...]?{
+// 		entities_with_prop[prop]:delete(e)
+// 	}
+// 	tags:=(e.tags ?? {}):keys()
+// 	for tag=tags[...]?{
+// 		entities_with_tag[tag]:delete(e)
+// 	}
+// }
+// ecs_add=fun(e)?{
+// 	if entities[e]==nil?{
+// 		entities[e]=e
+// 		props:=(e.props ?? {}):keys()
+// 		for prop=props[...]?{
+// 			entities_with_prop[prop]?={}
+// 			if entities_with_prop[prop][e]==nil?{
+// 				entities_with_prop[prop][e]=e
+// 			}else elf.error("internal error: this entity is already added under this prop")
+// 		}
+// 		tags:=(e.tags ?? {}):keys()
+// 		for tag=tags[...]?{
+// 			entities_with_tag[tag]?={}
+// 			if entities_with_tag[tag][e]==nil?{
+// 				entities_with_tag[tag][e]=e
+// 			}else elf.error("internal error: this entity is already added under this tag")
+// 		}
+// 	}else elf.error("internal error: this entity is already added")
+// }
+// tick_ecs=fun(time)?{
+// 	entities::=entities_with_prop["tick"]??{}
+// 	for e=entities[...]?{
+// 		if e==nil?continue;
+// 		e.props.tick(time)
+// 	}
+// }
+// draw_ecs=fun()?{
+// 	entities::=entities_with_prop["draw"]??{}
+// 	for e=entities[...]?{
+// 		if e==nil?continue;
+// 		e.props.draw()
+// 	}
+// }
+
+Sprite={
+	__new=fun(type,x,y,w,h,solid) ? {
+		this.type=type
+		this.x=x
+		this.y=y
+		this.xrem=0
+		this.yrem=0
+		this.w=w??8
+		this.h=h??8
+		this.color=WHITE
+		this.xflip=0
+		this.solid=solid??true
+	}
+	tick=fun()?{}
+	draw=fun()?{
+		// VIEW:set_src_rect(0,8*2,8,8)
+		// VIEW:draw_image(this.x,this.y,8,8)
+	}
+	tick=fun(time)?{
+	}
+	overlaps=fun(that,x_border,y_border)?{
+		x_border ?= 0
+		y_border ?= 0
+		--> this.x + this.w > that.x - x_border
+		&&  this.y + this.h > that.y - y_border
+		&&  that.x + that.w > this.x - x_border
+		&&  that.y + that.h > this.y - y_border
+	}
+	// todo: this doesn't return the wall normal for the
+	// x axis
+	get_wall_normal=fun(x_border,y_border)?{
+		x_border ?= 0
+		y_border ?= 0
+		if this.y-y_border<=0 ?{
+			--> vec2(0,1)
+		}
+		normal := vec2()
+		for that_ = static_things[...] ? {
+			if that_ == nil ? continue;
+			that ::= that_.spr ?? that
+			if that.solid!=true ? continue
+			if this:overlaps(that,x_border,0) ? {
+				normal.x = (this.x > that.x) * 2 - 1
+				break
+			}
+		}
+		for that_ = static_things[...] ? {
+			if that_ == nil ? continue;
+			that ::= that_.spr ?? that
+			if that.solid!=true ? continue
+			if this:overlaps(that,0,y_border) ? {
+				normal.y = (this.y > that.y) * 2 - 1
+				break
+			}
+		}
+		--> normal
+	}
+	move=fun(move)?{
+		for axis = 0,1 ? {
+			if axis == 0 ? {
+				this.xrem += move.x
+				mov := floor(this.xrem)
+				this.xrem -= mov
+				this.x += mov
+			} else {
+				this.yrem += move.y
+				mov := floor(this.yrem)
+				this.yrem -= mov
+				this.y += mov
+			}
+
+			tiles ::= {}
+			for that_ = static_things[...] ? {
+				if that_ == nil ? continue;
+				that ::= that_.spr ?? that_
+				if that.solid!=true ? continue;
+				if this:overlaps(that) ? {
+					if that.type == "spikes" ? {
+						this.hit_spikes = true
+					}
+					this.colliding = true
+					that.colliding = true
+					if axis == 0 ? {
+						if move.x > 0 ? {
+							this.x = that.x - this.w;
+						} else if move.x < 0 ? {
+							this.x = that.x + that.w;
+						}
+					} else {
+						if move.y > 0 ? {
+							this.y = that.y - this.h;
+						} else if move.y < 0 ? {
+							this.y = that.y + that.h;
+						}
+					}
+				}
+			}
+
+			// negative coordinates are not valid...
+			if this.x < 0 ? this.x = 0;
+			if this.y < 0 ? this.y = 0;
+
+			// else if this.x + this.w > VIEW.res_x ? this.x = VIEW.res_x - this.w;
+			// else if this.y + this.h > VIEW.res_y ? this.y = VIEW.res_y - this.h;
+
+		}
+	}
+}
+
+Player={
+	_tag="player"
+	__new=fun(x,y)?{
+		this.spr=new Sprite(this:_tag,x,y,8,8)
+		this.imageframe=0
+		this.framecounter=0
+		this.spd=vec2()
+		this.remainingdash=0
+		this.dashacc=vec2()
+		this.dashspd=vec2()
+		this.dash_effect_time=0
+		this.remainingjumps=MAX_NJUMPS
+		this.jumpbuffer=0
+		this.aircounter=0
+	}
+	tick=fun(time)?{
+		spr ::= this.spr
+		spr:tick(time)
+
+		dash ::= VIEW.keys[' '] & PRESSED
+		input := vec2()
+
+		if VIEW.keys['A'] & DOWN ? input.x -= 1;
+		if VIEW.keys['D'] & DOWN ? input.x += 1;
+		if VIEW.keys['S'] & DOWN ? input.y -= 1;
+		if VIEW.keys['W'] & DOWN ? input.y += 1;
+		if VIEW.keys['W'] & PRESSED ? {
+			this.jumpbuffer = 4
+		} else if this.jumpbuffer > 0 ? {
+			this.jumpbuffer -= 1
+		}
+
+		walls ::= spr:get_wall_normal(1,1)
+		on_ground := walls.y>0
+
+		if on_ground ? {
+			this.aircounter=0
+			this.color=RED
+			// restore jumps
+			if this.remainingjumps<MAX_NJUMPS ? {
+				this.remainingjumps=MAX_NJUMPS
+				this.color=GREEN
+			}
+		} else {
+			this.aircounter+=1
+			this.color=WHITE
+		}
+
+
+		this.dash_effect_time -=1
+		if this.remainingdash > 0 ? {
+			// init_object(smoke,this.x,this.y)
+			this.remainingdash -= 1
+			this.spd.x=appr(this.spd.x,this.dashspd.x,this.dashacc.x)
+			this.spd.y=appr(this.spd.y,this.dashspd.y,this.dashacc.y)
+		} else {
+			maxrun := 1
+			accel := 0.5
+			deccel := 0.13
+			on_ice := false
+
+			if on_ground ? {
+				if on_ice ? {
+					accel=0.05
+				}
+			} else {
+				accel=0.4
+			}
+			if abs(this.spd.x) > maxrun ? {
+				this.color=BLUE
+				this.spd.x=appr(this.spd.x,signz(this.spd.x)*maxrun,deccel)
+			} else {
+				// this.color=GREEN
+				this.spd.x=appr(this.spd.x,input.x*maxrun,accel)
+			}
+
+			if this.spd.x != 0 ? {
+				spr.xflip = this.spd.x < 0
+			}
+
+
+			// gravity
+			maxfall := 2
+			gravity := 0.21
+			if this.spd.y >= 0.15 ? {
+				gravity *= 0.60
+			}
+			// nearwall := spr:get_wall_normal(1).x
+			if input.x!=0 && walls.x!=0 ? {
+				maxfall=0.45
+			}
+
+			iff on_ground ? {
+				this.spd.y=appr(this.spd.y,-maxfall,gravity)
+			}
+
+			// jump
+			if this.jumpbuffer>0 ? {
+				if this.aircounter==0 ? {
+					// we jumped when on the floor
+					elf.audio.play("j0.wav")
+					this.jumpbuffer=0
+					this.aircounter=0
+					this.spd.y=2
+				} else if this.aircounter > 5 ? {
+					// we jumped again when in the air, check
+					// if we have wall supports, if so jump
+					// from them
+					if walls.x!=0 ? {
+						elf.audio.play("j0.wav")
+						this.jumpbuffer=0
+						this.spd.y=1.75
+						this.spd.x=walls.x*(maxrun+1)
+					}
+				}
+			}
+
+			// dashing
+			if dash ? {
+				if this.remainingjumps>0 ? {
+					elf.audio.play("dash.wav")
+					this.remainingjumps-=1
+					this.remainingdash=6
+					this.dash_effect_time=10
+					d_full ::= 4
+					dir ::= input
+					if dir.x==0&&dir.y==0?{
+						dir=vec2(spr.xflip,0)
+					} else dir=dir:norm()
+					this.spd=dir*d_full
+					this.dashspd=dir*2
+					this.dashacc=vec2(1.1,1.1):norm()
+					if this.spd.y>0?{
+						this.dashspd.y*=0.75
+					}
+				}else{
+					// brrt...
+				}
+			}
+
+			// move := this.m + this.spd
+		}
+		spr:move(this.spd)
+	}
+	draw=fun()?{
+		spr ::= this.spr
+		// this.spr:draw()
+		this.framecounter += 1
+		if this.framecounter>8 ?{
+			this.framecounter=0
+			this.imageframe+=1
+			this.imageframe%=3
+		}
+		x := this.spr.x
+		y := this.spr.y
+		if this.imageframe%2==1 ? {
+			y-=1
+		}
+		imageframe:=this.imageframe
+		if this.spd.x==0 ? {
+			imageframe=0
+		}
+		VIEW:set_src_rect((3*8)+imageframe*8,0,8,8)
+		VIEW:draw_image(x,y,8,8,spr.xflip, 0)
+	}
+}
+
+Skull={
+	_tag="skull"
+	__new=fun(x,y)?{
+		this.spr=new Sprite(this:_tag,x,y,8,8,false)
+	}
+	draw=fun()?{
+		// this.spr:draw()
+		spr ::= this.spr
+		x := spr.x
+		y := spr.y + sin(total_time * PI * 0.4) * 2
+		VIEW:set_src_rect(0,8*2,8,8)
+		VIEW:draw_image(x,y,8,8,spr.xflip,0)
+	}
+	tick=fun()?{
+		if this.spr:overlaps(player.spr) ? {
+			player.dead=true
+		}
+		// this.spr:tick()
+	}
+}
+
+
+Key={
+	_tag="key"
+	__new=fun(x,y)?{
+		this.spr=new Sprite(this:_tag,x,y,8,8,false)
+	}
+	draw=fun()?{
+		// this.spr:draw()
+		spr ::= this.spr
+		x := spr.x
+		y := spr.y + sin(total_time * PI * 0.4) * 2
+		VIEW:set_src_rect(8*2,0,8,8)
+		VIEW:draw_image(x,y,8,8,spr.xflip,0)
+	}
+	tick=fun()?{
+		this.spr:tick()
+	}
+}
