@@ -444,6 +444,7 @@ place_thing ::= fun(x,y,thing) ? {
 	}
 }
 
+player_spawn:=vec2(VIEW.res_x*0.5,VIEW.res_y*0.5)
 load_level=fun()?{
 	file := elf.open_file("editor_save.elf","rb")
 	defer elf.close_file(file)
@@ -461,9 +462,16 @@ load_level=fun()?{
 			def::=tileid_to_def[id]
 			tile_x::=tile:idx(1)
 			tile_y::=tile:idx(2)
-			key::=coords_to_tile(tile_x,tile_y)
-			tilemap[key]={x=tile_x,y=tile_y,tiledef=def}
-			place_thing(tile_x,tile_y)
+			if def.group.name=="spawners"?{
+				if def.name=="player"?{
+					player_spawn.x=tile_x*TILE_SIZE
+					player_spawn.y=tile_y*TILE_SIZE
+				}
+			}else if def.group.name=="dirt"?{
+				key::=coords_to_tile(tile_x,tile_y)
+				tilemap[key]={x=tile_x,y=tile_y,tiledef=def}
+				place_thing(tile_x,tile_y)
+			}
 		}
 	}
 }
@@ -494,7 +502,6 @@ platforms={}
 total_time=0
 jump_buffer=1
 wall_sliding=false
-player_spawn:=vec2(VIEW.res_x*0.5,VIEW.res_y*0.5)
 new_player=fun()?{
 	player?=new Player(player_spawn.x,player_spawn.y)
 	player.spr.v=vec2()

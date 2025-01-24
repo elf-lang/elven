@@ -13,8 +13,8 @@ TILE_GROUPS={
 		name="spawners",
 		id=0,
 		tiles={
-			{id=0 + 0, coords=P(2,0), name="player"},
-			{id=0 + 1, coords=P(3,0), name="key"},
+			{id=0 + 0, coords=P(2,0), name="key"},
+			{id=0 + 1, coords=P(3,0), name="player"},
 		}
 	},
 	{

@@ -244,14 +244,11 @@ load_save::=fun()?{
 load_save()
 
 save::=fun()?{
-	file ::= elf.open_file(SAVE_FILE_PATH + "\\" + SAVE_FILE_NAME,"wb")
-	defer elf.close_file(file)
-
 	data := {tileset_name=TILESET_NAME,tileset_path=TILESET_PATH,groups={},tiles={}}
 	for group = TILE_GROUPS[...] ? {
 		group_data := {name=group.name,tiles={}}
 		for tiledef = group.tiles[...] ? {
-			group_data.tiles:add({id=tiledef.id,coords=tiledef.coords})
+			group_data.tiles:add({id=tiledef.id,coords=tiledef.coords,name=tiledef.name})
 		}
 		data.groups:add(group_data)
 	}
@@ -263,8 +260,10 @@ save::=fun()?{
 		tile:add(thing.y)
 		data.tiles:add(tile)
 	}
-	elf.pf("saved: ", data.tiles:tally(), "  tiles")
+	file ::= elf.open_file(SAVE_FILE_PATH + "\\" + SAVE_FILE_NAME,"wb")
 	elf.unload(file,data)
+	elf.close_file(file)
+	elf.pf("saved: ", data.tiles:tally(), "  tiles")
 }
 defer save()
 
