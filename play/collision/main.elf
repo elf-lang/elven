@@ -1,14 +1,3 @@
-PI      ::= 3.14159
-TAU     ::= 6.28318
-E       ::= 2.71828
-k_isqrt ::= 0.70710678118 // 1.0 / sqrt(2.0)
-
-rgb ::= fun(r,g,b) ? ({r=r,g=g,b=b,a=255})
-WHITE = rgb(255,255,255,255)
-BLUE  = rgb(32,32,200,255)
-GREEN = rgb(0,128,32,255)
-RED   = rgb(255,32,0,255)
-
 UPSCALE  	::= 4
 WIND_W   	::= 128 // 320
 WIND_H   	::= 128 // 240
@@ -16,7 +5,6 @@ ASPECT_R 	::= WIND_W / iton(WIND_H)
 CENTER_X 	::= WIND_W / 2
 CENTER_Y 	::= WIND_H / 2
 TILE_SIZE 	::= 8
-EDITOR_MODE=false
 
 load "math.elf"
 
@@ -32,16 +20,12 @@ PRESSED  = elf.gfx.Window.PRESSED
 DOWN 		= elf.gfx.Window.DOWN
 RELEASED = elf.gfx.Window.RELEASED
 
-load "editor.elf"
-editor := new Editor(VIEW,GAME_CAMERA,8)
-
 // #test "hard binding error"
 // warnings := #getwarnings()
 // #assert warnings[0] == 0
 MAX_NJUMPS=1
 
-player_image 	::= elf.gfx.load_image("player.png")
-tiles_image 	::= elf.gfx.load_image("tiles.png")
+tiles_image  ::= elf.gfx.load_image("tiles.png")
 
 bubbles := {}
 wind_particles = {}
@@ -58,8 +42,8 @@ for i = 0...8 ? {
 	})
 }
 
-sprite ::= {
-	__new=fun(type,x,y,w,h) ? {
+Sprite={
+	__new=fun(type,x,y,w,h,solid) ? {
 		this.type=type
 		this.x=x
 		this.y=y
@@ -68,9 +52,108 @@ sprite ::= {
 		this.w=w??8
 		this.h=h??8
 		this.color=WHITE
-		if(type=="spikes")?{
-			this.color=RED
+		this.xflip=0
+		this.solid=solid??true
+	}
+	tick=fun()?{}
+	draw=fun()?{
+		VIEW:set_src_rect(0,8*2,8,8)
+		VIEW:draw_image(this.x,this.y,8,8)
+	}
+	tick=fun(time)?{
+	}
+	overlaps=fun(that,x_border,y_border)?{
+		x_border ?= 0
+		y_border ?= 0
+		--> this.x + this.w > that.x - x_border
+		&&  this.y + this.h > that.y - y_border
+		&&  that.x + that.w > this.x - x_border
+		&&  that.y + that.h > this.y - y_border
+	}
+	// todo: this doesn't return the wall normal for the
+	// x axis
+	get_wall_normal=fun(x_border,y_border)?{
+		x_border ?= 0
+		y_border ?= 0
+		normal := vec2()
+		for that_ = static_things[...] ? {
+			if that_ == nil ? continue;
+			that ::= that_.spr ?? that
+			if that.solid!=true ? continue
+			if this:overlaps(that,x_border,0) ? {
+				normal.x = (this.x < that.x) * 2 - 1
+				break
+			}
 		}
+		for that_ = static_things[...] ? {
+			if that_ == nil ? continue;
+			that ::= that_.spr ?? that
+			if that.solid!=true ? continue
+			if this:overlaps(that,0,y_border) ? {
+				normal.y = (this.y > that.y) * 2 - 1
+				break
+			}
+		}
+		--> normal
+	}
+	move=fun(move)?{
+		for axis = 0,1 ? {
+			if axis == 0 ? {
+				this.xrem += move.x
+				mov := floor(this.xrem)
+				this.xrem -= mov
+				this.x += mov
+			} else {
+				this.yrem += move.y
+				mov := floor(this.yrem)
+				this.yrem -= mov
+				this.y += mov
+			}
+
+			tiles ::= {}
+			for that_ = static_things[...] ? {
+				if that_ == nil ? continue;
+				that ::= that_.spr ?? that_
+				if that.solid!=true ? continue;
+				if this:overlaps(that) ? {
+					if that.type == "spikes" ? {
+						this.hit_spikes = true
+					}
+					this.colliding = true
+					that.colliding = true
+					if axis == 0 ? {
+						if move.x > 0 ? {
+							this.x = that.x - this.w;
+						} else if move.x < 0 ? {
+							this.x = that.x + that.w;
+						}
+					} else {
+						if move.y > 0 ? {
+							this.y = that.y - this.h;
+						} else if move.y < 0 ? {
+							this.y = that.y + that.h;
+						}
+					}
+				}
+			}
+
+			// negative coordinates are not valid...
+			if this.x < 0 ? this.x = 0;
+			if this.y < 0 ? this.y = 0;
+
+			// else if this.x + this.w > VIEW.res_x ? this.x = VIEW.res_x - this.w;
+			// else if this.y + this.h > VIEW.res_y ? this.y = VIEW.res_y - this.h;
+
+		}
+	}
+}
+
+Player={
+	_tag="player"
+	__new=fun(x,y)?{
+		this.spr=new Sprite(this:_tag,x,y,8,8)
+		this.imageframe=0
+		this.framecounter=0
 		this.spd=vec2()
 		this.remainingdash=0
 		this.dashaccel=vec2()
@@ -79,40 +162,11 @@ sprite ::= {
 		this.remainingjumps=MAX_NJUMPS
 		this.jumpbuffer=0
 		this.aircounter=0
-		this.xflip=0
-		this.imageframe=0
-		this.framecounter=0
-		// elf.pf("new sprite: ", this)
-	}
-	draw=fun()?{
-		c := this.color ?? WHITE
-		VIEW:set_color(c.r,c.g,c.b,c.a)
-		if this.type=="player" ? {
-			this.framecounter += 1
-			if this.framecounter>8 ?{
-				this.framecounter=0
-				this.imageframe += 1
-				this.imageframe %= 3
-			}
-			VIEW:set_src_image(player_image)
-			VIEW:set_src_rect(this.imageframe*8,0,8,8)
-			x := this.x
-			y := this.y
-			if this.imageframe % 2 == 1 ? {
-				y -= 1
-			}
-			VIEW:draw_image(x, y, 8, 8, this.xflip, 0)
-		}else if this.type=="tile"?{
-			VIEW:set_src_image(tiles_image)
-			VIEW:set_src_rect(0,8*2,8,8)
-			x := this.x
-			y := this.y
-			VIEW:draw_image(x, y, 8, 8)
-		}else{
-			VIEW:draw_rect(this.x, VIEW.res_y - this.y - this.h, this.w, this.h)
-		}
 	}
 	tick=fun(time)?{
+		spr ::= this.spr
+		spr:tick(time)
+
 		dash ::= VIEW.keys[' '] & PRESSED
 		input := vec2()
 
@@ -126,7 +180,7 @@ sprite ::= {
 			this.jumpbuffer -= 1
 		}
 
-		on_ground := this:get_wall_normal(0,1).y == 1
+		on_ground := spr:get_wall_normal(0,1).y == 1
 
 		if on_ground ? {
 			this.aircounter=0
@@ -170,7 +224,7 @@ sprite ::= {
 			}
 
 			if this.spd.x != 0 ? {
-				this.xflip = this.spd.x < 0
+				spr.xflip = this.spd.x < 0
 			}
 
 
@@ -180,7 +234,7 @@ sprite ::= {
 			if this.spd.y >= 0.15 ? {
 				gravity *= 0.60
 			}
-			nearwall := this:get_wall_normal(1).x
+			nearwall := spr:get_wall_normal(1).x
 			if input.x!=0 && nearwall!=0 ? {
 				maxfall=0.45
 			}
@@ -203,7 +257,7 @@ sprite ::= {
 					// we jumped again when in the air, check
 					// if we have wall supports, if so jump
 					// from them
-					wall_dir := this:get_wall_normal(1).x
+					wall_dir := spr:get_wall_normal(1).x
 					if wall_dir!=0 ? {
 						elf.audio.play("j0.wav")
 						// psfx(2)
@@ -239,7 +293,7 @@ sprite ::= {
 						this.spd.x=0
 						this.spd.y=input.y*d_full
 					} else {
-						this.spd.x=this.xflip
+						this.spd.x=spr.xflip
 						this.spd.y=0
 					}
 
@@ -260,106 +314,95 @@ sprite ::= {
 
 			// move := this.m + this.spd
 		}
-		this:move(this.spd)
+		spr:move(this.spd)
 	}
-	overlaps=fun(that,x_border,y_border)?{
-		x_border ?= 0
-		y_border ?= 0
-		--> this.x + this.w > that.x - x_border
-		&&  this.y + this.h > that.y - y_border
-		&&  that.x + that.w > this.x - x_border
-		&&  that.y + that.h > this.y - y_border
-	}
-	// todo: this doesn't return the wall normal for the
-	// x axis
-	get_wall_normal=fun(x_border,y_border)?{
-		x_border ?= 0
-		y_border ?= 0
-		normal := vec2()
-		for that = static_things[...] ? {
-			if that == nil ? continue;
-			if this:overlaps(that,x_border,0) ? {
-				normal.x = (this.x < that.x) * 2 - 1
-				break
-			}
+	draw=fun()?{
+		spr ::= this.spr
+		// this.spr:draw()
+		this.framecounter += 1
+		if this.framecounter>8 ?{
+			this.framecounter=0
+			this.imageframe+=1
+			this.imageframe%=3
 		}
-		for that = static_things[...] ? {
-			if that == nil ? continue;
-			if this:overlaps(that,0,y_border) ? {
-				normal.y = (this.y > that.y) * 2 - 1
-				break
-			}
+		x := this.spr.x
+		y := this.spr.y
+		if this.imageframe%2==1 ? {
+			y-=1
 		}
-		--> normal
-	}
-	move=fun(move)?{
-		for axis = 0,1 ? {
-			if axis == 0 ? {
-				this.xrem += move.x
-				mov := floor(this.xrem)
-				this.xrem -= mov
-				this.x += mov
-			} else {
-				this.yrem += move.y
-				mov := floor(this.yrem)
-				this.yrem -= mov
-				this.y += mov
-			}
-
-			tiles ::= {}
-			for that = static_things[...] ? {
-				if that == nil ? {
-					continue
-				}
-				if this:overlaps(that) ? {
-					if that.type == "spikes" ? {
-						this.hit_spikes = true
-					}
-					this.colliding = true
-					that.colliding = true
-					if axis == 0 ? {
-						if move.x > 0 ? {
-							this.x = that.x - this.w;
-						} else if move.x < 0 ? {
-							this.x = that.x + that.w;
-						}
-					} else {
-						if move.y > 0 ? {
-							this.y = that.y - this.h;
-						} else if move.y < 0 ? {
-							this.y = that.y + that.h;
-						}
-					}
-				}
-			}
-
-			// if this.x < 0 ? this.x = 0;
-			// else if this.x + this.w > VIEW.res_x ? this.x = VIEW.res_x - this.w;
-			// if this.y < 0 ? this.y = 0;
-			// else if this.y + this.h > VIEW.res_y ? this.y = VIEW.res_y - this.h;
-
+		imageframe:=this.imageframe
+		if this.spd.x==0 ? {
+			imageframe=0
 		}
+		VIEW:set_src_rect((3*8)+imageframe*8,0,8,8)
+		VIEW:draw_image(x,y,8,8,spr.xflip, 0)
 	}
 }
+
+Key={
+	_tag="key"
+	__new=fun(x,y)?{
+		this.spr=new Sprite(this:_tag,x,y,8,8,false)
+	}
+	draw=fun()?{
+		// this.spr:draw()
+		spr ::= this.spr
+		x := spr.x
+		y := spr.y + sin(total_time * PI * 0.4) * 2
+		VIEW:set_src_rect(8*2,0,8,8)
+		VIEW:draw_image(x,y,8,8,spr.xflip,0)
+	}
+	tick=fun()?{
+		this.spr:tick()
+	}
+}
+
+tile_type_to_coord:={
+	0=vec2(8,1),
+
+	1=vec2(10+0,0),
+	2=vec2(10+1,0),
+	3=vec2(10+2,0),
+
+	4=vec2(10+0,1),
+	5=vec2(10+1,1),
+	6=vec2(10+2,1),
+
+	7=vec2(10+0,2),
+	8=vec2(10+1,2),
+	9=vec2(10+2,2),
+}
+TYPE_TO_NAME={"floor"}
+Tile={
+	_tag="tile"
+	__new=fun(x,y)?{
+		this.type=0
+		this.spr=new Sprite(this:_tag,x,y,8,8)
+	}
+	draw=fun()?{
+		// this.spr:draw()
+		spr ::= this.spr
+		x := spr.x
+		y := spr.y
+		c := tile_type_to_coord[this.type]
+		VIEW:set_src_rect(c.x*8,c.y*8,8,8)
+		VIEW:draw_image(x,y,8,8,spr.xflip,0)
+	}
+	tick=fun()?{
+		this.spr:tick()
+	}
+}
+
+metathings={
+	"key"=Key,
+	"player"=Player,
+	"tile"=Tile
+}
+
+///////////////////////////
+// level loading / editing
 
 static_things={}
-spikes={}
-sprites={}
-platforms={}
-total_time=0
-jump_buffer=1
-wall_sliding=false
-player_spawn:=vec2(TILE_SIZE*2,TILE_SIZE*2)
-new_player=fun()?{
-	player?=new sprite("player",0,0,8,8)
-	player.x=player_spawn.x
-	player.y=player_spawn.y
-	player.v=vec2()
-	player.m=vec2()
-}
-new_player()
-sprites:add(player)
-
 
 coords_to_tile ::= fun(x,y) ? {
 	tile_x ::= ntoi(floor(x / TILE_SIZE))
@@ -372,7 +415,7 @@ coords_to_tile ::= fun(x,y) ? {
 		--> {key=key,tile_x=tile_x,tile_y=tile_y}
 	}
 }
-unplace_rect ::= fun(x,y) ? {
+unplace_thing ::= fun(x,y) ? {
 	info ::= coords_to_tile(x,y)
 	tile_x ::= info.tile_x
 	tile_y ::= info.tile_y
@@ -381,36 +424,123 @@ unplace_rect ::= fun(x,y) ? {
 		static_things:delete(key)
 	}
 }
-place_rect ::= fun(x,y,thing) ? {
+place_thing ::= fun(x,y,thing) ? {
 	info ::= coords_to_tile(x,y)
 	if info ? {
 		tile_x ::= info.tile_x
 		tile_y ::= info.tile_y
 		key ::= info.key
-		thing ?= new sprite("tile",0,0,TILE_SIZE,TILE_SIZE)
-		thing.x = tile_x*TILE_SIZE
-		thing.y = tile_y*TILE_SIZE
+		thing ?= new Tile(0,0)
+		if thing.spr != nil ? {
+			thing.spr.x = tile_x*TILE_SIZE
+			thing.spr.y = tile_y*TILE_SIZE
+		}else{
+			thing.x = tile_x*TILE_SIZE
+			thing.y = tile_y*TILE_SIZE
+		}
 		static_things[key] = thing
 	}
 }
 
-for i = 0...20 ? {
-	place_rect(i*TILE_SIZE,0)
+load_level=fun()?{
+	file := elf.open_file("map.elf","rb")
+	if file==nil?{
+		for i = 0...20 ? {
+			place_thing(i*TILE_SIZE,0)
+		}
+		for i = 0...15 ? {
+			place_thing(0,i*TILE_SIZE)
+		}
+	}
+	defer elf.close_file(file)
+
+	map := elf.const_expr(elf.read_file(file))
+	if map && map.tiles ? {
+		for tile = map.tiles[...]?{
+			place_thing(tile:idx(1)*TILE_SIZE,tile:idx(2)*TILE_SIZE)
+		}
+		for static = map.static[...]?{
+			meta ::= metathings[static:idx(0)]
+			if meta ? {
+				place_thing(static:idx(1)*TILE_SIZE,static:idx(2)*TILE_SIZE,new meta(0,0))
+			}else{
+				elf.err("'",static:idx(0),"': failed to instantiate thing")
+			}
+		}
+	}
 }
-for i = 0...15 ? {
-	place_rect(0,i*TILE_SIZE)
+save_level=fun()?{
+	file := elf.open_file("map.elf","wb")
+	defer elf.close_file(file)
+	// put tiles into their own group to
+	// save on file space when exporting...
+	map := {tiles={},static={}}
+	things := static_things
+	for thing = things[...] ? {
+		if thing==nil?continue;
+		if thing.spr==nil?continue;
+		if thing:_tag=="tile"?{
+			tile:={}
+			tile:add(thing.type)
+			tile:add(ntoi(thing.spr.x/TILE_SIZE))
+			tile:add(ntoi(thing.spr.y/TILE_SIZE))
+			map.tiles:add(tile)
+		}else{
+			static:={}
+			static:add(thing:_tag)
+			static:add(ntoi(thing.spr.x/TILE_SIZE))
+			static:add(ntoi(thing.spr.y/TILE_SIZE))
+			map.static:add(static)
+		}
+	}
+	elf.pf("saved: ", map.tiles:tally(), "  tiles")
+	elf.pf("saved: ", map.static:tally(), "  static things")
+	elf.unload(file,map)
 }
 
-// platforms:add(new sprite("platform",32,32,32,8))
-// platforms:add(new sprite("platform",64,32,32,8))
+load_level()
+defer save_level()
 
-spr_names := {"tile","spikes"}
-cur_spr := "tile"
+get_tile:=fun(x,y)?{
+	x=ntoi(x)
+	y=ntoi(y)
+	info ::= coords_to_tile(x*TILE_SIZE,y*TILE_SIZE)
+	if info ? {
+		tile_x ::= info.tile_x
+		tile_y ::= info.tile_y
+		key ::= info.key
+		tile := static_things[key]
+		if tile && tile:_tag=="tile" ? {
+			--> tile
+		}
+	}
+	--> nil
+}
+
+
+spikes={}
+sprites={}
+platforms={}
+total_time=0
+jump_buffer=1
+wall_sliding=false
+player_spawn:=vec2(VIEW.res_x*0.5,VIEW.res_y*0.5)
+new_player=fun()?{
+	player?=new Player(player_spawn.x,player_spawn.y)
+	player.spr.v=vec2()
+	player.spr.m=vec2()
+}
+new_player()
+sprites:add(player)
+
+
+// platforms:add(new Sprite("platform",32,32,32,8))
+// platforms:add(new Sprite("platform",64,32,32,8))
+
 cur_spr_index := 0
 
 view ::= VIEW
 while view:poll() ? {
-
 
 	time ::= view.time
 	total_time += time
@@ -444,11 +574,6 @@ while view:poll() ? {
 		view:draw_rect(draw_x,draw_y,1,1)
 	}
 
-	if view.keys['S'] & PRESSED ? {
-		cur_spr = spr_names:idx(cur_spr_index)
-		cur_spr_index = (cur_spr_index + 1) % spr_names:tally()
-		elf.pf("cur_spr: ", cur_spr)
-	}
 	// if player.hit_spikes ? {
 	// 	new_player()
 	// }
@@ -494,70 +619,16 @@ while view:poll() ? {
 	}
 
 	camera ::= GAME_CAMERA
-	if EDITOR_MODE ? {
-		camera = editor.camera
-	}
-	if GAME_CAMERA == editor.camera ? {
-		elf.pf("this an error")
-	}
 	view:set_offset(camera.offset.x,camera.offset.y)
 	view:set_scale(camera.scale.x,camera.scale.y)
+	view:set_src_image(tiles_image)
 	for spr = sprites[...], static_things[...], platforms[...] ? {
 		if spr != nil ? {
 			spr:draw()
 		}
 	}
-
 	view:set_offset(0,0)
 	view:set_scale(1,1)
-	if view.keys['Q'] & PRESSED ? {
-		EDITOR_MODE^=1
-		elf.pf("EDITOR_MODE: ", EDITOR_MODE)
-	}
-	if EDITOR_MODE ? {
-
-		editor.tile_placement_mode?=false
-		if view.keys[' '] & PRESSED ? {
-			editor.tile_placement_mode^=true
-		}
-		if editor.tile_placement_mode ? {
-			mouse ::= editor:get_mouse_pos()
-			if view.mouse[1] & DOWN ? {
-				place_rect(mouse.x,mouse.y,new sprite(cur_spr,0,0,TILE_SIZE,TILE_SIZE));
-			}
-			if view.mouse[2] & DOWN ? {
-				unplace_rect(mouse.x,mouse.y);
-			}
-		} else {
-			editor:do_panning()
-		}
-		editor:draw()
-		// } else {
-		// 	if (view.mouse[1]|view.mouse[2]) & KEY_DOWN ? {
-		// 		remove := false
-		// 		if view.mouse[2] & KEY_DOWN ? {
-		// 			remove = true
-		// 		}
-
-		// 		iff this.offgrid_mode ? {
-		// 			pos := vec2(mouse_tile_pos_x,mouse_tile_pos_y)
-		// 			if tile_placement_mode == "tiles" ? {
-		// 				place_tile(mouse_tile_pos_x,mouse_tile_pos_y,this.current_tile_group_name,this.current_tile_variant,remove)
-		// 			} else if tile_placement_mode == "grass" ? {
-		// 				place_grass_tile(pos,this.current_tile_group_name,this.current_tile_variant,remove)
-		// 			}
-		// 		}
-		// 	} else if (view.mouse[1]|view.mouse[2]) & KEY_RELEASED ? {
-		// 		remove := false
-		// 		if (view.mouse[2] & KEY_RELEASED) ? {
-		// 			remove = true
-		// 		}
-		// 		if this.offgrid_mode ? {
-		// 			add_offgrid_tile(vec2(mouse_subtile_pos_x,mouse_subtile_pos_y),this.current_tile_group_name,this.current_tile_variant,remove)
-		// 		}
-		// 	}
-		// }
-	}
 }
 
 #eof

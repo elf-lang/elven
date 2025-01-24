@@ -1,80 +1,9 @@
+load "math.elf"
 
-KEY_PRESSED  ::= elf.gfx.Window.PRESSED
-KEY_DOWN 	 ::= elf.gfx.Window.DOWN
-KEY_RELEASED ::= elf.gfx.Window.RELEASED
-
-
-Editor = {
-	__new = fun(view,camera,tile_size) ? {
-		this.tile_size=tile_size
-		this.view=view
-		this.offset_minus_mouse=vec2()
-		this.camera=camera:clone()
-	}
-	do_panning = fun() ? {
-		view 		::= this.view
-		mouse_x 	::= view.mouse_x
-		mouse_y 	::= view.mouse_y
-		cam 	::= this.camera
-		offset_x ::= cam.offset.x
-		offset_y ::= cam.offset.y
-		if view.mouse[1] & KEY_PRESSED ? {
-			this.dragging = true
-			this.offset_minus_mouse.x = cam.offset.x - mouse_x
-			this.offset_minus_mouse.y = cam.offset.y - mouse_y
-		}
-		if view.mouse[1] & KEY_DOWN ? {
-			if this.dragging ? {
-				cam.offset.x = this.offset_minus_mouse.x + mouse_x
-				cam.offset.y = this.offset_minus_mouse.y + mouse_y
-			}
-		}
-	}
-	get_mouse_pos = fun() ? {
-		view ::= this.view
-		mouse_x 					::= view.mouse_x
-		mouse_y 					::= view.mouse_y
-		cam 					::= this.camera
-		scale 					::= cam.scale.x
-		offset_x 				::= cam.offset.x
-		offset_y 				::= cam.offset.y
-		tile_size 				::= this.tile_size
-		mouse_world_x 			::= (mouse_x - offset_x) / iton(cam.scale.x)
-		mouse_world_y 			::= (mouse_y - offset_y) / iton(cam.scale.y)
-		--> vec2(mouse_world_x,mouse_world_y)
-	}
-	draw = fun() ? {
-		view ::= this.view
-		mouse_x 					::= view.mouse_x
-		mouse_y 					::= view.mouse_y
-		mouse 					::= vec2(mouse_x,mouse_y)
-		cam 					   ::= this.camera
-		scale 					::= cam.scale.x
-		offset_x 				::= cam.offset.x
-		offset_y 				::= cam.offset.y
-		tile_size 				::= this.tile_size
-		mouse_world_x 			::= (mouse_x - offset_x) / iton(cam.scale.x)
-		mouse_world_y 			::= (mouse_y - offset_y) / iton(cam.scale.y)
-		mouse_subtile_pos_x 	::= mouse_world_x / tile_size
-		mouse_subtile_pos_y 	::= mouse_world_y / tile_size
-		mouse_tile_pos_x 		::= ntoi(floor(mouse_subtile_pos_x))
-		mouse_tile_pos_y 		::= ntoi(floor(mouse_subtile_pos_y))
-
-		if view.keys['Z'] & KEY_PRESSED ? {
-			this.camera:zoom_point(mouse,1)
-		}
-		if view.keys['X'] & KEY_PRESSED ? {
-			this.camera:zoom_point(mouse,-1)
-		}
-		draw_grid(view,tile_size)
-	}
-}
-
-draw_grid = fun(view,cell_size) ? {
-	cam 		::= this.camera
-	scale 		::= cam.scale.x
-	offset_y 	:=  ntoi(floor(cam.offset.y))
-	offset_x 	:=  ntoi(floor(cam.offset.x))
+draw_editor_grid = fun(view,camera,cell_size) ? {
+	scale 		::= camera.scale.x
+	offset_y 	:=  ntoi(floor(camera.offset.y))
+	offset_x 	:=  ntoi(floor(camera.offset.x))
 	cell_size *= scale
 	grid_size_x ::= view.res_x / cell_size + 1
 	grid_size_y ::= view.res_y / cell_size + 1
@@ -90,4 +19,335 @@ draw_grid = fun(view,cell_size) ? {
 	view:draw_rect(offset_x,0,1,view.res_y)
 	view:set_color(0,255,0,255*0.80)
 	view:draw_rect(0,offset_y,view.res_x,1)
+}
+
+UPSCALE  	::= 2
+WIND_W   	::= 320*2
+WIND_H   	::= 240*2
+ASPECT_R 	::= WIND_W / iton(WIND_H)
+CENTER_X 	::= WIND_W / 2
+CENTER_Y 	::= WIND_H / 2
+TILE_SIZE 	::= 8
+
+elf.audio.init()
+view 				::= new elf.gfx.Window("Editor!",WIND_W,WIND_H,UPSCALE)
+KEY_PRESSED  	::= elf.gfx.Window.PRESSED
+KEY_DOWN 	 	::= elf.gfx.Window.DOWN
+KEY_RELEASED 	::= elf.gfx.Window.RELEASED
+
+camera ::= new Camera(vec2(0,0),vec2(1,-1))
+
+// -- global variables
+load "editor_config.elf"
+background_color 	::= BACKGROUND_COLOR ?? rgb(19,60,150,81)
+tile_size 			::= TILE_SIZE ?? 16
+tileset           ::= TILESET
+tile_groups 		::= tileset.tile_groups
+
+KEY_BINDINGS ?= {}
+
+KEY_BINDINGS.RUN_AUTOTILER ?= {}
+KEY_BINDINGS.RUN_AUTOTILER.toggle_key='F'
+KEY_BINDINGS.RUN_AUTOTILER.enable_key=' '
+
+KEY_BINDINGS.PAN ?= {}
+KEY_BINDINGS.PAN.toggle_key='V'
+KEY_BINDINGS.PAN.enable_key=' '
+
+KEY_BINDINGS.SWITCH_TILE_GROUP?={}
+KEY_BINDINGS.SWITCH_TILE_GROUP.enable_key='W'
+KEY_BINDINGS.SWITCH_TILE_GROUP.toggle_key='W'
+
+KEY_BINDINGS.SWITCH_TILE?={}
+KEY_BINDINGS.SWITCH_TILE.enable_key='E'
+KEY_BINDINGS.SWITCH_TILE.toggle_key='E'
+
+
+
+toggles ::= {}
+
+psfx ::= fun(name)?{
+	elf.audio.play(name??"tap.wav")
+}
+
+check_released::=fun(name)?{
+	binding ::= KEY_BINDINGS[name]
+	if view.keys[binding.toggle_key] & KEY_RELEASED ? {
+		psfx()
+		--> true
+	}
+	--> false
+}
+
+check_action::=fun(name)?{
+	binding ::= KEY_BINDINGS[name]
+	if view.keys[binding.toggle_key] & KEY_RELEASED ? {
+		psfx()
+		toggles[name]?=0
+		toggles[name]^=1
+	}
+	enable := view.keys[binding.enable_key] & KEY_DOWN
+	--> toggles[name] || enable
+}
+
+active_tilegroup_index := 0
+active_tile_index := 0
+tileset_image 	:= elf.gfx.load_image(tileset.path)
+
+offset_minus_mouse=vec2()
+
+
+//
+// # tilemap
+//
+tilemap ::= {}
+
+coords_to_tile ::= fun(x,y) ? {
+	tile_x ::= ntoi(floor(x))
+	tile_y ::= ntoi(floor(y))
+	key ::= "" + tile_x + ";" + tile_y
+	--> {key=key,tile_x=tile_x,tile_y=tile_y}
+}
+
+get_tile ::= fun(x,y) ? {
+	key ::= coords_to_tile(x,y).key
+	--> tilemap[key]
+}
+
+
+unplace_tile ::= fun(x,y) ? {
+	info ::= coords_to_tile(x,y)
+	tile_x ::= info.tile_x
+	tile_y ::= info.tile_y
+	key ::= info.key
+	if tilemap[key] ? {
+		tilemap:delete(key)
+		spread_autotile(tile_x,tile_y)
+	}
+}
+
+place_tile ::= fun(x,y,group,index) ? {
+	info ::= coords_to_tile(x,y)
+	tile_x ::= info.tile_x
+	tile_y ::= info.tile_y
+	key ::= info.key
+	if tilemap[key] == nil ? {
+		subimage ::= group.tiles[index]
+		if subimage != nil ? {
+			tilemap[key]={x=tile_x,y=tile_y,group=group,index=index,subimage=subimage}
+			spread_autotile(tile_x,tile_y)
+			psfx()
+			elf.pf("placing tile: ", tile_x, ", ", tile_y, ", ", key, ", ", subimage)
+		} else {
+			elf.pf("error!")
+		}
+	}
+}
+
+//
+// # autotiler
+//
+
+same  ::= fun(cen,nei) ? (nei != nil && nei.group == cen.group)
+air   ::= fun(cen,nei) ? (nei == nil || nei.group != cen.group)
+regular_patcher ::= {
+	// rules = {left,right,top,bottom}
+	{variant = "top_left"			, rules = {air,same,air,same}},
+	{variant = "top_center"			, rules = {same,same,air,same}},
+	{variant = "top_right"			, rules = {same,air,air,same}},
+	{variant = "middle_left"		, rules = {air,same,same,same}},
+	{variant = "middle_center"		, rules = {same,same,same,same}},
+	{variant = "middle_right"		, rules = {same,air,same,same}},
+	{variant = "bottom_left"		, rules = {air,same,same,air}},
+	{variant = "bottom_center"		, rules = {same,same,same,air}},
+	{variant = "bottom_right"		, rules = {same,air,same,air}},
+}
+variant_name_to_variant_index ::= {
+	"top_left"      = 0
+	"top_center"    = 1
+	"top_right" 	 = 2
+
+	"middle_left" 	 = 3
+	"middle_center" = 4
+	"middle_right"  = 5
+
+	"bottom_left" 	 = 6
+	"bottom_center" = 7
+	"bottom_right"  = 8
+}
+autotile=fun(x,y,patcher) ? {
+	patcher ?= regular_patcher
+	tile := get_tile(x,y)
+	if tile.group.autotile==true ? {
+		for param = patcher[...] ? {
+			rules ::= param.rules
+			tile.failed_rule=0
+			if true!=rules[0](tile,get_tile(x-1,y)) ? continue;
+			tile.failed_rule=1
+			if true!=rules[1](tile,get_tile(x+1,y)) ? continue;
+			tile.failed_rule=2
+			if true!=rules[2](tile,get_tile(x,y+1)) ? continue;
+			tile.failed_rule=3
+			if true!=rules[3](tile,get_tile(x,y-1)) ? continue;
+			tile.failed_rule=nil
+			var := variant_name_to_variant_index[param.variant]
+			--> var
+		}
+	}
+	--> nil
+}
+
+autotile_tasks={}
+num_autotile_tasks=0
+add_autotile_task::=fun(x,y)?{
+	key ::= coords_to_tile(x,y).key
+	autotile_tasks[key]?={x=x,y=y}
+	num_autotile_tasks+=1
+}
+
+spread_autotile=fun(x,y)?{
+	// add_autotile_task(x,y)
+}
+
+run_autotiler = fun() ? {
+	for tile = tilemap[...] ? {
+		if tile == nil ? continue;
+		index ::= autotile(tile.x,tile.y)
+		if index != nil ? {
+			subimage := tile.group.tiles[1+index]
+			if subimage ? {
+				tile.subimage=subimage
+			} else {
+				elf.pf("error: no subimage found for this index, ", tile.group.tiles)
+			}
+		}
+	}
+}
+
+cursor_images := {
+	hand_grab=elf.gfx.load_image("Micro Icon Pack\\Micro Icon Pack\\Computer Systems\\4. Hand Grab.png")
+}
+
+// elf.gfx.save_image("test.png",cursor_images.hand_grab)
+
+while view:poll() ? {
+
+	mouse_x 					::= view.mouse_x
+	mouse_y 					::= view.mouse_y
+	mouse 					::= vec2(mouse_x,mouse_y)
+	scale 					::= camera.scale.x
+	offset_x 				::= camera.offset.x
+	offset_y 				::= camera.offset.y
+	mouse_world_x 			::= (mouse_x - offset_x) / iton(camera.scale.x)
+	mouse_world_y 			::= (mouse_y - offset_y) / iton(camera.scale.y)
+	mouse_subtile_pos_x 	::= mouse_world_x / tile_size
+	mouse_subtile_pos_y 	::= mouse_world_y / tile_size
+	mouse_tile_pos_x 		::= ntoi(floor(mouse_subtile_pos_x))
+	mouse_tile_pos_y 		::= ntoi(floor(mouse_subtile_pos_y))
+
+	// if autotile_tasks:tally() ? {
+	// 	task := autotile_tasks:xrem(0)
+	// 	key := coords_to_tile(task.x,task.y).key
+	// 	autotile_tasks[key]=nil
+	// 	index ::= autotile(x,y)
+	// 	if index != nil ? {
+	// 		subimage := tile.group.tiles[1+index]
+	// 		if subimage ? {
+	// 			tile.subimage=subimage
+	// 			add_autotile_task(x,y-1)
+	// 			add_autotile_task(x,y+1)
+	// 			add_autotile_task(x-1,y)
+	// 			add_autotile_task(x+1,y)
+	// 		} else {
+	// 			elf.pf("error: no subimage found for this index, ", tile.group.tiles)
+	// 		}
+	// 	}
+	// }
+
+	if check_released("SWITCH_TILE_GROUP") ? {
+		active_tilegroup_index += 1
+		active_tilegroup_index %= tile_groups:tally()
+	}
+
+	active_tile_group ::= tile_groups:idx(active_tilegroup_index)
+
+
+	if check_released("SWITCH_TILE") ? {
+		active_tile_index += 1
+		active_tile_index %= active_tile_group.tiles:tally()
+	}
+
+	current_tile ::= active_tile_group.tiles:idx(active_tile_index)
+
+
+	if check_released("RUN_AUTOTILER") ? {
+		run_autotiler()
+	}
+	if check_action("PAN") ? {
+		if view.mouse[1] & KEY_PRESSED ? {
+			dragging = true
+			offset_minus_mouse.x = camera.offset.x - mouse_x
+			offset_minus_mouse.y = camera.offset.y - mouse_y
+		}
+		if view.mouse[1] & KEY_DOWN ? {
+			if dragging ? {
+				camera.offset.x = offset_minus_mouse.x + mouse_x
+				camera.offset.y = offset_minus_mouse.y + mouse_y
+			}
+		}
+	}else{
+		//
+		// -- place tiles
+		//
+		if view.mouse[1] & KEY_DOWN ? {
+			place_tile(mouse_subtile_pos_x,mouse_subtile_pos_y,active_tile_group,active_tile_index);
+		} else if view.mouse[2] & KEY_DOWN ? {
+			unplace_tile(mouse_subtile_pos_x,mouse_subtile_pos_y);
+		}
+	}
+
+
+	if view.keys['Z'] & KEY_PRESSED ? {
+		camera:zoom_point(mouse,1)
+	}
+	if view.keys['X'] & KEY_PRESSED ? {
+		camera:zoom_point(mouse,-1)
+	}
+
+
+
+	// -- draw
+	// draw background
+	view:set_color(background_color.r,background_color.g,background_color.b,background_color.a)
+	view:draw_rect(0,0,view.res_x,view.res_y)
+
+	view:set_offset(camera.offset.x,camera.offset.y)
+	view:set_scale(camera.scale.x,camera.scale.y)
+	view:set_src_image(tileset_image)
+	for tile = tilemap[...] ? {
+		if tile==nil ? continue;
+		view:set_src_rect(tile.subimage.x*tile_size,tile.subimage.y*tile_size,tile_size,tile_size)
+		view:draw_image(tile.x*tile_size,tile.y*tile_size)
+		if tile.failed_rule!=nil ? {
+			view:draw_text("" + tile.failed_rule, tile.x*tile_size,tile.y*tile_size,255,255,255,255)
+		}
+	}
+
+	view:set_offset(0,0)
+	view:set_scale(1,1)
+
+	draw_editor_grid(view,camera,tile_size)
+	// view:set_color()
+	strings := {
+		"group: " + active_tile_group.name + ", " + active_tile_index
+	}
+	for string = strings[...] ? {
+		view:draw_text(string,1,1, 0,0,0,255)
+		view:draw_text(string,0,0, 255,255, 255,255)
+	}
+
+	view:set_color(255,255,255,255)
+	view:set_src_image(cursor_images.hand_grab)
+	view:draw_image(mouse_x,mouse_y)
+	view:draw_rect(mouse_x,mouse_y,2,2)
 }

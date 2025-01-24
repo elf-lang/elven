@@ -1,3 +1,7 @@
+PI      = 3.14159
+TAU     = 6.28318
+E       = 2.71828
+k_isqrt = 0.70710678118 // 1.0 / sqrt(2.0)
 
 signz=fun(x) ? {
 	if x < 0 ? 	--> -1
@@ -57,3 +61,9 @@ Camera={
 		this.scale = new_scale
 	}
 }
+
+rgb=fun(r,g,b) ? ({r=r,g=g,b=b,a=255})
+WHITE = rgb(255,255,255,255)
+BLUE  = rgb(32,32,200,255)
+GREEN = rgb(0,128,32,255)
+RED   = rgb(255,32,0,255)

@@ -72,23 +72,6 @@ check_tile_solid = fun(pos) ? {
 	--> tile !! solid_tiles[tile.type]
 }
 
-autotile := fun(x,y,patcher) ? {
-	patcher ?= regular_patcher
-	tile := get_tile(x,y)
-	for param = patcher[...] ? {
-		rules ::= param.rules
-		iff rules[0](tile,get_tile(x-1,y)) ? {continue}
-		iff rules[1](tile,get_tile(x+1,y)) ? {continue}
-		iff rules[2](tile,get_tile(x,y+1)) ? {continue}
-		iff rules[3](tile,get_tile(x,y-1)) ? {continue}
-		var := variant_name_to_variant_index[param.variant]
-		--> var
-	}
-	--> nil
-}
-
-
-
 add_offgrid_tile = fun(pos,type,var,remove) ? {
 	remove ?= false
 	if remove ? {

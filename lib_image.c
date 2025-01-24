@@ -1,27 +1,30 @@
-/* todo: switch to using stb's */
+// freaking love stb
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb\stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb\stb_image_write.h"
 
-int lib_image_create(elf_State *S);
-int lib_image_load_image(elf_State *S);
-int lib_image_replace_colors(elf_State *S);
-int lib_image_mask(elf_State *S);
+int lib_gfx_make_image(elf_State *S);
+int lib_gfx_load_image(elf_State *S);
+int lib_gfx_save_image(elf_State *S);
+int lib_gfx_repl_image_colors(elf_State *S);
+int lib_gfx_make_image_mask(elf_State *S);
 
+static elf_CBinding lib_image[]={
+	{"load_image",lib_gfx_load_image},
+	{"save_image",lib_gfx_save_image},
+	{"repl_image_colors",lib_gfx_repl_image_colors},
+	{"make_image_mask",lib_gfx_make_image_mask},
+};
 
-void lib_image_include(elf_State *S) {
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.load_image"))
-	,	VCFN(lib_image_load_image));
+// void lib_image_include(elf_State *S) {
+// 	elf_table_set(S->M->globals,VSTR(elf_new_string(S,"elf.gfx.load_image")),VCFN(lib_gfx_load_image));
+// 	elf_table_set(S->M->globals,VSTR(elf_new_string(S,"elf.gfx.save_image")),VCFN(lib_gfx_save_image));
+// 	elf_table_set(S->M->globals,VSTR(elf_new_string(S,"elf.gfx.image_replace_colors")),VCFN(lib_gfx_repl_image_colors));
+// 	elf_table_set(S->M->globals,VSTR(elf_new_string(S,"elf.gfx.image_mask")),VCFN(lib_gfx_make_image_mask));
+// }
 
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.image_replace_colors"))
-	,	VCFN(lib_image_replace_colors));
-
-
-	elf_table_set(S->M->globals
-	,	VSTR(elf_new_string(S,"elf.gfx.image_mask"))
-	,	VCFN(lib_image_mask));
-}
-
-int lib_image_create(elf_State *S) {
+int lib_gfx_make_image(elf_State *S) {
 	int w = elf_get_int(S,0);
 	int h = elf_get_int(S,1);
 	kit_Image *img = kit_create_image(w,h);
@@ -34,18 +37,45 @@ int lib_image_create(elf_State *S) {
 	return 1;
 }
 
-int lib_image_load_image(elf_State *S) {
-	char *name = elf_get_text(S,0);
-	kit_Image *img = kit_load_image_file(name);
-	elf_Table *tab = elf_new_table(S);
-	elf_tsets_int(tab,elf_new_string(S,"@ptr"),(elf_Int)(img));
-	elf_tsets_int(tab,elf_new_string(S,"width"),!img ? 0 : img->w);
-	elf_tsets_int(tab,elf_new_string(S,"height"),!img ? 0 : img->h);
-	elf_push_table(S,tab);
+int lib_gfx_save_image(elf_State *S) {
+	char *name=elf_get_text(S,0);
+	elf_Table *tab=elf_get_table(S,1);
+	kit_Image *img=(kit_Image *)elf_table_get(tab,VSTR(elf_new_string(S,"@ptr"))).x_int;
+	int res=stbi_write_png(name,img->w,img->h,4,img->pixels,img->w*4);
+	elf_push_int(S,res);
 	return 1;
 }
 
-int lib_image_replace_colors(elf_State *S) {
+int lib_gfx_load_image(elf_State *S) {
+	char *name = elf_get_text(S,0);
+
+	kit_Image *img;
+	if (name){
+		int n=0;
+		img=calloc(1,sizeof(*img));
+		//todo:
+		img->pixels=(kit_Color*)stbi_load(name,&img->w,&img->h,&n,4);
+		//todo:
+		for(int i=0;i<img->w*img->h;i++){
+			int r=img->pixels[i].r;
+			img->pixels[i].r=img->pixels[i].b;
+			img->pixels[i].b=r;
+		}
+	}
+	// kit_Image *img = kit_load_image_file(name);
+	if(img){
+		elf_Table *tab = elf_new_table(S);
+		elf_tsets_int(tab,elf_new_string(S,"@ptr"),(elf_Int)(img));
+		elf_tsets_int(tab,elf_new_string(S,"width"),!img ? 0 : img->w);
+		elf_tsets_int(tab,elf_new_string(S,"height"),!img ? 0 : img->h);
+		elf_push_table(S,tab);
+	}else{
+		elf_push_nil(S);
+	}
+	return 1;
+}
+
+int lib_gfx_repl_image_colors(elf_State *S) {
 
 	int i = 0;
 
@@ -79,7 +109,7 @@ int lib_image_replace_colors(elf_State *S) {
 	return 1;
 }
 
-int lib_image_mask(elf_State *S) {
+int lib_gfx_make_image_mask(elf_State *S) {
 	int i = 0;
 	elf_Table *tab = elf_get_table(S,i++);
 	kit_Image *img = (kit_Image *) elf_table_get(tab

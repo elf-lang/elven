@@ -1,4 +1,12 @@
 
+-- parse.c core.c: why is nil not being properly handled
+name = nil
+if name ? {
+	// .. will still run
+}
+
+-- parse.c: test the closure capture mechanism,
+there's some sort of bug with it...
 
 -- parse.c: introduce constant entitites and
 make it so that closures don't capture these.

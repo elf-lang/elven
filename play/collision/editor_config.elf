@@ -1,0 +1,30 @@
+TILE_SIZE=8
+BACKGROUND_COLOR=rgb(235,150,158)
+TILESET={
+	name="tiles",
+	path="tiles.png",
+	tile_groups={
+		{
+			name="spawners"
+			tiles={0=vec2(2,0),1=vec2(3,0)}
+		},
+		{
+			autotile=true,
+			name="dirt",
+			tiles={
+				0=vec2(8,1),
+				1=vec2(10+0,0),
+				2=vec2(10+1,0),
+				3=vec2(10+2,0),
+
+				4=vec2(10+0,1),
+				5=vec2(10+1,1),
+				6=vec2(10+2,1),
+
+				7=vec2(10+0,2),
+				8=vec2(10+1,2),
+				9=vec2(10+2,2),
+			},
+		},
+	}
+}
