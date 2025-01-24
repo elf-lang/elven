@@ -1,6 +1,13 @@
 #define _DEBUG
 #include "elf\elf.c"
 #include "timeapi.h"
+
+// freaking love stb
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb\stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb\stb_image_write.h"
+
 #define KIT_IMPL
 #include "kit\kit.h"
 

@@ -1,8 +1,3 @@
-// freaking love stb
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb\stb_image.h"
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb\stb_image_write.h"
 
 int lib_gfx_make_image(elf_State *S);
 int lib_gfx_load_image(elf_State *S);

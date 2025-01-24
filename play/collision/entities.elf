@@ -1,55 +1,40 @@
-// Meh...
-// entities_with_prop={}
-// entities_with_tag={}
-// entities={}
 
-// ecs_rem=fun(e)?{
-// 	entities:delete(e)
-// 	props:=(e.props ?? {}):keys()
-// 	for prop=props[...]?{
-// 		entities_with_prop[prop]:delete(e)
-// 	}
-// 	tags:=(e.tags ?? {}):keys()
-// 	for tag=tags[...]?{
-// 		entities_with_tag[tag]:delete(e)
-// 	}
-// }
-// ecs_add=fun(e)?{
-// 	if entities[e]==nil?{
-// 		entities[e]=e
-// 		props:=(e.props ?? {}):keys()
-// 		for prop=props[...]?{
-// 			entities_with_prop[prop]?={}
-// 			if entities_with_prop[prop][e]==nil?{
-// 				entities_with_prop[prop][e]=e
-// 			}else elf.error("internal error: this entity is already added under this prop")
-// 		}
-// 		tags:=(e.tags ?? {}):keys()
-// 		for tag=tags[...]?{
-// 			entities_with_tag[tag]?={}
-// 			if entities_with_tag[tag][e]==nil?{
-// 				entities_with_tag[tag][e]=e
-// 			}else elf.error("internal error: this entity is already added under this tag")
-// 		}
-// 	}else elf.error("internal error: this entity is already added")
-// }
-// tick_ecs=fun(time)?{
-// 	entities::=entities_with_prop["tick"]??{}
-// 	for e=entities[...]?{
-// 		if e==nil?continue;
-// 		e.props.tick(time)
-// 	}
-// }
-// draw_ecs=fun()?{
-// 	entities::=entities_with_prop["draw"]??{}
-// 	for e=entities[...]?{
-// 		if e==nil?continue;
-// 		e.props.draw()
-// 	}
-// }
+objects={}
+static_things={}
+player=nil
 
-Sprite={
-	__new=fun(type,x,y,w,h,solid) ? {
+spr=fun(tile,x,y,fx,fy)?{
+	src_x::=ntoi(tile)%16*8
+	src_y::=ntoi(tile)/16*8
+	VIEW:set_src_rect(src_x,src_y,8,8)
+	VIEW:draw_image(x,y,8,8,fx??0,fy??0)
+}
+
+tick_objs=fun(time)?{
+	for obj=objects[...]?{
+		obj:tick(time)
+	}
+}
+draw_objs=fun()?{
+	for obj=objects[...]?{
+		obj:draw()
+	}
+}
+
+spawn_player=fun(pos)?{
+	player?=spawn(Player,pos)
+	player.dead=false
+	player.spd=vec2()
+}
+
+spawn=fun(objtype,pos)?{
+	obj ::= new object(objtype,pos.x,pos.y)
+	objects:add(obj)
+	--> obj
+}
+
+object={
+	__new=fun(type,x,y,w,h,tile,solid) ? {
 		this.type=type
 		this.x=x
 		this.y=y
@@ -57,16 +42,44 @@ Sprite={
 		this.yrem=0
 		this.w=w??8
 		this.h=h??8
+
+		this.tilespd=0
+		this.tilenum=1
+		this.tileoff=0
+		this.tile=tile??0
+		this.flip={x=false,y=false}
+
 		this.color=WHITE
-		this.xflip=0
 		this.solid=solid??true
-	}
-	tick=fun()?{}
-	draw=fun()?{
-		// VIEW:set_src_rect(0,8*2,8,8)
-		// VIEW:draw_image(this.x,this.y,8,8)
+
+		init ::= type.init
+		if init?{
+			init(time)
+		}
 	}
 	tick=fun(time)?{
+		tick ::= this.type.tick
+		if tick?{
+			tick(time)
+		}
+	}
+	draw=fun()?{
+		draw ::= this.type.draw
+		if draw?{
+			draw(time)
+		}else{
+			this.tileoff+=this.tilespd;
+			offs ::= ntoi(this.tileoff)
+			tile ::= this.tile+offs%this.tilenum
+			y ::= this.y
+			if this.tileoff>this.tilenum?{
+				this.tileoff=0
+			}
+			if offs%3==0?{
+				y+=1
+			}
+			spr(tile,this.x,y,this.flip.x,0)
+		}
 	}
 	overlaps=fun(that,x_border,y_border)?{
 		x_border ?= 0
@@ -85,19 +98,13 @@ Sprite={
 			--> vec2(0,1)
 		}
 		normal := vec2()
-		for that_ = static_things[...] ? {
-			if that_ == nil ? continue;
-			that ::= that_.spr ?? that
-			if that.solid!=true ? continue
+		for that = tilemap[...] ? {
 			if this:overlaps(that,x_border,0) ? {
 				normal.x = (this.x > that.x) * 2 - 1
 				break
 			}
 		}
-		for that_ = static_things[...] ? {
-			if that_ == nil ? continue;
-			that ::= that_.spr ?? that
-			if that.solid!=true ? continue
+		for that = tilemap[...] ? {
 			if this:overlaps(that,0,y_border) ? {
 				normal.y = (this.y > that.y) * 2 - 1
 				break
@@ -120,10 +127,7 @@ Sprite={
 			}
 
 			tiles ::= {}
-			for that_ = static_things[...] ? {
-				if that_ == nil ? continue;
-				that ::= that_.spr ?? that_
-				if that.solid!=true ? continue;
+			for that = tilemap[...] ? {
 				if this:overlaps(that) ? {
 					if that.type == "spikes" ? {
 						this.hit_spikes = true
@@ -152,15 +156,17 @@ Sprite={
 
 			// else if this.x + this.w > VIEW.res_x ? this.x = VIEW.res_x - this.w;
 			// else if this.y + this.h > VIEW.res_y ? this.y = VIEW.res_y - this.h;
-
 		}
 	}
 }
 
 Player={
 	_tag="player"
-	__new=fun(x,y)?{
-		this.spr=new Sprite(this:_tag,x,y,8,8)
+	init=fun()?{
+		this.tile=3
+		this.tilespd=0.15
+		this.tilenum=3
+		// (3*8)+imageframe*8
 		this.imageframe=0
 		this.framecounter=0
 		this.spd=vec2()
@@ -173,12 +179,8 @@ Player={
 		this.aircounter=0
 	}
 	tick=fun(time)?{
-		spr ::= this.spr
-		spr:tick(time)
-
 		dash ::= VIEW.keys[' '] & PRESSED
 		input := vec2()
-
 		if VIEW.keys['A'] & DOWN ? input.x -= 1;
 		if VIEW.keys['D'] & DOWN ? input.x += 1;
 		if VIEW.keys['S'] & DOWN ? input.y -= 1;
@@ -189,7 +191,7 @@ Player={
 			this.jumpbuffer -= 1
 		}
 
-		walls ::= spr:get_wall_normal(1,1)
+		walls ::= this:get_wall_normal(1,1)
 		on_ground := walls.y>0
 
 		if on_ground ? {
@@ -234,7 +236,7 @@ Player={
 			}
 
 			if this.spd.x != 0 ? {
-				spr.xflip = this.spd.x < 0
+				this.flip.x = this.spd.x < 0
 			}
 
 
@@ -244,7 +246,7 @@ Player={
 			if this.spd.y >= 0.15 ? {
 				gravity *= 0.60
 			}
-			// nearwall := spr:get_wall_normal(1).x
+			// nearwall := this:get_wall_normal(1).x
 			if input.x!=0 && walls.x!=0 ? {
 				maxfall=0.45
 			}
@@ -284,7 +286,7 @@ Player={
 					d_full ::= 4
 					dir ::= input
 					if dir.x==0&&dir.y==0?{
-						dir=vec2(spr.xflip,0)
+						dir=vec2(this.flip.x,0)
 					} else dir=dir:norm()
 					this.spd=dir*d_full
 					this.dashspd=dir*2
@@ -296,70 +298,32 @@ Player={
 					// brrt...
 				}
 			}
-
-			// move := this.m + this.spd
 		}
-		spr:move(this.spd)
+		this:move(this.spd)
+	}
+}
+
+Key={
+	_tag="key"
+	init=fun()?{
+		this.tile=2
+	}
+	tick=fun()?{
+		if this:overlaps(player) ? {
+		}
 	}
 	draw=fun()?{
-		spr ::= this.spr
-		// this.spr:draw()
-		this.framecounter += 1
-		if this.framecounter>8 ?{
-			this.framecounter=0
-			this.imageframe+=1
-			this.imageframe%=3
-		}
-		x := this.spr.x
-		y := this.spr.y
-		if this.imageframe%2==1 ? {
-			y-=1
-		}
-		imageframe:=this.imageframe
-		if this.spd.x==0 ? {
-			imageframe=0
-		}
-		VIEW:set_src_rect((3*8)+imageframe*8,0,8,8)
-		VIEW:draw_image(x,y,8,8,spr.xflip, 0)
+		spr(this.tile,this.x,this.y+(sin(total_time*PI*0.8)+1)*2)
 	}
 }
 
 Skull={
 	_tag="skull"
-	__new=fun(x,y)?{
-		this.spr=new Sprite(this:_tag,x,y,8,8,false)
-	}
-	draw=fun()?{
-		// this.spr:draw()
-		spr ::= this.spr
-		x := spr.x
-		y := spr.y + sin(total_time * PI * 0.4) * 2
-		VIEW:set_src_rect(0,8*2,8,8)
-		VIEW:draw_image(x,y,8,8,spr.xflip,0)
+	init=fun()?{
+		this.tile=16*2
 	}
 	tick=fun()?{
-		if this.spr:overlaps(player.spr) ? {
-			player.dead=true
+		if this:overlaps(player) ? {
 		}
-		// this.spr:tick()
-	}
-}
-
-
-Key={
-	_tag="key"
-	__new=fun(x,y)?{
-		this.spr=new Sprite(this:_tag,x,y,8,8,false)
-	}
-	draw=fun()?{
-		// this.spr:draw()
-		spr ::= this.spr
-		x := spr.x
-		y := spr.y + sin(total_time * PI * 0.4) * 2
-		VIEW:set_src_rect(8*2,0,8,8)
-		VIEW:draw_image(x,y,8,8,spr.xflip,0)
-	}
-	tick=fun()?{
-		this.spr:tick()
 	}
 }
