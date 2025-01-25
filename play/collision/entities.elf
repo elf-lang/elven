@@ -1,7 +1,21 @@
+MAX_FALL=2
+MAX_FALL_WHEN_WALLSLIDING=0.40
 
-objects={}
-static_things={}
-player=nil
+GRAVITY=0.21
+GRAVITY_POSITIVE_THRESHOLD=0.15
+GRAVITY_MULTIPLIER_WHEN_PAST_POSITIVE_THRESHOLD=0.50
+
+
+ACCELERATION_WHEN_ON_GROUND=0.5
+DECCELERATION=0.13
+
+get_input=fun()?{
+	xy := vec2(
+	, (VIEW.keys['D'] & DOWN) - (VIEW.keys['A'] & DOWN)
+	, (VIEW.keys['W'] & DOWN) - (VIEW.keys['S'] & DOWN))
+	xy.jump = VIEW.keys['W'] & PRESSED
+	--> xy
+}
 
 spr=fun(tile,x,y,fx,fy)?{
 	src_x::=ntoi(tile)%16*8
@@ -11,20 +25,23 @@ spr=fun(tile,x,y,fx,fy)?{
 }
 
 tick_objs=fun(time)?{
+	//todo:!
+	new_objs:={}
 	for obj=objects[...]?{
 		obj:tick(time)
+		if obj.dead==true?{
+		}else{
+			new_objs:add(obj)
+		}
 	}
+	objects=new_objs
 }
 draw_objs=fun()?{
 	for obj=objects[...]?{
-		obj:draw()
+		if obj!=nil?{
+			obj:draw()
+		}
 	}
-}
-
-spawn_player=fun(pos)?{
-	player?=spawn(Player,pos)
-	player.dead=false
-	player.spd=vec2()
 }
 
 spawn=fun(objtype,pos)?{
@@ -166,59 +183,36 @@ Player={
 		this.tile=3
 		this.tilespd=0.15
 		this.tilenum=3
-		// (3*8)+imageframe*8
-		this.imageframe=0
-		this.framecounter=0
 		this.spd=vec2()
-		this.remainingdash=0
+		this.dasheffectframes=0
+		this.dashframes=0
 		this.dashacc=vec2()
 		this.dashspd=vec2()
-		this.dash_effect_time=0
 		this.remainingjumps=MAX_NJUMPS
 		this.jumpbuffer=0
-		this.aircounter=0
+		this.jumpframes=0
 	}
 	tick=fun(time)?{
 		dash ::= VIEW.keys[' '] & PRESSED
-		input := vec2()
-		if VIEW.keys['A'] & DOWN ? input.x -= 1;
-		if VIEW.keys['D'] & DOWN ? input.x += 1;
-		if VIEW.keys['S'] & DOWN ? input.y -= 1;
-		if VIEW.keys['W'] & DOWN ? input.y += 1;
-		if VIEW.keys['W'] & PRESSED ? {
-			this.jumpbuffer = 4
-		} else if this.jumpbuffer > 0 ? {
-			this.jumpbuffer -= 1
-		}
+		input := get_input()
 
-		walls ::= this:get_wall_normal(1,1)
+
+		walls ::= this:get_wall_normal(3,3)
 		on_ground := walls.y>0
 
-		if on_ground ? {
-			this.aircounter=0
-			this.color=RED
-			// restore jumps
-			if this.remainingjumps<MAX_NJUMPS ? {
-				this.remainingjumps=MAX_NJUMPS
-				this.color=GREEN
-			}
-		} else {
-			this.aircounter+=1
-			this.color=WHITE
-		}
 
 
-		this.dash_effect_time -=1
-		if this.remainingdash > 0 ? {
+		this.dasheffectframes -=1
+		if this.dashframes > 0 ? {
 			// init_object(smoke,this.x,this.y)
-			this.remainingdash -= 1
+			this.dashframes -= 1
 			this.spd.x=appr(this.spd.x,this.dashspd.x,this.dashacc.x)
 			this.spd.y=appr(this.spd.y,this.dashspd.y,this.dashacc.y)
 		} else {
-			maxrun := 1
-			accel := 0.5
-			deccel := 0.13
-			on_ice := false
+			maxrun 	:= 1
+			accel 	:= 0.6
+			deccel 	:= 0.15
+			on_ice 	:= false
 
 			if on_ground ? {
 				if on_ice ? {
@@ -228,27 +222,22 @@ Player={
 				accel=0.4
 			}
 			if abs(this.spd.x) > maxrun ? {
-				this.color=BLUE
 				this.spd.x=appr(this.spd.x,signz(this.spd.x)*maxrun,deccel)
 			} else {
-				// this.color=GREEN
 				this.spd.x=appr(this.spd.x,input.x*maxrun,accel)
 			}
-
 			if this.spd.x != 0 ? {
 				this.flip.x = this.spd.x < 0
 			}
 
-
 			// gravity
-			maxfall := 2
-			gravity := 0.21
-			if this.spd.y >= 0.15 ? {
-				gravity *= 0.60
+			maxfall := MAX_FALL
+			gravity := GRAVITY
+			if this.spd.y >= GRAVITY_POSITIVE_THRESHOLD ? {
+				gravity *= GRAVITY_MULTIPLIER_WHEN_PAST_POSITIVE_THRESHOLD
 			}
-			// nearwall := this:get_wall_normal(1).x
 			if input.x!=0 && walls.x!=0 ? {
-				maxfall=0.45
+				maxfall=MAX_FALL_WHEN_WALLSLIDING
 			}
 
 			iff on_ground ? {
@@ -256,21 +245,31 @@ Player={
 			}
 
 			// jump
+			if on_ground ? {
+				this.jumpframes=6
+				if this.remainingjumps<MAX_NJUMPS ? {
+					this.remainingjumps=MAX_NJUMPS
+				}
+			} else {
+				this.jumpframes-=1
+			}
+			if input.jump ? {
+				this.jumpbuffer = 6
+			} else if this.jumpbuffer > 0 ? {
+				this.jumpbuffer -= 1
+			}
 			if this.jumpbuffer>0 ? {
-				if this.aircounter==0 ? {
-					// we jumped when on the floor
+				if this.jumpframes>0 ? {
+					this.jumpframes=0
 					elf.audio.play("j0.wav")
 					this.jumpbuffer=0
 					this.aircounter=0
 					this.spd.y=2
-				} else if this.aircounter > 5 ? {
-					// we jumped again when in the air, check
-					// if we have wall supports, if so jump
-					// from them
+				} else {
 					if walls.x!=0 ? {
 						elf.audio.play("j0.wav")
 						this.jumpbuffer=0
-						this.spd.y=1.75
+						this.spd.y=2.0
 						this.spd.x=walls.x*(maxrun+1)
 					}
 				}
@@ -280,14 +279,15 @@ Player={
 			if dash ? {
 				if this.remainingjumps>0 ? {
 					elf.audio.play("dash.wav")
+					shake=10
 					this.remainingjumps-=1
-					this.remainingdash=6
-					this.dash_effect_time=10
+					this.dashframes=6
+					this.dasheffectframes=10
 					d_full ::= 4
-					dir ::= input
+					dir := input
 					if dir.x==0&&dir.y==0?{
-						dir=vec2(this.flip.x,0)
-					} else dir=dir:norm()
+						dir = vec2(1-this.flip.x*2,0)
+					} else dir = dir:norm()
 					this.spd=dir*d_full
 					this.dashspd=dir*2
 					this.dashacc=vec2(1.1,1.1):norm()
@@ -305,11 +305,14 @@ Player={
 
 Key={
 	_tag="key"
+	_tile=2
 	init=fun()?{
-		this.tile=2
+		this.tile=Key._tile
 	}
 	tick=fun()?{
 		if this:overlaps(player) ? {
+			spawn_death_particles(this)
+			this.dead=true
 		}
 	}
 	draw=fun()?{
@@ -324,6 +327,8 @@ Skull={
 	}
 	tick=fun()?{
 		if this:overlaps(player) ? {
+			this.dead=true
+			kill_player()
 		}
 	}
 }

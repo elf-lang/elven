@@ -15,6 +15,7 @@ TILE_GROUPS={
 		tiles={
 			{id=0 + 0, coords=P(2,0), name="key"},
 			{id=0 + 1, coords=P(3,0), name="player"},
+			{id=0 + 2, coords=P(0,2), name="skull"},
 		}
 	},
 	{

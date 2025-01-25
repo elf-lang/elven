@@ -1067,7 +1067,7 @@ function destroy_object(obj)
 end
 
 function kill_player(obj)
-	sfx_timer=12
+	1=12
 	sfx(0)
 	deaths+=1
 	shake=10

@@ -40,60 +40,8 @@ RELEASED = elf.gfx.Window.RELEASED
 MAX_NJUMPS=1
 
 tiles_image  ::= elf.gfx.load_image("tiles.png")
-tilemap={}
 
 load "entities.elf"
-bubbles := {}
-wind_particles = {}
-for i = 0...8 ? {
-	bubbles:add({
-		random=random(),
-		x=random()*9999,
-		y=random()*9999,
-	})
-	wind_particles:add({
-		random=random(),
-		x=random()*9999,
-		y=random()*9999,
-	})
-}
-
-
-tile_type_to_coord:={
-	0=vec2(8,1),
-
-	1=vec2(10+0,0),
-	2=vec2(10+1,0),
-	3=vec2(10+2,0),
-
-	4=vec2(10+0,1),
-	5=vec2(10+1,1),
-	6=vec2(10+2,1),
-
-	7=vec2(10+0,2),
-	8=vec2(10+1,2),
-	9=vec2(10+2,2),
-}
-TYPE_TO_NAME={"floor"}
-Tile={
-	_tag="tile"
-	__new=fun(x,y)?{
-		this.type=0
-		this.spr=new Sprite(this:_tag,x,y,8,8)
-	}
-	draw=fun()?{
-		// this.spr:draw()
-		spr ::= this.spr
-		x := spr.x
-		y := spr.y
-		c := tile_type_to_coord[this.type]
-		VIEW:set_src_rect(c.x*8,c.y*8,8,8)
-		VIEW:draw_image(x,y,8,8,spr.xflip,0)
-	}
-	tick=fun()?{
-		this.spr:tick()
-	}
-}
 
 coords_to_tile ::= fun(x,y) ? {
 	tile_x ::= ntoi(floor(x))
@@ -102,26 +50,29 @@ coords_to_tile ::= fun(x,y) ? {
 	--> {key=key,tile_x=tile_x,tile_y=tile_y}
 }
 
-place_thing ::= fun(x,y,thing) ? {
-	info ::= coords_to_tile(x,y)
-	if info ? {
-		tile_x ::= info.tile_x
-		tile_y ::= info.tile_y
-		key ::= info.key
-		thing ?= new Tile(0,0)
-		if thing.spr != nil ? {
-			thing.spr.x = tile_x*TILE_SIZE
-			thing.spr.y = tile_y*TILE_SIZE
-		}else{
-			thing.x = tile_x*TILE_SIZE
-			thing.y = tile_y*TILE_SIZE
-		}
-		static_things[key] = thing
-	}
-}
-
+deaths=0
+total_time=0
+freeze=0
+shake=0
+will_restart=false
+restart_delay=false
+dead_particles={}
 player_spawn:=vec2(VIEW.res_x*0.5,VIEW.res_y*0.5)
+
 load_level=fun()?{
+	objects={}
+	tilemap={}
+	bubbles={}
+	wind_particles={}
+	player=nil
+
+
+	for i = 0...8 ? {
+		bubbles:add({random=random(),x=random()*9999,y=random()*9999})
+		wind_particles:add({random=random(),x=random()*9999,y=random()*9999})
+	}
+
+
 	file := elf.open_file("editor_save.elf","rb")
 	defer elf.close_file(file)
 	data := elf.const_expr(elf.read_file(file))
@@ -139,61 +90,85 @@ load_level=fun()?{
 			tile_x::=tile:idx(1)
 			tile_y::=tile:idx(2)
 			if def.group.name=="spawners"?{
+				spawn_pos::=vec2(tile_x,tile_y)*TILE_SIZE
 				if def.name=="player"?{
-					player_spawn.x=tile_x*TILE_SIZE
-					player_spawn.y=tile_y*TILE_SIZE
+					player_spawn=spawn_pos
+					player=spawn(Player,spawn_pos)
+					player.dead=false
+					player.spd=vec2()
 				} else if def.name=="key"?{
-					// spawn(Skull,tile_x*TILE_SIZE,tile_y*TILE_SIZE)
-					// skull:=new Skull(tile_x*TILE_SIZE,tile_y*TILE_SIZE)
+					spawn(Key,spawn_pos)
+				} else if def.name=="skull"?{
+					spawn(Skull,spawn_pos)
 				}
 			}else if def.group.name=="dirt"?{
 				key::=coords_to_tile(tile_x,tile_y)
 				tilemap[key]={x=tile_x*8,y=tile_y*8,tiledef=def,w=8,h=8}
-				// place_thing(tile_x,tile_y)
 			}
 		}
 	}
 }
 
-
 load_level()
 
-get_tile:=fun(x,y)?{
-	x=ntoi(x)
-	y=ntoi(y)
-	info ::= coords_to_tile(x*TILE_SIZE,y*TILE_SIZE)
-	if info ? {
-		tile_x ::= info.tile_x
-		tile_y ::= info.tile_y
-		key ::= info.key
-		tile := static_things[key]
-		if tile && tile:_tag=="tile" ? {
-			--> tile
-		}
+restart_level=fun()?{
+	will_restart=true
+	restart_delay=15
+}
+kill_player=fun()?{
+	deaths+=1
+	shake=10
+	spawn_death_particles(player)
+	restart_level()
+}
+spawn_death_particles=fun(obj)?{
+	dead_particles={}
+	for dir=0...8?{
+		angle::=PI*2/8*dir // dir/8.0
+		dead_particles:add({
+			x=obj.x+4,
+			y=obj.y+4,
+			t=20,
+			spd=vec2(sin(angle)*3,cos(angle)*3)
+		})
 	}
-	--> nil
 }
 
+tick_game=fun(time)?{
+	camera ::= GAME_CAMERA
+	offset ::= camera.offset
 
-spawn_player(player_spawn)
-spawn(Skull,vec2(32,32))
-spawn(Key,vec2(32+16,32))
+	offset.x=-ntoi(floor(player.x/128.0))*128
+	offset.y=(1+ntoi(floor(player.y/128.0)))*128
 
+	// screenshake
+	if shake>0?{
+		offset.x+=(random()*2-1)*2
+		offset.y+=(random()*2-1)*2
+		shake-=1
+	}
 
-total_time=0
-freeze=0
-shake=0
+	// restart
+	if will_restart && restart_delay>0 ? {
+		restart_delay-=1
+		if restart_delay<=0?{
+			will_restart=false
+			load_level()
+		}
+	}
 
-// platforms:add(new Sprite("platform",32,32,32,8))
-// platforms:add(new Sprite("platform",64,32,32,8))
-
-cur_spr_index := 0
+	// update
+	tick_objs(time)
+}
 
 view ::= VIEW
-while view:poll() ? {
 
-	time ::= view.time
-	total_time += time
+draw_game=fun()?{
+	// draw screen effects
+
+	view:set_offset(0,0)
+	view:set_scale(1,1)
+
 
 	// view:set_color(121,37,45,255)
 	view:set_color(235,150,158,255)
@@ -225,32 +200,27 @@ while view:poll() ? {
 
 	view:set_color(255,255,255,255)
 
+	// draw world things
 	camera ::= GAME_CAMERA
-	camera.offset.x=-ntoi(floor(player.x/128.0))*128
-	camera.offset.y=(1+ntoi(floor(player.y/128.0)))*128
-	view:set_offset(camera.offset.x,camera.offset.y)
+	offset ::= camera.offset
+	view:set_offset(offset.x,offset.y)
 	view:set_scale(camera.scale.x,camera.scale.y)
-	view:set_src_image(tiles_image)
 
-	if player.dead?{
-		if freeze==0?{
-			freeze=60
-		}else if freeze==1?{
-			spawn_player()
+	view:set_src_image(tiles_image)
+	view:set_color(255,255,255,255)
+	new_dead_particles := {}
+	for par = dead_particles[...]?{
+		if par.t > 0 ? {
+			par.x += par.spd.x
+			par.y += par.spd.y
+			par.t -= 1
+			size:=par.t/5.0
+			// 14+par.t%2
+			view:draw_rect(par.x,par.y,size,size)
+			new_dead_particles:add(par)
 		}
 	}
-	if freeze>0?{
-		freeze-=1
-	}
-
-	if freeze<=0?{
-		tick_objs(time)
-		// for spr = sprites[...] ? {
-		// 	if spr ? {
-		// 		spr:tick(time)
-		// 	}
-		// }
-	}
+	dead_particles=new_dead_particles
 
 	for tile = tilemap[...] ? {
 		id ::= tile.tiledef.coords.x/8+tile.tiledef.coords.y/8*16
@@ -258,9 +228,18 @@ while view:poll() ? {
 	}
 
 	draw_objs()
+}
 
-	view:set_offset(0,0)
-	view:set_scale(1,1)
+while view:poll() ? {
+	time ::= view.time
+	total_time += time
+	if freeze>0?{
+		freeze-=1
+	}else{
+		tick_game(time)
+	}
+
+	draw_game()
 }
 
 

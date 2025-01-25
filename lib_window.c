@@ -30,7 +30,7 @@ int window__new(elf_State *S) {
 	int base_res_y = elf_get_int(S,i++);
 	int window_scale = elf_get_int(S,i++);
 
-	int flags = KIT_HIDECURSOR; // KIT_FPS144;
+	int flags = KIT_HIDECURSOR|KIT_FPS30;
 	if(window_scale==0)window_scale=1;
 	if(window_scale==2)flags |= KIT_SCALE2X; else
 	if(window_scale==3)flags |= KIT_SCALE3X; else
