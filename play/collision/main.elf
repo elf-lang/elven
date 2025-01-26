@@ -1,245 +1,111 @@
-// todo: this is temporay, we should
-// be able to pass in arguments later...
-
-
-// {
-// 	EDITOR_PATH=".."
-// 	prev ::= elf.get_work_dir()
-// 	elf.change_work_dir("editor")
-// 	load "main.elf"
-// 	elf.change_work_dir(prev)
-// }
-// #eof
-
-
-UPSCALE  	::= 4
-WIND_W   	::= 128 // 320
-WIND_H   	::= 128 // 240
-ASPECT_R 	::= WIND_W / iton(WIND_H)
-CENTER_X 	::= WIND_W / 2
-CENTER_Y 	::= WIND_H / 2
-TILE_SIZE 	::= 8
-
-load "math.elf"
-
-elf.audio.init()
-VIEW=new elf.gfx.Window("Collision!",WIND_W,WIND_H,UPSCALE)
-
-// todo: if you set this to a local,
-// the editor's camera is is the same
-// as this...
-GAME_CAMERA = new Camera(vec2(0,VIEW.res_y),vec2(1,-1))
+// #test "hard binding error"
+// warnings := #getwarnings()
+// #assert warnings[0] == 0
 
 PRESSED  = elf.gfx.Window.PRESSED
 DOWN 		= elf.gfx.Window.DOWN
 RELEASED = elf.gfx.Window.RELEASED
 
-// #test "hard binding error"
-// warnings := #getwarnings()
-// #assert warnings[0] == 0
-MAX_NJUMPS=1
+UPSCALE  	::= 4
+WIND_W   	::= 128 // 320
+WIND_H   	::= 128 // 240
+total_time	= 0
+EDITOR_MODE	= false
+elf.audio.init()
+VIEW = new elf.gfx.Window("Collision!",WIND_W,WIND_H,UPSCALE)
+load "math.elf"
+load "game.elf"
+load "editor.elf"
 
-tiles_image  ::= elf.gfx.load_image("tiles.png")
 
-load "entities.elf"
+P ::= fun(x,y) ? vec2(x*8,y*8)
 
-coords_to_tile ::= fun(x,y) ? {
-	tile_x ::= ntoi(floor(x))
-	tile_y ::= ntoi(floor(y))
-	key ::= "" + tile_x + ";" + tile_y
-	--> {key=key,tile_x=tile_x,tile_y=tile_y}
+//
+// prepare assets for the editor and the game
+//
+
+assets={}
+assets.images={
+	tiles=elf.gfx.load_image("tiles.png")
 }
-
-deaths=0
-total_time=0
-freeze=0
-shake=0
-will_restart=false
-restart_delay=false
-dead_particles={}
-player_spawn:=vec2(VIEW.res_x*0.5,VIEW.res_y*0.5)
-
-load_level=fun()?{
-	objects={}
-	tilemap={}
-	bubbles={}
-	wind_particles={}
-	player=nil
-
-
-	for i = 0...8 ? {
-		bubbles:add({random=random(),x=random()*9999,y=random()*9999})
-		wind_particles:add({random=random(),x=random()*9999,y=random()*9999})
+assets.tilesets={
+	tiles={
+		image=assets.images.tiles,
+		tile_size=8,
+		name="tiles",
+		groups={
+			{
+				name="spawners",
+				id=0,
+				tiles={
+					{id=0 + 0, coords=P(2,0), name="key"},
+					{id=0 + 1, coords=P(3,0), name="player"},
+					{id=0 + 2, coords=P(0,2), name="skull"},
+				}
+			},
+			{
+				name="dirt",
+				autotiler=DEFAULT_AUTOTILER,
+				id=1,
+				tiles={
+					{id=16 + 0, coords=P(10+0,0), param="DEFAULT"},
+					{id=16 + 1, coords=P(10+0,0), param="TOP_LEFT"},
+					{id=16 + 2, coords=P(10+1,0), param="TOP_CENTER"},
+					{id=16 + 3, coords=P(10+2,0), param="TOP_RIGHT"},
+					{id=16 + 4, coords=P(10+0,1), param="MID_LEFT"},
+					{id=16 + 5, coords=P(10+1,1), param="MID_CENTER"},
+					{id=16 + 6, coords=P(10+2,1), param="MID_RIGHT"},
+					{id=16 + 7, coords=P(10+0,2), param="BOT_LEFT"},
+					{id=16 + 8, coords=P(10+1,2), param="BOT_CENTER"},
+					{id=16 + 9, coords=P(10+2,2), param="BOT_RIGHT"},
+				}
+			}
+		}
 	}
-
-
-	file := elf.open_file("editor_save.elf","rb")
-	defer elf.close_file(file)
-	data := elf.const_expr(elf.read_file(file))
-	if data ? {
-		tileid_to_def ::= {}
-		for group = data.groups[...] ? {
+}
+assets.tilemaps={
+	tiles={
+		tileset="tiles",
+		tiles={}
+	}
+}
+assets.get_tile_info=fun(tileset,tile)?{
+	if tileset.tileid_to_def==nil?{
+		tileset.tileid_to_def={}
+		tileid_to_def ::= tileset.tileid_to_def
+		for group = tileset.groups[...] ? {
 			for tiledef = group.tiles[...] ? {
 				tileid_to_def[tiledef.id]=tiledef
 				tiledef.group=group
 			}
 		}
-		for tile = data.tiles[...]?{
-			id::=tile:idx(0)
-			def::=tileid_to_def[id]
-			tile_x::=tile:idx(1)
-			tile_y::=tile:idx(2)
-			if def.group.name=="spawners"?{
-				spawn_pos::=vec2(tile_x,tile_y)*TILE_SIZE
-				if def.name=="player"?{
-					player_spawn=spawn_pos
-					player=spawn(Player,spawn_pos)
-					player.dead=false
-					player.spd=vec2()
-				} else if def.name=="key"?{
-					spawn(Key,spawn_pos)
-				} else if def.name=="skull"?{
-					spawn(Skull,spawn_pos)
-				}
-			}else if def.group.name=="dirt"?{
-				key::=coords_to_tile(tile_x,tile_y)
-				tilemap[key]={x=tile_x*8,y=tile_y*8,tiledef=def,w=8,h=8}
-			}
-		}
 	}
+	--> tileset.tileid_to_def[tile]
 }
-
-load_level()
-
-restart_level=fun()?{
-	will_restart=true
-	restart_delay=15
+assets.get_level_data=fun(name)?{
+	file := elf.open_file("editor_save.elf","rb")
+	defer elf.close_file(file)
+	data := elf.const_expr(elf.read_file(file))
+	--> data
 }
-kill_player=fun()?{
-	deaths+=1
-	shake=10
-	spawn_death_particles(player)
-	restart_level()
-}
-spawn_death_particles=fun(obj)?{
-	dead_particles={}
-	for dir=0...8?{
-		angle::=PI*2/8*dir // dir/8.0
-		dead_particles:add({
-			x=obj.x+4,
-			y=obj.y+4,
-			t=20,
-			spd=vec2(sin(angle)*3,cos(angle)*3)
-		})
-	}
-}
-
-tick_game=fun(time)?{
-	camera ::= GAME_CAMERA
-	offset ::= camera.offset
-
-	offset.x=-ntoi(floor(player.x/128.0))*128
-	offset.y=(1+ntoi(floor(player.y/128.0)))*128
-
-	// screenshake
-	if shake>0?{
-		offset.x+=(random()*2-1)*2
-		offset.y+=(random()*2-1)*2
-		shake-=1
-	}
-
-	// restart
-	if will_restart && restart_delay>0 ? {
-		restart_delay-=1
-		if restart_delay<=0?{
-			will_restart=false
-			load_level()
-		}
-	}
-
-	// update
-	tick_objs(time)
-}
-
-view ::= VIEW
-
-draw_game=fun()?{
-	// draw screen effects
-
-	view:set_offset(0,0)
-	view:set_scale(1,1)
-
-
-	// view:set_color(121,37,45,255)
-	view:set_color(235,150,158,255)
-	view:draw_rect(0,0,view.res_x,view.res_y)
-
-	view:set_color(179,70,80,255)
-	for bub = bubbles[...] ? {
-		bub.x += 0.01 + sin(total_time * 0.1 * PI + bub.random) * 0.1
-		bub.y -= 0.02
-		rad := 4 + bub.random*8
-
-		draw_x := bub.x % (view.res_x + rad*2) - rad*2
-		draw_y := bub.y % (view.res_y + rad*2) - rad*2
-
-		view:draw_circle(draw_x,draw_y,rad)
-	}
-
-	view:set_color(235,204,207,255)
-	for par = wind_particles[...] ? {
-		par.x += 0.01 + sin(total_time * 0.1 * PI + par.random) * 0.1
-		par.y += 0.01
-
-		rad := 1
-		draw_x := par.x % (view.res_x + rad*2) - rad*2
-		draw_y := par.y % (view.res_y + rad*2) - rad*2
-
-		view:draw_rect(draw_x,draw_y,1,1)
-	}
-
-	view:set_color(255,255,255,255)
-
-	// draw world things
-	camera ::= GAME_CAMERA
-	offset ::= camera.offset
-	view:set_offset(offset.x,offset.y)
-	view:set_scale(camera.scale.x,camera.scale.y)
-
-	view:set_src_image(tiles_image)
-	view:set_color(255,255,255,255)
-	new_dead_particles := {}
-	for par = dead_particles[...]?{
-		if par.t > 0 ? {
-			par.x += par.spd.x
-			par.y += par.spd.y
-			par.t -= 1
-			size:=par.t/5.0
-			// 14+par.t%2
-			view:draw_rect(par.x,par.y,size,size)
-			new_dead_particles:add(par)
-		}
-	}
-	dead_particles=new_dead_particles
-
-	for tile = tilemap[...] ? {
-		id ::= tile.tiledef.coords.x/8+tile.tiledef.coords.y/8*16
-		spr(id,tile.x,tile.y)
-	}
-
-	draw_objs()
-}
+init_game(assets)
+init_editor(assets)
+view::=VIEW
 
 while view:poll() ? {
 	time ::= view.time
-	total_time += time
-	if freeze>0?{
-		freeze-=1
+	if view.keys['1']&RELEASED?{
+		EDITOR_MODE^=1
+	}
+	if EDITOR_MODE?{
 	}else{
 		tick_game(time)
 	}
-
 	draw_game()
+	if EDITOR_MODE?{
+		draw_editor(time)
+	}
+	total_time += time
 }
 
 

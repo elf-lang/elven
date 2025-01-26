@@ -1,10 +1,10 @@
+MAX_NJUMPS=1
 MAX_FALL=2
 MAX_FALL_WHEN_WALLSLIDING=0.40
 
 GRAVITY=0.21
 GRAVITY_POSITIVE_THRESHOLD=0.15
 GRAVITY_MULTIPLIER_WHEN_PAST_POSITIVE_THRESHOLD=0.50
-
 
 ACCELERATION_WHEN_ON_GROUND=0.5
 DECCELERATION=0.13
@@ -24,6 +24,208 @@ spr=fun(tile,x,y,fx,fy)?{
 	VIEW:draw_image(x,y,8,8,fx??0,fy??0)
 }
 
+game={}
+
+init_game=fun(assets){
+	game.assets=assets
+	load_level()
+}
+
+tick_game=fun(time){
+	if freeze>0?{
+		freeze-=1
+		--> ;
+	}
+	view::=VIEW
+	camera::=camera
+	offset::=camera.offset
+
+	offset.x=-ntoi(floor(player.x/view.res_x))*view.res_x
+	offset.y=(1+ntoi(floor(player.y/view.res_y)))*view.res_y
+
+	// screenshake
+	if shake>0?{
+		offset.x+=(random()*2-1)*2
+		offset.y+=(random()*2-1)*2
+		shake-=1
+	}
+
+	// restart
+	if will_restart && restart_delay>0 ? {
+		restart_delay-=1
+		if restart_delay<=0?{
+			will_restart=false
+			load_level()
+		}
+	}
+
+	// update
+	tick_objs(time)
+}
+draw_game=fun(){
+	view::=VIEW
+	camera::=camera
+	offset::=camera.offset
+	tiles_image::=game.assets.images.tiles
+
+	// draw screen effects
+	view:set_offset(0,0)
+	view:set_scale(1,1)
+
+
+	// view:set_color(121,37,45,255)
+	view:set_color(235,150,158,255)
+	view:draw_rect(0,0,view.res_x,view.res_y)
+
+	view:set_color(179,70,80,255)
+	for bub = bubbles[...] ? {
+		bub.x += 0.01 + sin(total_time * 0.1 * PI + bub.random) * 0.1
+		bub.y -= 0.02
+		rad := 4 + bub.random*8
+
+		draw_x := bub.x % (view.res_x + rad*2) - rad*2
+		draw_y := bub.y % (view.res_y + rad*2) - rad*2
+
+		view:draw_circle(draw_x,draw_y,rad)
+	}
+
+	view:set_color(235,204,207,255)
+	for par = wind_particles[...] ? {
+		par.x += 0.01 + sin(total_time * 0.1 * PI + par.random) * 0.1
+		par.y += 0.01
+
+		rad := 1
+		draw_x := par.x % (view.res_x + rad*2) - rad*2
+		draw_y := par.y % (view.res_y + rad*2) - rad*2
+
+		view:draw_rect(draw_x,draw_y,1,1)
+	}
+
+	view:set_color(255,255,255,255)
+
+	// draw world things
+	view:set_offset(offset.x,offset.y)
+	view:set_scale(camera.scale.x,camera.scale.y)
+
+	view:set_src_image(tiles_image)
+	view:set_color(255,255,255,255)
+	new_dead_particles := {}
+	for par = dead_particles[...]?{
+		if par.t > 0 ? {
+			par.x += par.spd.x
+			par.y += par.spd.y
+			par.t -= 1
+			size:=par.t/5.0
+			view:draw_rect(par.x,par.y,size,size)
+			new_dead_particles:add(par)
+		}
+	}
+	dead_particles=new_dead_particles
+
+	for tile = tilemap[...] ? {
+		id ::= tile.tiledef.coords.x/8+tile.tiledef.coords.y/8*16
+		spr(id,tile.x,tile.y)
+	}
+
+	// pos := VIEW.get_camera_pos()
+	// size := VIEW.get_camera_size()
+	// x0 := ntoi(floor((pos.x - size.x * 0.5) / tile_size))
+	// y0 := ntoi(floor((pos.y - size.y * 0.5) / tile_size))
+	// y1 := ntoi(ceil((pos.y + size.y * 0.5) / tile_size))
+	// x1 := ntoi(ceil((pos.x + size.x * 0.5) / tile_size))
+
+	// for ty = y0...y1 + 1 ? {
+	// 	for tx = x0...x1 + 1 ? {
+	// 		tile := get_tile(tx,ty)
+	// 		if tile == nil ? {
+	// 			continue
+	// 		}
+	// 		x := tx * tile_size
+	// 		y := ty * tile_size
+	// 		img ::= tile_assets[tile.type]:idx(tile.variant)
+	// 		WINDOW:set_src_image(img)
+	// 		WINDOW:draw_image(x,y)
+	// 	}
+	// }
+
+	draw_objs()
+}
+restart_level=fun()?{
+	will_restart=true
+	restart_delay=15
+}
+kill_player=fun()?{
+	deaths+=1
+	shake=10
+	spawn_death_particles(player)
+	restart_level()
+}
+spawn_death_particles=fun(obj)?{
+	dead_particles={}
+	for dir=0...8?{
+		angle::=PI*2/8*dir
+		dead_particles:add({
+			x=obj.x+4,
+			y=obj.y+4,
+			t=20,
+			spd=vec2(sin(angle)*3,cos(angle)*3)
+		})
+	}
+}
+clean_level=fun()?{
+	camera=new Camera(vec2(0,VIEW.res_y),vec2(1,-1))
+	TILE_SIZE=8
+	deaths=0
+	total_time=0
+	freeze=0
+	shake=0
+	will_restart=false
+	restart_delay=false
+	objects={}
+	tilemap={}
+	bubbles={}
+	wind_particles={}
+	dead_particles={}
+	player=nil
+}
+
+load_level=fun()?{
+	clean_level()
+	for i = 0...8 ? {
+		bubbles:add({random=random(),x=random()*9999,y=random()*9999})
+		wind_particles:add({random=random(),x=random()*9999,y=random()*9999})
+	}
+
+	data := game.assets.get_level_data(0)
+	if data ? {
+		for tile = data.tiles[...]?{
+			id::=tile:idx(0)
+			// def::=tileid_to_def[id]
+			def::=game.assets.get_tile_info(game.assets.tilesets.tiles,id) // tileid_to_def[id]
+			tile_x::=tile:idx(1)
+			tile_y::=tile:idx(2)
+			if def.group.name=="spawners"?{
+				spawn_pos::=vec2(tile_x,tile_y)*TILE_SIZE
+				if def.name=="player"?{
+					player=spawn(Player,spawn_pos)
+					player.dead=false
+					player.spd=vec2()
+				} else if def.name=="key"?{
+					spawn(Key,spawn_pos)
+				} else if def.name=="skull"?{
+					spawn(Skull,spawn_pos)
+				}
+			}else if def.group.name=="dirt"?{
+				key ::= "" + tile_x + ";" + tile_y
+				tilemap[key]={x=tile_x*8,y=tile_y*8,tiledef=def,w=8,h=8}
+			}
+		}
+	}
+}
+
+//
+// objects
+//
 tick_objs=fun(time)?{
 	//todo:!
 	new_objs:={}
