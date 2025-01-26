@@ -1,0 +1,82 @@
+P ::= fun(x,y) ? vec2(x*8,y*8)
+
+assets={}
+init_assets=fun()?{
+	assets.scenes={}
+	assets.images={
+		tiles=elf.gfx.load_image("tiles.png")
+	}
+	assets.tilesets={
+		tiles={
+			image=assets.images.tiles,
+			tile_size=8,
+			name="tiles",
+			groups={
+				{
+					name="spawners",
+					id=0,
+					tiles={
+						{id=0 + 0, coords=P(2,0), name="key"},
+						{id=0 + 1, coords=P(3,0), name="player"},
+						{id=0 + 2, coords=P(0,2), name="skull"},
+					}
+				},
+				{
+					name="dirt",
+					autotiler=DEFAULT_AUTOTILER,
+					id=1,
+					tiles={
+						{id=16 + 0, coords=P(10+0,0), param="DEFAULT"},
+						{id=16 + 1, coords=P(10+0,0), param="TOP_LEFT"},
+						{id=16 + 2, coords=P(10+1,0), param="TOP_CENTER"},
+						{id=16 + 3, coords=P(10+2,0), param="TOP_RIGHT"},
+						{id=16 + 4, coords=P(10+0,1), param="MID_LEFT"},
+						{id=16 + 5, coords=P(10+1,1), param="MID_CENTER"},
+						{id=16 + 6, coords=P(10+2,1), param="MID_RIGHT"},
+						{id=16 + 7, coords=P(10+0,2), param="BOT_LEFT"},
+						{id=16 + 8, coords=P(10+1,2), param="BOT_CENTER"},
+						{id=16 + 9, coords=P(10+2,2), param="BOT_RIGHT"},
+					}
+				}
+			}
+		}
+	}
+	assets.tilescene={
+		tiles={
+			tileset="tiles",
+			tiles={}
+		}
+	}
+	assets.get_tile_info=fun(tileset,tile)?{
+		if tileset.tileid_to_tileinfo==nil?{
+			tileset.tileid_to_tileinfo={}
+			tileid_to_tileinfo ::= tileset.tileid_to_tileinfo
+			for group = tileset.groups[...] ? {
+				for tile_info = group.tiles[...] ? {
+					tile_info.w ?= tileset.tile_size
+					tile_info.h ?= tileset.tile_size
+					tile_info.group = group
+					tileid_to_tileinfo[tile_info.id]=tile_info
+				}
+			}
+		}
+		--> tileset.tileid_to_tileinfo[tile]
+	}
+	assets.reload_scene=fun(name)?{
+		file := elf.open_file("editor_save.elf","rb")
+		defer elf.close_file(file)
+		data := elf.const_expr(elf.read_file(file))
+		--> data
+	}
+	assets.get_scene=fun(name)?{
+		name?="main"
+		assets.scenes[name]?=assets.reload_scene(name)
+		--> assets.scenes[name]
+	}
+	assets.update_scene=fun(objid,objinfo,x,y)?{
+		tile_x=ntoi(x)
+		tile_y=ntoi(y)
+		key::=""+tile_x+";"+tile_y
+		assets.scenes:idx(0).tiles[key]={objid,tile_x,tile_y}
+	}
+}

@@ -1,0 +1,14 @@
+
+TileMap={
+	__new=fun()?{
+		this.tiles={}
+		this.image=nil
+		this.tileset=
+	}
+	get_tile_info=fun(tile)?{
+	}
+	place_offgrid_tile=fun(x,y)?{
+	}
+	place_grid_tile=fun(x,y)?{
+	}
+}

@@ -28,7 +28,7 @@ game={}
 
 init_game=fun(assets){
 	game.assets=assets
-	load_level()
+	game.load_scene()
 }
 
 tick_game=fun(time){
@@ -55,7 +55,7 @@ tick_game=fun(time){
 		restart_delay-=1
 		if restart_delay<=0?{
 			will_restart=false
-			load_level()
+			game.load_scene()
 		}
 	}
 
@@ -122,8 +122,10 @@ draw_game=fun(){
 	}
 	dead_particles=new_dead_particles
 
-	for tile = tilemap[...] ? {
-		id ::= tile.tiledef.coords.x/8+tile.tiledef.coords.y/8*16
+	for tile = game.tilemap[...] ? {
+		// tile.info ?= game.assets.get_tile_info(game.assets.tilesets.tiles,tile.id)
+		info ::= tile.info
+		id ::= ntoi(info.coords.x / 8 + info.coords.y / 8 * 16)
 		spr(id,tile.x,tile.y)
 	}
 
@@ -182,43 +184,46 @@ clean_level=fun()?{
 	will_restart=false
 	restart_delay=false
 	objects={}
-	tilemap={}
+	game.tilemap={}
 	bubbles={}
 	wind_particles={}
 	dead_particles={}
 	player=nil
 }
 
-load_level=fun()?{
+game.update_scene=fun(id,info,x,y)?{
+	pos ::= vec2(x,y) * TILE_SIZE
+	if info.group.name=="spawners"?{
+		if info.name=="player"?{
+			player=spawn(Player,pos)
+			player.dead=false
+			player.spd=vec2()
+		} else if info.name=="key"?{
+			spawn(Key,pos)
+		} else if info.name=="skull"?{
+			spawn(Skull,pos)
+		}
+	}else if info.group.name=="dirt"?{
+		key ::= "" + x + ";" + y
+		game_tile ::= {id=id,x=pos.x,y=pos.y,info=info,w=8,h=8}
+		game.tilemap[key] = game_tile
+	}
+}
+game.load_scene=fun()?{
 	clean_level()
 	for i = 0...8 ? {
 		bubbles:add({random=random(),x=random()*9999,y=random()*9999})
 		wind_particles:add({random=random(),x=random()*9999,y=random()*9999})
 	}
 
-	data := game.assets.get_level_data(0)
+	data := game.assets.get_scene(0)
 	if data ? {
 		for tile = data.tiles[...]?{
-			id::=tile:idx(0)
-			// def::=tileid_to_def[id]
-			def::=game.assets.get_tile_info(game.assets.tilesets.tiles,id) // tileid_to_def[id]
-			tile_x::=tile:idx(1)
-			tile_y::=tile:idx(2)
-			if def.group.name=="spawners"?{
-				spawn_pos::=vec2(tile_x,tile_y)*TILE_SIZE
-				if def.name=="player"?{
-					player=spawn(Player,spawn_pos)
-					player.dead=false
-					player.spd=vec2()
-				} else if def.name=="key"?{
-					spawn(Key,spawn_pos)
-				} else if def.name=="skull"?{
-					spawn(Skull,spawn_pos)
-				}
-			}else if def.group.name=="dirt"?{
-				key ::= "" + tile_x + ";" + tile_y
-				tilemap[key]={x=tile_x*8,y=tile_y*8,tiledef=def,w=8,h=8}
-			}
+			id ::= tile:idx(0)
+			x ::= tile:idx(1)
+			y ::= tile:idx(2)
+			info ::= game.assets.get_tile_info(game.assets.tilesets.tiles,id)
+			game.update_scene(id,info,x,y)
 		}
 	}
 }
@@ -317,13 +322,15 @@ object={
 			--> vec2(0,1)
 		}
 		normal := vec2()
-		for that = tilemap[...] ? {
+		for that = game.tilemap[...] ? {
+			that.w?=8
+			that.h?=8
 			if this:overlaps(that,x_border,0) ? {
 				normal.x = (this.x > that.x) * 2 - 1
 				break
 			}
 		}
-		for that = tilemap[...] ? {
+		for that = game.tilemap[...] ? {
 			if this:overlaps(that,0,y_border) ? {
 				normal.y = (this.y > that.y) * 2 - 1
 				break
@@ -346,7 +353,7 @@ object={
 			}
 
 			tiles ::= {}
-			for that = tilemap[...] ? {
+			for that = game.tilemap[...] ? {
 				if this:overlaps(that) ? {
 					if that.type == "spikes" ? {
 						this.hit_spikes = true
