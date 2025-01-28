@@ -43,21 +43,25 @@ int lib_gfx_save_image(elf_State *S) {
 
 int lib_gfx_load_image(elf_State *S) {
 	char *name = elf_get_text(S,0);
-
-	kit_Image *img;
+	kit_Image *img=0;
 	if (name){
+		// todo:
 		int n=0;
-		img=calloc(1,sizeof(*img));
-		//todo:
-		img->pixels=(kit_Color*)stbi_load(name,&img->w,&img->h,&n,4);
-		//todo:
-		for(int i=0;i<img->w*img->h;i++){
-			int r=img->pixels[i].r;
-			img->pixels[i].r=img->pixels[i].b;
-			img->pixels[i].b=r;
+		int w,h;
+		void *data=stbi_load(name,&w,&h,&n,4);
+		if(data){
+			img=calloc(1,sizeof(*img));
+			img->w=w;
+			img->h=h;
+			img->pixels=data;
+			// todo:
+			for(int i=0;i<img->w*img->h;i++){
+				int r=img->pixels[i].r;
+				img->pixels[i].r=img->pixels[i].b;
+				img->pixels[i].b=r;
+			}
 		}
 	}
-	// kit_Image *img = kit_load_image_file(name);
 	if(img){
 		elf_Table *tab = elf_new_table(S);
 		elf_tsets_int(tab,elf_new_string(S,"@ptr"),(elf_Int)(img));
