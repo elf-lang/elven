@@ -975,13 +975,13 @@ function init_object(type,x,y)
 	obj.rem = {x=0,y=0}
 
 	obj.is_solid=function(ox,oy)
-	if oy>0 and not obj.check(platform,ox,0) and obj.check(platform,ox,oy) then
-		return true
+		if oy>0 and not obj.check(platform,ox,0) and obj.check(platform,ox,oy) then
+			return true
+		end
+		return solid_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h)
+		or obj.check(fall_floor,ox,oy)
+		or obj.check(fake_wall,ox,oy)
 	end
-	return solid_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h)
-	or obj.check(fall_floor,ox,oy)
-	or obj.check(fake_wall,ox,oy)
-end
 
 obj.is_ice=function(ox,oy)
 return ice_at(obj.x+obj.hitbox.x+ox,obj.y+obj.hitbox.y+oy,obj.hitbox.w,obj.hitbox.h)

@@ -1,485 +1,523 @@
-// // PI  = 3.14159
-// // TAU = 6.28318
-// // E   = 2.71828
+//
+// Several utility constants and functions
+//
+PI  = 3.14159
+TAU = 6.28318
+E   = 2.71828
 
-// // signz=fun(x) ? {
-// // 	if x < 0 ? 	--> -1
-// // 	if x > 0 ? 	--> +1
-// // 	else        -->  0
-// // }
-// // abs=fun(x) ? {
-// // 	if x < 0 ? --> -x else --> x
-// // }
-// // max=fun(a,b) ? {
-// // 	if a > b ? --> a else --> b
-// // }
-// // min=fun(a,b) ? {
-// // 	if a < b ? --> a else --> b
-// // }
-// // vec2_?={
-// // 	__new=fun(x,y)?{
-// // 		this.x=iton(x ?? 0)
-// // 		this.y=iton(y ?? x ?? 0)
-// // 	}
-// // 	clone=fun()?(vec2(this.x,this.y))
-// // 	signz=fun()?(vec2(signz(this.x),signz(this.y)))
-// // 	__add=fun(that)?(vec2(this.x+that.x,this.y+that.y))
-// // 	__sub=fun(that)?(vec2(this.x-that.x,this.y-that.y))
-// // 	__mul=fun(that)?(vec2(this.x*that.x,this.y*that.y))
-// // 	__div=fun(that)?(vec2(this.x/that.x,this.y/that.y))
-// // 	__mul1=fun(that)?(vec2(this.x*that,this.y*that))
-// // 	__div1=fun(that)?(vec2(this.x/that,this.y/that))
-// // }
-// // vec2?=fun(x,y)?(new vec2_(x,y))
+signz=fun(x) ? {
+	if x < 0 ? 	--> -1
+	if x > 0 ? 	--> +1
+	else        -->  0
+}
+abs=fun(x) ? {
+	if x < 0 ? --> -x else --> x
+}
+max=fun(a,b) ? {
+	if a > b ? --> a else --> b
+}
+min=fun(a,b) ? {
+	if a < b ? --> a else --> b
+}
+vec2_={
+	__new=fun(x,y)?{
+		this.x=iton(x ?? 0)
+		this.y=iton(y ?? x ?? 0)
+	}
+	clone=fun()?(vec2(this.x,this.y))
+	signz=fun()?(vec2(signz(this.x),signz(this.y)))
+	__add=fun(that)?(vec2(this.x+that.x,this.y+that.y))
+	__sub=fun(that)?(vec2(this.x-that.x,this.y-that.y))
+	__mul=fun(that)?(vec2(this.x*that.x,this.y*that.y))
+	__div=fun(that)?(vec2(this.x/that.x,this.y/that.y))
+	__mul1=fun(that)?(vec2(this.x*that,this.y*that))
+	__div1=fun(that)?(vec2(this.x/that,this.y/that))
+}
+vec2 = fun(x,y) ? new vec2_(x,y)
 
-// // Camera?={
-// // 	__new=fun(offset,scale)?{
-// // 		offset ?= vec2()
-// // 		scale ?= vec2(1,1)
-// // 		this.offset=vec2(iton(offset.x),iton(offset.y))
-// // 		this.scale=vec2(iton(scale.x),iton(scale.y))
-// // 	}
-// // 	clone=fun()?(new Camera(this.offset,this.scale))
-// // 	unproject=fun(point)?{
-// // 		--> vec2(point.x,point.y)/this.scale-this.offset
-// // 	}
-// // 	project=fun(point)?{
-// // 		--> vec2(point.x,point.y)*this.scale+this.offset
-// // 	}
-// // 	zoom_point=fun(point,zoom)?{
-// // 		zoom ?= 1
-// // 		new_scale := this.scale+this.scale:signz()*vec2(zoom)
-// // 		if new_scale.x==0||new_scale.y==0? --> ;
-// // 		point ::= vec2(point.x,point.y)
-// // 		a ::= this.scale / new_scale
-// // 		this.offset = point - (point - this.offset) / a
-// // 		this.scale = new_scale
-// // 	}
-// // }
+Camera={
+	__new=fun(offset,scale)?{
+		offset ?= vec2()
+		scale ?= vec2(1,1)
+		this.offset=vec2(iton(offset.x),iton(offset.y))
+		this.scale=vec2(iton(scale.x),iton(scale.y))
+	}
+	clone=fun()?(new Camera(this.offset,this.scale))
+	unproject=fun(point)?{
+		--> vec2(point.x,point.y)/this.scale-this.offset
+	}
+	project=fun(point)?{
+		--> vec2(point.x,point.y)*this.scale+this.offset
+	}
+	zoom_point=fun(point,zoom)?{
+		zoom ?= 1
+		new_scale := this.scale+this.scale:signz()*vec2(zoom)
+		if new_scale.x==0||new_scale.y==0? --> ;
+		point ::= vec2(point.x,point.y)
+		a ::= this.scale / new_scale
+		this.offset = point - (point - this.offset) / a
+		this.scale = new_scale
+	}
+}
 
-// // rgb?=fun(r,g,b)?({r=r,g=g,b=b,a=255})
-// // WHITE?=rgb(255,255,255,255)
-// // BLUE ?=rgb(32,32,200,255)
-// // GREEN?=rgb(0,128,32,255)
-// // RED  ?=rgb(255,32,0,255)
+rgb=fun(r,g,b) ? ({r=r,g=g,b=b,a=255})
+WHITE = rgb(255,255,255,255)
+BLUE  = rgb(32,32,200,255)
+GREEN = rgb(0,128,32,255)
+RED   = rgb(255,32,0,255)
 
-// ////////////////////////////////////////////////////////////////
-// // autotiler
-// ////////////////////////////////////////////////////////////////
+//
+// global variables and configs
+//
 
+// the default autotiler
 
-// same  ::= fun(cen,nei) ? (nei != nil && nei.tiledef.group == cen.tiledef.group)
-// air   ::= fun(cen,nei) ? (nei == nil || nei.tiledef.group != cen.tiledef.group)
-// DEFAULT_AUTOTILER={
-// 	// rules = {left,right,top,bottom}
-// 	{param="TOP_LEFT"   , rules = {air,same,air,same}},
-// 	{param="TOP_CENTER" , rules = {same,same,air,same}},
-// 	{param="TOP_RIGHT"  , rules = {same,air,air,same}},
-// 	{param="MID_LEFT"   , rules = {air,same,same,same}},
-// 	{param="MID_CENTER" , rules = {same,same,same,same}},
-// 	{param="MID_RIGHT"  , rules = {same,air,same,same}},
-// 	{param="BOT_LEFT"   , rules = {air,same,same,air}},
-// 	{param="BOT_CENTER" , rules = {same,same,same,air}},
-// 	{param="BOT_RIGHT"  , rules = {same,air,same,air}},
-// }
+same  ::= fun(cen,nei) ? (nei != nil && nei.tiledef.group == cen.tiledef.group)
+air   ::= fun(cen,nei) ? (nei == nil || nei.tiledef.group != cen.tiledef.group)
+DEFAULT_AUTOTILER={
+	// rules = {left,right,top,bottom}
+	{param="TOP_LEFT"   , rules = {air,same,air,same}},
+	{param="TOP_CENTER" , rules = {same,same,air,same}},
+	{param="TOP_RIGHT"  , rules = {same,air,air,same}},
+	{param="MID_LEFT"   , rules = {air,same,same,same}},
+	{param="MID_CENTER" , rules = {same,same,same,same}},
+	{param="MID_RIGHT"  , rules = {same,air,same,same}},
+	{param="BOT_LEFT"   , rules = {air,same,same,air}},
+	{param="BOT_CENTER" , rules = {same,same,same,air}},
+	{param="BOT_RIGHT"  , rules = {same,air,same,air}},
+}
 
+//
+// the path from which to load the config file
+// and other assets specified in the config
+// file
+EDITOR_PATH ?= "."
+// the name of the config file
+CONFIG_FILE 	?= "editor_config.elf"
+SAVE_FILE_NAME ?= "editor_save.elf"
+SAVE_FILE_PATH ?= EDITOR_PATH
 
+// load the config file
+elf.load_file(EDITOR_PATH + "\\" + CONFIG_FILE)
 
+requires::=fun(name)?{
+	if elf.get_global(name)==nil ? {
+		elf.pf("error: editor requires '",name,"' to be defined, maybe the config file was not loaded or it wasn't defined")
+		error("calling a nil function on purpose to crash...")
+	}
+}
 
-// //
-// // static_tiles
-// //
-
-// coords_to_tile ::= fun(x,y) ? {
-// 	tile_x ::= ntoi(floor(x))
-// 	tile_y ::= ntoi(floor(y))
-// 	key ::= "" + tile_x + ";" + tile_y
-// 	--> {key=key,tile_x=tile_x,tile_y=tile_y}
-// }
-
-// get_tile ::= fun(x,y) ? {
-// 	key ::= coords_to_tile(x,y).key
-// 	--> static_tiles[key]
-// }
-
-
-// unplace_tile ::= fun(x,y) ? {
-// 	info ::= coords_to_tile(x,y)
-// 	tile_x ::= info.tile_x
-// 	tile_y ::= info.tile_y
-// 	key ::= info.key
-// 	if static_tiles[key] ? {
-// 		static_tiles:delete(key)
-// 	}
-// }
-
-// require_field=fun(table,name)?{
-// 	if table[name]==nil?{
-// 		elf.pf("requires field: ", name)
-// 		elf.error("crashing")
-// 	}
-// }
-// place_tile ::= fun(x,y,tiledef) ? {
-// 	require_field(tiledef,"id")
-// 	require_field(tiledef,"group")
-// 	require_field(tiledef,"coords")
-// 	info 	::= coords_to_tile(x,y)
-// 	key 	::= info.key
-// 	if static_tiles[key] == nil ? {
-// 		tile_x ::= info.tile_x
-// 		tile_y ::= info.tile_y
-// 		static_tiles[key]={x=tile_x,y=tile_y,tiledef=tiledef}
-// 		--> true
-// 	}
-// 	--> false
-// }
-
-// load_save::=fun()?{
-// 	file ::= elf.open_file(SAVE_FILE_PATH + "\\" + SAVE_FILE_NAME,"rb")
-// 	defer elf.close_file(file)
-// 	contents ::= elf.read_file(file)
-// 	data ::= elf.const_expr(contents)
-// 	if data!=nil?{
-// 		tileid_to_def ::= {}
-// 		for group = TILE_GROUPS[...] ? {
-// 			for tiledef = group.tiles[...] ? {
-// 				tileid_to_def[tiledef.id]=tiledef
-// 				tiledef.group=group
-// 			}
-// 		}
-// 		for tiledata = data.tiles[...] ? {
-// 			id := tiledata:idx(0)
-// 			x ::= tiledata:idx(1)
-// 			y ::= tiledata:idx(2)
-// 			def ::= tileid_to_def[id]
-// 			if def.group==nil?elf.pf("error:!");
-// 			place_tile(x,y,def)
-// 		}
-// 	}
-// }
-// load_save()
-
-// save::=fun()?{
-// 	data := {tileset_name=TILESET_NAME,tileset_path=TILESET_PATH,groups={},tiles={}}
-// 	for group = TILE_GROUPS[...] ? {
-// 		group_data := {name=group.name,tiles={}}
-// 		for tiledef = group.tiles[...] ? {
-// 			group_data.tiles:add({id=tiledef.id,coords=tiledef.coords,name=tiledef.name})
-// 		}
-// 		data.groups:add(group_data)
-// 	}
-// 	for thing = static_tiles[...] ? {
-// 		if thing==nil?continue;
-// 		tile:={}
-// 		tile:add(thing.tiledef.id)
-// 		tile:add(thing.x)
-// 		tile:add(thing.y)
-// 		data.tiles:add(tile)
-// 	}
-// 	file ::= elf.open_file(SAVE_FILE_PATH + "\\" + SAVE_FILE_NAME,"wb")
-// 	elf.unload(file,data)
-// 	elf.close_file(file)
-// 	elf.pf("saved: ", data.tiles:tally(), "  tiles")
-// }
-// // defer save()
-
-// //
-// // # autotiler
-// //
-// for group = TILE_GROUPS[...] ? {
-// 	if group.autotiler!=nil?{
-// 		group.param_to_tiledef={}
-// 		for tiledef = group.tiles[...] ? {
-// 			// generate back pointer for ease of use,
-// 			// this won't get exported...
-// 			tiledef.group=group
-
-// 			if tiledef.param!=nil?{
-// 				if group.param_to_tiledef[tiledef.param]!=nil?{
-// 					elf.pf("warning: multiple tiles with the same autotile parameter")
-// 				}
-// 				group.param_to_tiledef[tiledef.param]=tiledef
-// 			}
-// 		}
-// 	}
-// }
-
-// autotile=fun(x,y) ? {
-// 	tile := get_tile(x,y)
-// 	group ::= tile.tiledef.group
-// 	if group==nil ? {
-// 		elf.pf("error, invalid tile: ", tile);
-// 		--> nil
-// 	}
-// 	autotiler ::= group.autotiler
-// 	if autotiler!=nil ? {
-// 		for param = autotiler[...] ? {
-// 			rules ::= param.rules
-// 			tile.failed_rule=0
-// 			if true!=rules[0](tile,get_tile(x-1,y)) ? continue;
-// 			tile.failed_rule=1
-// 			if true!=rules[1](tile,get_tile(x+1,y)) ? continue;
-// 			tile.failed_rule=2
-// 			if true!=rules[2](tile,get_tile(x,y+1)) ? continue;
-// 			tile.failed_rule=3
-// 			if true!=rules[3](tile,get_tile(x,y-1)) ? continue;
-// 			tile.failed_rule=nil
-// 			tile.param=param.param
-// 			def ::= group.param_to_tiledef[param.param]
-// 			if def==nil?elf.pf("parameter not found in autotile parameters");
-// 			--> def
-// 		}
-// 		--> group.param_to_tiledef.DEFAULT
-// 	}else{
-// 		elf.pf("HERE!")
-// 	}
-// 	--> nil
-// }
-
-// run_autotiler = fun() ? {
-// 	for tile = static_tiles[...] ? {
-// 		if tile == nil ? continue;
-// 		tiledef ::= autotile(tile.x,tile.y)
-// 		if tiledef != nil ? {
-// 			tile.tiledef=tiledef
-// 		}
-// 	}
-// }
+requires("TILE_GROUPS");
+requires("TILESET_PATH");
+requires("TILESET_NAME");
 
 
+TILE_SIZE ?= 16
 
-// // elf.audio.init()
-// // VIEW ?= new elf.gfx.Window("Editor!",WIND_W,WIND_H,UPSCALE)
-// // view ::= VIEW
+// setup default configs
 
-// // elf.gfx.save_image("test.png",cursor_images.hand_grab)
-// // KEY_PRESSED  	::= elf.gfx.Window.PRESSED
-// // KEY_DOWN 	 	::= elf.gfx.Window.DOWN
-// // KEY_RELEASED 	::= elf.gfx.Window.RELEASED
-// // camera ::= new Camera(vec2(0,view.res_y),vec2(1,-1))
+BACKGROUND_COLOR 	?= rgb(19,60,150,81)
+WIND_W   			?= 320
+WIND_H   			?= 240
+UPSCALE  			?= 2
 
-// requires::=fun(from,name)?{
-// 	if from==nil||from[name]==nil ? {
-// 		elf.pf("error: requires '",name,"' to be defined")
-// 		error("calling a nil function on purpose to crash...")
-// 	}
-// }
+KEY_BINDINGS ?= {}
 
-// editor={}
-// init_editor=fun(config)?{
-// 	requires(config,"tileset")
-// 	requires(config,"tilemap")
-// 	requires(config,"tileset_image")
-// 	requires(config,"savename")
-// 	// cursor_images := {
-// 	// 	hand_grab=elf.gfx.load_image("Micro Icon Pack\\Micro Icon Pack\\Computer Systems\\4. Hand Grab.png")
-// 	// }
-// 	// editor.cursors_image=
-// 	editor.path?="."
-// 	editor.savename?=config.savename
-// 	elf.load_file(EDITOR_PATH + "\\" + CONFIG_FILE)
-// 	editor.active_tilegroup_index=0
-// 	editor.active_tile_index=0
-// 	editor.static_tiles={}
-// 	editor.offset_minus_mouse=vec2()
-// 	editor.toggles={}
-// 	editor.tileset=tileset
-// 	editor.tilemap=tilemap
+KEY_BINDINGS.RUN_AUTOTILER ?= {}
+KEY_BINDINGS.RUN_AUTOTILER.toggle_key='F'
+KEY_BINDINGS.RUN_AUTOTILER.enable_key=' '
 
-// 	editor.bindings.RUN_AUTOTILER ?= {}
-// 	editor.bindings.RUN_AUTOTILER.toggle_key='F'
-// 	editor.bindings.RUN_AUTOTILER.enable_key=' '
+KEY_BINDINGS.PAN ?= {}
+KEY_BINDINGS.PAN.toggle_key='V'
+KEY_BINDINGS.PAN.enable_key=' '
 
-// 	editor.bindings.PAN ?= {}
-// 	editor.bindings.PAN.toggle_key='V'
-// 	editor.bindings.PAN.enable_key=' '
+KEY_BINDINGS.SWITCH_TILE_GROUP?={}
+KEY_BINDINGS.SWITCH_TILE_GROUP.enable_key='W'
+KEY_BINDINGS.SWITCH_TILE_GROUP.toggle_key='W'
 
-// 	editor.bindings.SWITCH_TILE_GROUP?={}
-// 	editor.bindings.SWITCH_TILE_GROUP.enable_key='W'
-// 	editor.bindings.SWITCH_TILE_GROUP.toggle_key='W'
+KEY_BINDINGS.SWITCH_TILE?={}
+KEY_BINDINGS.SWITCH_TILE.enable_key='E'
+KEY_BINDINGS.SWITCH_TILE.toggle_key='E'
 
-// 	editor.bindings.SWITCH_TILE?={}
-// 	editor.bindings.SWITCH_TILE.enable_key='E'
-// 	editor.bindings.SWITCH_TILE.toggle_key='E'
-// 	editor.proper=true
-// }
-// psfx ::= fun(name)?{
-// 	elf.audio.play(name??"tap.wav")
-// }
-// check_released::=fun(name)?{
-// 	bindings ::= editor.bindings
-// 	binding ::= bindings[name]
-// 	if view.keys[binding.toggle_key] & KEY_RELEASED ? {
-// 		psfx()
-// 		--> true
-// 	}
-// 	--> false
-// }
-// check_action::=fun(name)?{
-// 	bindings ::= editor.bindings
-// 	binding ::= bindings[name]
-// 	if view.keys[binding.toggle_key] & KEY_RELEASED ? {
-// 		psfx()
-// 		toggles[name]?=0
-// 		toggles[name]^=1
-// 	}
-// 	enable := view.keys[binding.enable_key] & KEY_DOWN
-// 	--> toggles[name] || enable
-// }
 
-// tick_draw_editor=fun(time)?{
-// 	if editor.proper!=true?{
-// 		elf.pf("error: editor not initialized!")
-// 		--> ;
-// 	}
-// 	view ::= VIEW
-// 	mouse_x 					::= view.mouse_x
-// 	mouse_y 					::= view.mouse_y
-// 	mouse 					::= vec2(mouse_x,mouse_y)
-// 	scale 					::= camera.scale.x
-// 	offset_x 				::= camera.offset.x
-// 	offset_y 				::= camera.offset.y
-// 	mouse_world_x 			::= (mouse_x - offset_x) / iton(camera.scale.x)
-// 	mouse_world_y 			::= (mouse_y - offset_y) / iton(camera.scale.y)
-// 	mouse_subtile_pos_x 	::= mouse_world_x / TILE_SIZE
-// 	mouse_subtile_pos_y 	::= mouse_world_y / TILE_SIZE
-// 	mouse_tile_pos_x 		::= ntoi(floor(mouse_subtile_pos_x))
-// 	mouse_tile_pos_y 		::= ntoi(floor(mouse_subtile_pos_y))
+ASPECT_R 	::= WIND_W / iton(WIND_H)
+CENTER_X 	::= WIND_W / 2
+CENTER_Y 	::= WIND_H / 2
+view        ::= new elf.gfx.Window("Editor!",WIND_W,WIND_H,UPSCALE)
+elf.audio.init()
+KEY_PRESSED  	::= elf.gfx.Window.PRESSED
+KEY_DOWN 	 	::= elf.gfx.Window.DOWN
+KEY_RELEASED 	::= elf.gfx.Window.RELEASED
+camera ::= new Camera(vec2(0,view.res_y),vec2(1,-1))
+active_tilegroup_index := 0
+active_tile_index := 0
+tileset_image 	:= elf.gfx.load_image(EDITOR_PATH + "\\" + TILESET_PATH)
+static_tiles ::= {}
+offset_minus_mouse=vec2()
+toggles ::= {}
 
-// 	if check_released("SWITCH_TILE_GROUP") ? {
-// 		active_tilegroup_index += 1
-// 		active_tilegroup_index %= TILE_GROUPS:tally()
-// 	}
+psfx ::= fun(name)?{
+	elf.audio.play(name??"tap.wav")
+}
 
-// 	active_tile_group ::= TILE_GROUPS:idx(active_tilegroup_index)
+check_released::=fun(name)?{
+	binding ::= KEY_BINDINGS[name]
+	if view.keys[binding.toggle_key] & KEY_RELEASED ? {
+		psfx()
+		--> true
+	}
+	--> false
+}
 
-// 	if check_released("SWITCH_TILE") ? {
-// 		active_tile_index += 1
-// 		active_tile_index %= active_tile_group.tiles:tally()
-// 	}
+check_action::=fun(name)?{
+	binding ::= KEY_BINDINGS[name]
+	if view.keys[binding.toggle_key] & KEY_RELEASED ? {
+		psfx()
+		toggles[name]?=0
+		toggles[name]^=1
+	}
+	enable := view.keys[binding.enable_key] & KEY_DOWN
+	--> toggles[name] || enable
+}
 
-// 	// user interaction
-// 	{
-// 		if check_released("RUN_AUTOTILER") ? {
-// 			run_autotiler()
-// 		}
 
-// 		// panning
-// 		if check_action("PAN") ? {
-// 			if view.mouse[1] & KEY_PRESSED ? {
-// 				dragging = true
-// 				offset_minus_mouse.x = camera.offset.x - mouse_x
-// 				offset_minus_mouse.y = camera.offset.y - mouse_y
-// 			}
-// 			if view.mouse[1] & KEY_DOWN ? {
-// 				if dragging ? {
-// 					camera.offset.x = offset_minus_mouse.x + mouse_x
-// 					camera.offset.y = offset_minus_mouse.y + mouse_y
-// 				}
-// 			}
-// 		}else{
+//
+// static_tiles
+//
 
-// 			// place tiles
+coords_to_tile ::= fun(x,y) ? {
+	tile_x ::= ntoi(floor(x))
+	tile_y ::= ntoi(floor(y))
+	key ::= "" + tile_x + ";" + tile_y
+	--> {key=key,tile_x=tile_x,tile_y=tile_y}
+}
 
-// 			if view.mouse[1] & KEY_DOWN ? {
-// 				tiledef ::= active_tile_group.tiles:idx(active_tile_index)
-// 				tiledef.group?=active_tile_group
-// 				placed ::= place_tile(mouse_subtile_pos_x,mouse_subtile_pos_y,tiledef);
-// 				if placed?{
-// 					psfx()
-// 				}
-// 			} else if view.mouse[2] & KEY_DOWN ? {
-// 				unplace_tile(mouse_subtile_pos_x,mouse_subtile_pos_y);
-// 			}
-// 		}
+get_tile ::= fun(x,y) ? {
+	key ::= coords_to_tile(x,y).key
+	--> static_tiles[key]
+}
 
-// 		// zooming
-// 		{
-// 			if view.keys['Z'] & KEY_PRESSED ? {
-// 				camera:zoom_point(mouse,1)
-// 			}
-// 			if view.keys['X'] & KEY_PRESSED ? {
-// 				camera:zoom_point(mouse,-1)
-// 			}
-// 		}
-// 	}
 
-// 	// draw background
-// 	{
-// 		view:set_color(BACKGROUND_COLOR.r,BACKGROUND_COLOR.g,BACKGROUND_COLOR.b,BACKGROUND_COLOR.a)
-// 		view:draw_rect(0,0,view.res_x,view.res_y)
-// 	}
+unplace_tile ::= fun(x,y) ? {
+	info ::= coords_to_tile(x,y)
+	tile_x ::= info.tile_x
+	tile_y ::= info.tile_y
+	key ::= info.key
+	if static_tiles[key] ? {
+		static_tiles:delete(key)
+	}
+}
 
-// 	// draw tiles
-// 	{
-// 		view:set_offset(floor(camera.offset.x),floor(camera.offset.y))
-// 		view:set_scale(camera.scale.x,camera.scale.y)
-// 		view:set_src_image(tileset_image)
-// 		for tile = static_tiles[...] ? {
-// 			if tile==nil ? continue;
-// 			def ::= tile.tiledef
-// 			view:set_src_rect(def.coords.x,def.coords.y,TILE_SIZE,TILE_SIZE)
-// 			view:draw_image(tile.x*TILE_SIZE,tile.y*TILE_SIZE)
-// 		}
+require_field=fun(table,name)?{
+	if table[name]==nil?{
+		elf.pf("requires field: ", name)
+		elf.error("crashing")
+	}
+}
+place_tile ::= fun(x,y,tiledef) ? {
+	require_field(tiledef,"id")
+	require_field(tiledef,"group")
+	require_field(tiledef,"coords")
+	info 	::= coords_to_tile(x,y)
+	key 	::= info.key
+	if static_tiles[key] == nil ? {
+		tile_x ::= info.tile_x
+		tile_y ::= info.tile_y
+		static_tiles[key]={x=tile_x,y=tile_y,tiledef=tiledef}
+		--> true
+	}
+	--> false
+}
 
-// 		// for tile = static_tiles[...] ? {
-// 		// 	if tile==nil ? continue;
-// 		// 	def ::= tile.tiledef
-// 		// 	if tile.failed_rule!=nil ? {
-// 		// 		view:draw_text("" + tile.failed_rule, tile.x*TILE_SIZE,tile.y*TILE_SIZE,255,255,255,255)
-// 		// 	}else if tile.param!=nil ? {
-// 		// 		view:draw_text("" + tile.tiledef.id, tile.x*TILE_SIZE,tile.y*TILE_SIZE,255,255,255,255)
-// 		// 	}
-// 		// }
-// 	}
+load_save::=fun()?{
+	file ::= elf.open_file(SAVE_FILE_PATH + "\\" + SAVE_FILE_NAME,"rb")
+	defer elf.close_file(file)
+	contents ::= elf.read_file(file)
+	data ::= elf.const_expr(contents)
+	if data!=nil?{
+		tileid_to_def ::= {}
+		for group = TILE_GROUPS[...] ? {
+			for tiledef = group.tiles[...] ? {
+				tileid_to_def[tiledef.id]=tiledef
+				tiledef.group=group
+			}
+		}
+		for tiledata = data.tiles[...] ? {
+			id := tiledata:idx(0)
+			x ::= tiledata:idx(1)
+			y ::= tiledata:idx(2)
+			def ::= tileid_to_def[id]
+			if def.group==nil?elf.pf("error:!");
+			place_tile(x,y,def)
+		}
+	}
+}
+load_save()
 
-// 	view:set_offset(0,0)
-// 	view:set_scale(1,1)
+save::=fun()?{
+	data := {tileset_name=TILESET_NAME,tileset_path=TILESET_PATH,groups={},tiles={}}
+	for group = TILE_GROUPS[...] ? {
+		group_data := {name=group.name,tiles={}}
+		for tiledef = group.tiles[...] ? {
+			group_data.tiles:add({id=tiledef.id,coords=tiledef.coords,name=tiledef.name})
+		}
+		data.groups:add(group_data)
+	}
+	for thing = static_tiles[...] ? {
+		if thing==nil?continue;
+		tile:={}
+		tile:add(thing.tiledef.id)
+		tile:add(thing.x)
+		tile:add(thing.y)
+		data.tiles:add(tile)
+	}
+	file ::= elf.open_file(SAVE_FILE_PATH + "\\" + SAVE_FILE_NAME,"wb")
+	elf.unload(file,data)
+	elf.close_file(file)
+	elf.pf("saved: ", data.tiles:tally(), "  tiles")
+}
+defer save()
 
-// 	// draw the grid
-// 	{
-// 		offset_y 	::=  ntoi(floor(offset_y))
-// 		offset_x 	::=  ntoi(floor(offset_x))
-// 		cell_size 	::= TILE_SIZE * camera.scale.x
-// 		grid_size_x ::= view.res_x / cell_size + 1
-// 		grid_size_y ::= view.res_y / cell_size + 1
+//
+// # autotiler
+//
+for group = TILE_GROUPS[...] ? {
+	if group.autotiler!=nil?{
+		group.param_to_tiledef={}
+		for tiledef = group.tiles[...] ? {
+			// generate back pointer for ease of use,
+			// this won't get exported...
+			tiledef.group=group
 
-// 		view:set_color(255,255,255,255*0.25)
-// 		for y = 0...grid_size_y ? {
-// 			view:draw_rect(0,offset_y%cell_size+y*cell_size,view.res_x,1)
-// 		}
-// 		for x = 0...grid_size_x ? {
-// 			view:draw_rect(offset_x%cell_size+x*cell_size,0,1,view.res_y)
-// 		}
-// 		view:set_color(255,0,0,255*0.80)
-// 		view:draw_rect(offset_x,0,1,view.res_y)
-// 		view:set_color(0,255,0,255*0.80)
-// 		view:draw_rect(0,offset_y,view.res_x,1)
-// 	}
+			if tiledef.param!=nil?{
+				if group.param_to_tiledef[tiledef.param]!=nil?{
+					elf.pf("warning: multiple tiles with the same autotile parameter")
+				}
+				group.param_to_tiledef[tiledef.param]=tiledef
+			}
+		}
+	}
+}
 
-// 	// draw info strings
-// 	{
-// 		strings := {
-// 			"group: " + active_tile_group.name + ", " + active_tile_index
-// 		}
-// 		tile := get_tile(mouse_tile_pos_x,mouse_tile_pos_y)
-// 		if tile ? {
-// 			strings:add("-- TILE")
-// 			strings:add("	+- " + tile.tiledef.group)
-// 		}
-// 		y := 1
-// 		for string = strings[...] ? {
-// 			view:draw_text(string,1,y+1, 0,0,0,255)
-// 			view:draw_text(string,0,y+0, 255,255, 255,255)
-// 			y+=15
-// 		}
-// 	}
+autotile=fun(x,y) ? {
+	tile := get_tile(x,y)
+	group ::= tile.tiledef.group
+	if group==nil ? {
+		elf.pf("error, invalid tile: ", tile);
+		--> nil
+	}
+	autotiler ::= group.autotiler
+	if autotiler!=nil ? {
+		for param = autotiler[...] ? {
+			rules ::= param.rules
+			tile.failed_rule=0
+			if true!=rules[0](tile,get_tile(x-1,y)) ? continue;
+			tile.failed_rule=1
+			if true!=rules[1](tile,get_tile(x+1,y)) ? continue;
+			tile.failed_rule=2
+			if true!=rules[2](tile,get_tile(x,y+1)) ? continue;
+			tile.failed_rule=3
+			if true!=rules[3](tile,get_tile(x,y-1)) ? continue;
+			tile.failed_rule=nil
+			tile.param=param.param
+			def ::= group.param_to_tiledef[param.param]
+			if def==nil?elf.pf("parameter not found in autotile parameters");
+			--> def
+		}
+		--> group.param_to_tiledef.DEFAULT
+	}else{
+	elf.pf("HERE!")
+	}
+	--> nil
+}
 
-// 	// draw cursor
-// 	{
-// 		// view:set_color(255,255,255,255)
-// 		// view:set_src_image(cursor_images.hand_grab)
-// 		// view:draw_image(mouse_x,mouse_y)
-// 		// view:draw_rect(mouse_x,mouse_y,2,2)
-// 	}
-// }
+
+run_autotiler = fun() ? {
+	for tile = static_tiles[...] ? {
+		if tile == nil ? continue;
+		tiledef ::= autotile(tile.x,tile.y)
+		if tiledef != nil ? {
+			tile.tiledef=tiledef
+		}
+	}
+}
+
+cursor_images := {
+	hand_grab=elf.gfx.load_image("Micro Icon Pack\\Micro Icon Pack\\Computer Systems\\4. Hand Grab.png")
+}
+
+
+
+// elf.gfx.save_image("test.png",cursor_images.hand_grab)
+
+while view:poll() ? {
+
+	mouse_x 					::= view.mouse_x
+	mouse_y 					::= view.mouse_y
+	mouse 					::= vec2(mouse_x,mouse_y)
+	scale 					::= camera.scale.x
+	offset_x 				::= camera.offset.x
+	offset_y 				::= camera.offset.y
+	mouse_world_x 			::= (mouse_x - offset_x) / iton(camera.scale.x)
+	mouse_world_y 			::= (mouse_y - offset_y) / iton(camera.scale.y)
+	mouse_subtile_pos_x 	::= mouse_world_x / TILE_SIZE
+	mouse_subtile_pos_y 	::= mouse_world_y / TILE_SIZE
+	mouse_tile_pos_x 		::= ntoi(floor(mouse_subtile_pos_x))
+	mouse_tile_pos_y 		::= ntoi(floor(mouse_subtile_pos_y))
+
+	// if autotile_tasks:tally() ? {
+	// 	task := autotile_tasks:xrem(0)
+	// 	key := coords_to_tile(task.x,task.y).key
+	// 	autotile_tasks[key]=nil
+	// 	index ::= autotile(x,y)
+	// 	if index != nil ? {
+	// 		subimage := tile.group.tiles[1+index]
+	// 		if subimage ? {
+	// 			tile.subimage=subimage
+	// 			add_autotile_task(x,y-1)
+	// 			add_autotile_task(x,y+1)
+	// 			add_autotile_task(x-1,y)
+	// 			add_autotile_task(x+1,y)
+	// 		} else {
+	// 			elf.pf("error: no subimage found for this index, ", tile.group.tiles)
+	// 		}
+	// 	}
+	// }
+
+	if check_released("SWITCH_TILE_GROUP") ? {
+		active_tilegroup_index += 1
+		active_tilegroup_index %= TILE_GROUPS:tally()
+	}
+
+	active_tile_group ::= TILE_GROUPS:idx(active_tilegroup_index)
+
+	if check_released("SWITCH_TILE") ? {
+		active_tile_index += 1
+		active_tile_index %= active_tile_group.tiles:tally()
+	}
+
+	// user interaction
+	{
+		if check_released("RUN_AUTOTILER") ? {
+			run_autotiler()
+		}
+
+		// panning
+		if check_action("PAN") ? {
+			if view.mouse[1] & KEY_PRESSED ? {
+				dragging = true
+				offset_minus_mouse.x = camera.offset.x - mouse_x
+				offset_minus_mouse.y = camera.offset.y - mouse_y
+			}
+			if view.mouse[1] & KEY_DOWN ? {
+				if dragging ? {
+					camera.offset.x = offset_minus_mouse.x + mouse_x
+					camera.offset.y = offset_minus_mouse.y + mouse_y
+				}
+			}
+		}else{
+
+			// place tiles
+
+			if view.mouse[1] & KEY_DOWN ? {
+				tiledef ::= active_tile_group.tiles:idx(active_tile_index)
+				tiledef.group?=active_tile_group
+				placed ::= place_tile(mouse_subtile_pos_x,mouse_subtile_pos_y,tiledef);
+				if placed?{
+					psfx()
+				}
+			} else if view.mouse[2] & KEY_DOWN ? {
+				unplace_tile(mouse_subtile_pos_x,mouse_subtile_pos_y);
+			}
+		}
+
+		// zooming
+		{
+			if view.keys['Z'] & KEY_PRESSED ? {
+				camera:zoom_point(mouse,1)
+			}
+			if view.keys['X'] & KEY_PRESSED ? {
+				camera:zoom_point(mouse,-1)
+			}
+		}
+	}
+
+	// draw background
+	{
+		view:set_color(BACKGROUND_COLOR.r,BACKGROUND_COLOR.g,BACKGROUND_COLOR.b,BACKGROUND_COLOR.a)
+		view:draw_rect(0,0,view.res_x,view.res_y)
+	}
+
+	// draw tiles
+	{
+		view:set_offset(floor(camera.offset.x),floor(camera.offset.y))
+		view:set_scale(camera.scale.x,camera.scale.y)
+		view:set_src_image(tileset_image)
+		for tile = static_tiles[...] ? {
+			if tile==nil ? continue;
+			def ::= tile.tiledef
+			view:set_src_rect(def.coords.x,def.coords.y,TILE_SIZE,TILE_SIZE)
+			view:draw_image(tile.x*TILE_SIZE,tile.y*TILE_SIZE)
+		}
+
+		// for tile = static_tiles[...] ? {
+		// 	if tile==nil ? continue;
+		// 	def ::= tile.tiledef
+		// 	if tile.failed_rule!=nil ? {
+		// 		view:draw_text("" + tile.failed_rule, tile.x*TILE_SIZE,tile.y*TILE_SIZE,255,255,255,255)
+		// 	}else if tile.param!=nil ? {
+		// 		view:draw_text("" + tile.tiledef.id, tile.x*TILE_SIZE,tile.y*TILE_SIZE,255,255,255,255)
+		// 	}
+		// }
+	}
+
+	view:set_offset(0,0)
+	view:set_scale(1,1)
+
+	// draw the grid
+	{
+		offset_y 	::=  ntoi(floor(offset_y))
+		offset_x 	::=  ntoi(floor(offset_x))
+		cell_size 	::= TILE_SIZE * camera.scale.x
+		grid_size_x ::= view.res_x / cell_size + 1
+		grid_size_y ::= view.res_y / cell_size + 1
+
+		view:set_color(255,255,255,255*0.25)
+		for y = 0...grid_size_y ? {
+			view:draw_rect(0,offset_y%cell_size+y*cell_size,view.res_x,1)
+		}
+		for x = 0...grid_size_x ? {
+			view:draw_rect(offset_x%cell_size+x*cell_size,0,1,view.res_y)
+		}
+		view:set_color(255,0,0,255*0.80)
+		view:draw_rect(offset_x,0,1,view.res_y)
+		view:set_color(0,255,0,255*0.80)
+		view:draw_rect(0,offset_y,view.res_x,1)
+	}
+
+	// draw info strings
+	{
+		strings := {
+			"group: " + active_tile_group.name + ", " + active_tile_index
+		}
+		tile := get_tile(mouse_tile_pos_x,mouse_tile_pos_y)
+		if tile ? {
+		strings:add("-- TILE")
+		strings:add("	+- " + tile.tiledef.group)
+		}
+		y := 1
+		for string = strings[...] ? {
+			view:draw_text(string,1,y+1, 0,0,0,255)
+			view:draw_text(string,0,y+0, 255,255, 255,255)
+			y+=15
+		}
+	}
+
+	// draw cursor
+	{
+		view:set_color(255,255,255,255)
+		view:set_src_image(cursor_images.hand_grab)
+		view:draw_image(mouse_x,mouse_y)
+		view:draw_rect(mouse_x,mouse_y,2,2)
+	}
+}

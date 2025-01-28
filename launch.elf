@@ -1,4 +1,9 @@
 // this is the file elf looks for by default
+load "play\\rnd.elf"
+elf.change_work_dir("W:\\MicroRJ\\adve")
+load "play.elf"
+#eof
+
 
 load "play\\rnd.elf"
 load "play\\sort.elf"

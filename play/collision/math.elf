@@ -33,6 +33,7 @@ vec2_={
 	norm=fun()?(this/this:len())
 	__add=fun(that)?(vec2(this.x+that.x,this.y+that.y))
 	__sub=fun(that)?(vec2(this.x-that.x,this.y-that.y))
+	__sub1=fun(that)?(vec2(this.x-that,this.y-that))
 	__mul=fun(that)?(vec2(this.x*that.x,this.y*that.y))
 	__div=fun(that)?(vec2(this.x/that.x,this.y/that.y))
 	__mul1=fun(that)?(vec2(this.x*that,this.y*that))

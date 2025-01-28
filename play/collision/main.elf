@@ -8,8 +8,8 @@ DOWN 		= elf.gfx.Window.DOWN
 RELEASED = elf.gfx.Window.RELEASED
 
 UPSCALE  	::= 4
-WIND_W   	::= 128 // 320
-WIND_H   	::= 128 // 240
+WIND_W   	::= 320 // 128
+WIND_H   	::= 240 // 128
 total_time	= 0
 EDITOR_MODE	= false
 elf.audio.init()
