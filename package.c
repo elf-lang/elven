@@ -70,7 +70,7 @@ int lib_package_get_info(elf_State *S) {
 
 	fclose(pack);
 
-	elf_push_table(S,info);
+	elf_add_table(S,info);
 	return 1;
 }
 

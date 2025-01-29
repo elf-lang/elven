@@ -4,10 +4,12 @@ int lib_gfx_load_image(elf_State *S);
 int lib_gfx_save_image(elf_State *S);
 int lib_gfx_repl_image_colors(elf_State *S);
 int lib_gfx_make_image_mask(elf_State *S);
+int lib_gfx_image_get(elf_State *S);
 
 static elf_CBinding lib_image[]={
 	{"load_image",lib_gfx_load_image},
 	{"save_image",lib_gfx_save_image},
+	{"get",lib_gfx_image_get},
 	{"repl_image_colors",lib_gfx_repl_image_colors},
 	{"make_image_mask",lib_gfx_make_image_mask},
 };
@@ -28,7 +30,7 @@ int lib_gfx_make_image(elf_State *S) {
 	elf_tsets_int(tab,elf_new_string(S,"@ptr"),(elf_Int)(img));
 	elf_tsets_int(tab,elf_new_string(S,"w"),w);
 	elf_tsets_int(tab,elf_new_string(S,"h"),h);
-	elf_push_table(S,tab);
+	elf_add_table(S,tab);
 	return 1;
 }
 
@@ -67,10 +69,28 @@ int lib_gfx_load_image(elf_State *S) {
 		elf_tsets_int(tab,elf_new_string(S,"@ptr"),(elf_Int)(img));
 		elf_tsets_int(tab,elf_new_string(S,"width"),!img ? 0 : img->w);
 		elf_tsets_int(tab,elf_new_string(S,"height"),!img ? 0 : img->h);
-		elf_push_table(S,tab);
+		elf_add_table(S,tab);
 	}else{
 		elf_push_nil(S);
 	}
+	return 1;
+}
+
+int lib_gfx_image_get(elf_State *S) {
+	elf_Table *tab = elf_get_table(S,0);
+
+	kit_Image *img = (kit_Image *) elf_table_get(tab
+	, VSTR(elf_new_string(S,"@ptr"))).x_int;
+	int x = elf_get_int(S,1);
+	int y = elf_get_int(S,2);
+
+	kit_Color color = img->pixels[img->w*x+y];
+	elf_Table *color_t = elf_new_table(S);
+	elf_table_set(color_t,VSTR(elf_new_string(S,"r")),VINT(color.r));
+	elf_table_set(color_t,VSTR(elf_new_string(S,"g")),VINT(color.g));
+	elf_table_set(color_t,VSTR(elf_new_string(S,"b")),VINT(color.b));
+	elf_table_set(color_t,VSTR(elf_new_string(S,"a")),VINT(color.a));
+	elf_add_table(S,color_t);
 	return 1;
 }
 
