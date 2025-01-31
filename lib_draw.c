@@ -266,7 +266,7 @@ int lib_draw_image(elf_State *S) {
 	params.angle = _cur_rotation;
 	params.flip_x = flip_x;
 	params.flip_y = flip_y;
-	_rect(&params);
+	_quad(&params);
 
 	goto _nop;
 	kit_draw_image3(ctx,color_to_mul,color_to_add,src_i,dst_r,src_r);

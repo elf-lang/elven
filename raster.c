@@ -33,9 +33,8 @@ typedef struct {
 	bool       flip_x,flip_y;
 } _rect_params;
 
-// not particularly fast, but it seems to get the job done...
-// todo: we could speed it up tho
-static void _rect(_rect_params *params) {
+// not particularly fast...
+static void _quad(_rect_params *params) {
 	kit_Image *dst = params->dst;
 	kit_Rect dst_r = params->dst_r;
 	kit_Image *src = params->src;
