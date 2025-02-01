@@ -1,6 +1,6 @@
 // this is the file elf looks for by default
 load "play\\rnd.elf"
-elf.change_work_dir("W:\\MicroRJ\\adve")
+elf.change_work_dir("C:\\work\\MicroRJ\\adventuretime")
 load "play.elf"
 #eof
 
