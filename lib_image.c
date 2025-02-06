@@ -71,7 +71,7 @@ int lib_gfx_load_image(elf_State *S) {
 		elf_tsets_int(tab,elf_new_string(S,"height"),!img ? 0 : img->h);
 		elf_add_table(S,tab);
 	}else{
-		elf_push_nil(S);
+		elf_add_nil(S);
 	}
 	return 1;
 }

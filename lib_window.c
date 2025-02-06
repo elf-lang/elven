@@ -44,11 +44,11 @@ int window__new(elf_State *S) {
 	,	VINT((elf_i64)c));
 
 	// call poll once
-	elf_push_proc(S,window__poll);
-	elf_push_this(S);
+	elf_add_proc(S,window__poll);
+	elf_add_this(S);
 	elf_call(S,1,0);
 
-	elf_push_this(S);
+	elf_add_this(S);
 	return 1;
 }
 
