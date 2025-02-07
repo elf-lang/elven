@@ -221,26 +221,22 @@ int lib_draw_circle(elf_State *S) {
 
 int lib_draw_image(elf_State *S) {
 	kit_Context *ctx = get_ctx(S);
-	kit_Image *src_i;
-	kit_Color color_to_add,color_to_mul;
-	color_to_add=color_to_mul=KIT_WHITE;
-	int flip_x=0,flip_y=0;
-
+	int flip_x=0;
+	int flip_y=0;
 	kit_Rect src_r = _cur_src_rect;
 	kit_Rect dst_r = {};
 	f32x2 center = _cur_center;
-
-	int i = 0;
 	int nargs = elf_get_num_args(S);
-	src_i 		 = _cur_src_image;
-	color_to_mul = _cur_color;
-	color_to_add = _cur_add_color;
+	kit_Image *src_i = _cur_src_image;
+	kit_Color color_to_add = _cur_add_color;
+	kit_Color color_to_mul = _cur_color;
+	int arg = 0;
 	if (nargs >= 2) { nargs -= 2;
-		dst_r.x = elf_get_num(S,i++) * _cur_scale.x + _cur_offset.x;
-		dst_r.y = elf_get_num(S,i++) * _cur_scale.y + _cur_offset.y;
+		dst_r.x = elf_get_num(S,arg++) * _cur_scale.x + _cur_offset.x;
+		dst_r.y = elf_get_num(S,arg++) * _cur_scale.y + _cur_offset.y;
 		if (nargs >= 2) { nargs -= 2;
-			dst_r.w = elf_get_num(S,i++) * fabsf(_cur_scale.x);
-			dst_r.h = elf_get_num(S,i++) * fabsf(_cur_scale.y);
+			dst_r.w = elf_get_num(S,arg++) * fabsf(_cur_scale.x);
+			dst_r.h = elf_get_num(S,arg++) * fabsf(_cur_scale.y);
 		} else {
 			dst_r.w = _cur_src_rect.w * fabsf(_cur_scale.x);
 			dst_r.h = _cur_src_rect.h * fabsf(_cur_scale.y);
@@ -249,28 +245,21 @@ int lib_draw_image(elf_State *S) {
 		if(_cur_scale.y < 0) {
 			center.y += dst_r.h;
 		}
-	} else goto _nop;
-	if (nargs >= 2) { nargs -= 2;
-		flip_x = elf_get_int(S,i++);
-		flip_y = elf_get_int(S,i++);
-	} else goto _draw;
-
-	_draw:
-
-	_rect_params params = {};
-	params.dst = ctx->screen;
-	params.src = src_i;
-	params.dst_r = dst_r;
-	params.src_r = src_r;
-	params.center = center; // center;
-	params.angle = _cur_rotation;
-	params.flip_x = flip_x;
-	params.flip_y = flip_y;
-	_quad(&params);
-
-	goto _nop;
-	kit_draw_image3(ctx,color_to_mul,color_to_add,src_i,dst_r,src_r);
-	_nop:
+		if (nargs >= 2) { nargs -= 2;
+			flip_x = elf_get_int(S,arg++);
+			flip_y = elf_get_int(S,arg++);
+		}
+		_rect_params params = {};
+		params.dst = ctx->screen;
+		params.src = src_i;
+		params.dst_r = dst_r;
+		params.src_r = src_r;
+		params.center = center; // center;
+		params.angle = _cur_rotation;
+		params.flip_x = flip_x;
+		params.flip_y = flip_y;
+		_quad(&params);
+	}
 	return 0;
 }
 

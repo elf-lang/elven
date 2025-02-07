@@ -30,7 +30,8 @@ typedef struct {
 	kit_Rect   src_r;
 	f32x2      center;
 	float      angle;
-	bool       flip_x,flip_y;
+	unsigned flip_x: 1;
+	unsigned flip_y: 1;
 } _rect_params;
 
 // not particularly fast...
@@ -71,6 +72,9 @@ static void _quad(_rect_params *params) {
 		y1=MIN(dst->h,MAX(y1,ceil(p.y + 1)));
 	}
 
+	float i_u = 1.f / dst_r.w * src_r.w;
+	float i_v = 1.f / dst_r.h * src_r.h;
+
 	// todo: if we could figure out what the starting
 	// position is per scanline and the length of the
 	// scanline...
@@ -89,15 +93,12 @@ static void _quad(_rect_params *params) {
 				if (src) {
 					if(flip_x) pr = dst_r.w - 1 - pr;
 					if(flip_y) pu = dst_r.h - 1 - pu;
-					// convert to u v space, then scale
-					int tex_x = pr / dst_r.w * src_r.w;
-					int tex_y = pu / dst_r.h * src_r.h;
-					tex_x += src_r.x;
-					tex_y += src_r.y;
+					int tex_x = src_r.x + pr * i_u;
+					int tex_y = src_r.y + pu * i_v;
 					color = src->pixels[src->w * tex_y + tex_x];
 				}
 				if (color.a) {
-					dst->pixels[dst->w*y+x]=color;
+					dst->pixels[dst->w * y + x] = color;
 				}
 			}
 		}
