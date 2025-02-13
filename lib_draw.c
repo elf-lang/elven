@@ -254,10 +254,11 @@ int lib_draw_image(elf_State *S) {
 		params.src = src_i;
 		params.dst_r = dst_r;
 		params.src_r = src_r;
-		params.center = center; // center;
+		params.center = center;
 		params.angle = _cur_rotation;
 		params.flip_x = flip_x;
 		params.flip_y = flip_y;
+		params.color = _cur_color;
 		_quad(&params);
 	}
 	return 0;

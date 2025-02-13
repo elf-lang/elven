@@ -29,6 +29,8 @@ typedef struct {
 	kit_Rect   dst_r;
 	kit_Rect   src_r;
 	f32x2      center;
+	kit_Color  color;
+	kit_Color  color_add;
 	float      angle;
 	unsigned flip_x: 1;
 	unsigned flip_y: 1;
@@ -89,15 +91,28 @@ static void _quad(_rect_params *params) {
 
 			// check if within rect
 			if (pr >= 0 && pr < dst_r.w && pu >= 0 && pu < dst_r.h) {
-				kit_Color color = (kit_Color){255,0,0,255};
+				kit_Color color = params->color;
 				if (src) {
 					if(flip_x) pr = dst_r.w - 1 - pr;
 					if(flip_y) pu = dst_r.h - 1 - pu;
 					int tex_x = src_r.x + pr * i_u;
 					int tex_y = src_r.y + pu * i_v;
-					color = src->pixels[src->w * tex_y + tex_x];
+					kit_Color sample = src->pixels[src->w * tex_y + tex_x];
+					// color = sample;
+					const float k = 1.f/255 * 1.f/255 * 255.f;
+					color.r = (color.r * sample.r) * k;
+					color.g = (color.g * sample.g) * k;
+					color.b = (color.b * sample.b) * k;
+					color.a = (color.a * sample.a) * k;
 				}
-				if (color.a) {
+				if(color.a){
+					kit_Color src_color = dst->pixels[dst->w * y + x];
+					// lerp(t,a,b) ::= a + (b - a) * t
+					color.r = src_color.r + (color.r - src_color.r) * (color.a / 255.f);
+					color.g = src_color.g + (color.g - src_color.g) * (color.a / 255.f);
+					color.b = src_color.b + (color.b - src_color.b) * (color.a / 255.f);
+					color.a = 255; // src_color.a + (color.a - src_color.a) * color.a;
+
 					dst->pixels[dst->w * y + x] = color;
 				}
 			}

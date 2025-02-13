@@ -4,7 +4,7 @@ load_image ::= fun(name) ? {
 	path := "data\\images\\" + name
 	image := elf.gfx.load_image(path)
 	if image ? {
-		elf.gfx.image_replace_colors(image,	0,0,0,255, 0,0,0,0)
+		elf.gfx.repl_image_colors(image,	0,0,0,255, 0,0,0,0)
 		elf.pf("'",path,"': loaded")
 	} else {
 		elf.pf("'",path,"': failed to load image")
@@ -17,7 +17,7 @@ load_image_folder ::= fun(path) ? {
 	item_names ::= elf.list_folder("data\\images\\" + path)
 	for item_name = item_names[...] ? {
 		image ::= load_image(path + "\\" + item_name.name)
-		elf.gfx.image_replace_colors(image,	0,0,0,255, 0,0,0,0)
+		elf.gfx.repl_image_colors(image,	0,0,0,255, 0,0,0,0)
 		images:add(image)
 	}
 	--> images

@@ -27,9 +27,9 @@ int lib_gfx_make_image(elf_State *S) {
 	kit_Image *img = kit_create_image(w,h);
 
 	elf_Table *tab = elf_new_table(S);
-	elf_tsets_int(tab,elf_new_string(S,"@ptr"),(elf_Int)(img));
-	elf_tsets_int(tab,elf_new_string(S,"w"),w);
-	elf_tsets_int(tab,elf_new_string(S,"h"),h);
+	elf_table_set(tab,VSTR(elf_new_string(S,"@ptr")),VINT((elf_Int)(img)));
+	elf_table_set(tab,VSTR(elf_new_string(S,"w")),VINT(w));
+	elf_table_set(tab,VSTR(elf_new_string(S,"h")),VINT(h));
 	elf_add_table(S,tab);
 	return 1;
 }
@@ -66,9 +66,9 @@ int lib_gfx_load_image(elf_State *S) {
 	}
 	if(img){
 		elf_Table *tab = elf_new_table(S);
-		elf_tsets_int(tab,elf_new_string(S,"@ptr"),(elf_Int)(img));
-		elf_tsets_int(tab,elf_new_string(S,"width"),!img ? 0 : img->w);
-		elf_tsets_int(tab,elf_new_string(S,"height"),!img ? 0 : img->h);
+		elf_table_set(tab,VSTR(elf_new_string(S,"@ptr")),VINT((elf_Int)(img)));
+		elf_table_set(tab,VSTR(elf_new_string(S,"width")),VINT(!img ? 0 : img->w));
+		elf_table_set(tab,VSTR(elf_new_string(S,"height")),VINT(!img ? 0 : img->h));
 		elf_add_table(S,tab);
 	}else{
 		elf_add_nil(S);

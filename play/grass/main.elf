@@ -12,11 +12,15 @@ PI360 ::= PI * 2.0
 
 view := new elf.gfx.Window("Grass",320,320,2)
 
+grass_tileset := elf.gfx.load_image("data\\plants.png")
+elf.gfx.repl_image_colors(grass_tileset,34,32,52,255,0,0,0,0)
+
+
 grass_files := elf.list_folder("data\\grass")
 grass_images := {}
 for file = grass_files[...] ? {
 	image := elf.gfx.load_image(file.path)
-	elf.gfx.image_replace_colors(image,0,0,0,255,0,0,0,0)
+	elf.gfx.repl_image_colors(image,0,0,0,255,0,0,0,0)
 	grass_images:add(image)
 }
 
@@ -24,7 +28,7 @@ particle_files := elf.list_folder("data\\particles")
 grass_particle_images := {}
 for file = particle_files[...] ? {
 	image := elf.gfx.load_image(file.path)
-	elf.gfx.image_replace_colors(image,0,0,0,255,0,0,0,0)
+	elf.gfx.repl_image_colors(image,0,0,0,255,0,0,0,0)
 	grass_particle_images:add(image)
 }
 

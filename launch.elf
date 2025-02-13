@@ -1,27 +1,23 @@
 // this is the file elf looks for by default
 load "play\\rnd.elf"
-elf.change_work_dir("W:\\MicroRJ\\adve")
-load "play.elf"
+elf.change_work_dir("W:\\MicroRJ\\game2")
+load "main.elf"
 #eof
-
-
-load "play\\rnd.elf"
 load "play\\sort.elf"
 elf.change_work_dir("play\\collision")
 load "main.elf"
 #eof
-
+load "play\\rnd.elf"
+elf.change_work_dir("W:\\MicroRJ\\adve")
+load "play.elf"
+#eof
 elf.pf(elf.const_expr("{0={0=1,1=2,2=3}}"))
 elf.pf(elf.const_expr("7"))
 elf.pf(elf.const_expr("7.0"))
 elf.pf(elf.const_expr("{}"))
 elf.pf(elf.const_expr("{1,2,3}"))
 elf.pf(elf.const_expr("{0=1,1=2,2=3}"))
-
 #eof
-
-
-
 b := 0 || 1
 elf.flags(1<<3)
 elf.pf("0 && b: ", 7 && b)
