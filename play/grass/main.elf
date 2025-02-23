@@ -10,25 +10,28 @@ PI45 	::= PI * 0.25
 PI180 ::= PI * 1.0
 PI360 ::= PI * 2.0
 
-view := new elf.gfx.Window("Grass",320,320,2)
+elf.jam.video("Grass",320,320,1)
 
-grass_tileset := elf.gfx.load_image("data\\plants.png")
-elf.gfx.repl_image_colors(grass_tileset,34,32,52,255,0,0,0,0)
+grass_tileset := elf.jam.load_texture("data\\plants.png",34,32,52,255,0,0,0,0)
 
-
-grass_files := elf.list_folder("data\\grass")
-grass_images := {}
-for file = grass_files[...] ? {
-	image := elf.gfx.load_image(file.path)
-	elf.gfx.repl_image_colors(image,0,0,0,255,0,0,0,0)
-	grass_images:add(image)
-}
+spritesheet := elf.jam.load_texture("sprites.png")
+// grass_files := elf.list_folder("data\\grass")
+// grass_images := {}
+// for file = grass_files[...] ? {
+// 	texture := elf.jam.load_texture(file.path,0,0,0,255,0,0,0,0)
+// 	size := elf.jam.get_texture_size(texture)
+// 	image := {
+// 		texture = texture,
+// 		width = size.x,
+// 		height = size.x,
+// 	}
+// 	grass_images:add(image)
+// }
 
 particle_files := elf.list_folder("data\\particles")
 grass_particle_images := {}
 for file = particle_files[...] ? {
-	image := elf.gfx.load_image(file.path)
-	elf.gfx.repl_image_colors(image,0,0,0,255,0,0,0,0)
+	image := elf.jam.load_texture(file.path,0,0,0,255,0,0,0,0)
 	grass_particle_images:add(image)
 }
 
@@ -43,15 +46,16 @@ spawn_grass_particle := fun(x,y) ? {
 // image := grass_images:idx(random() * 9999)
 // blades:add({image=image,angle=0,x=view.res_x*0.5,y=view.res_y*0.5,random=random()})
 
+num_sprites_in_spritesheet = 7
 PATCH_SIZE = 16
 add_grass_patch := fun(x_,y_) ? {
-	quan := 4 + random() * 12
+	quan := 8 + random() * 24
 	for i = 0...quan ? {
-		image := grass_images:idx(random() * 9999)
+		sprite := random() * 9999 % num_sprites_in_spritesheet
 		x := x_ + random()*PATCH_SIZE
 		y := y_ + random()*PATCH_SIZE
 		angle := (15+random()*30) / 180.0 * PI
-		blades:add({image=image,angle=angle,x=x,y=y,random=random()})
+		blades:add({sprite=sprite,angle=angle,x=x,y=y,random=random()})
 	}
 }
 if (1) ? {
@@ -78,33 +82,33 @@ sort := fun(array) ? {
 	}
 }
 
-blades = merge_sort(blades,fun(a,b) ? {
-	--> a.y > b.y
-})
+// blades = merge_sort(blades,fun(a,b) ? {
+// 	--> a.y > b.y
+// })
 
 // sort(blades)
 total_time := 0
 
-while view:poll() ? {
-	time := view.time
+while elf.jam.cycle() ? {
+	time := 1.0 / 165.0
 	total_time += time
 
 	// sort(blades)
-	view:set_color(27, 66, 52, 255)
-	view:draw_rect(0,0,view.res_x,view.res_y)
+	// view:set_color(27, 66, 52, 255)
+	// view:draw_rect(0,0,view.res_x,view.res_y)
 
-	view:set_color(0,0,0,64)
-	for blade = blades[...] ? {
-		view:draw_rect(blade.x,blade.y,8,8)
-	}
+	// view:set_color(0,0,0,64)
+	// for blade = blades[...] ? {
+	// 	view:draw_rect(blade.x,blade.y,8,8)
+	// }
 
-	force := {x=view.mouse_x,y=view.mouse_y,radSq=32*32}
+	force := {x=elf.jam.input.mouse_x,y=elf.jam.input.mouse_y,radSq=32*32}
 	force_x := force.x
 	force_y := force.y
 	force_radSq := force.radSq
 	render_commands := {}
 
-	view:set_color(255,255,255,255)
+	// view:set_color(255,255,255,255)
 	for blade = blades[...] ? {
 		blade_x := blade.x
 		blade_y := blade.y
@@ -141,17 +145,9 @@ while view:poll() ? {
 			// 	angle = PI90
 			// }
 		}
-		image := blade.image
-
-		render_commands:add({
-			type="image",
-			src_image=image,
-			rotation=angle,
-			x=blade_x,
-			y=blade_y,
-			center_x=image.width*0.5
-			center_y=image.height*0.5
-		})
+		sprite := blade.sprite
+		elf.jam.draw_sprite(spritesheet
+		, 16*sprite,0,16,16, blade_x,blade_y,0,0, 255,255,255,255, angle)
 		blade.angle = angle
 	}
 
@@ -176,43 +172,43 @@ while view:poll() ? {
 	// sort(render_commands)
 
 	for cmd = render_commands[...] ? {
-		view:set_center(cmd.center_x,cmd.center_y)
-		view:set_rotation(cmd.rotation)
-		view:set_src_image(cmd.src_image)
+		// view:set_center(cmd.center_x,cmd.center_y)
+		// view:set_rotation(cmd.rotation)
+		// view:set_src_image(cmd.src_image)
 		if cmd.src_rect ? {
 			r := cmd.src_rect
-			view:set_src_rect(r.x,r.y,r.w,r.h)
+			// view:set_src_rect(r.x,r.y,r.w,r.h)
 		}
 		if cmd.w ? {
-			view:draw_image(cmd.x,cmd.y,cmd.w,cmd.h)
+			// view:draw_image(cmd.x,cmd.y,cmd.w,cmd.h)
 		} else {
-			view:draw_image(cmd.x,cmd.y)
+			// view:draw_image(cmd.x,cmd.y)
 		}
 	}
 
-	new_particles := {}
-	for par = grass_particles[...] ? {
-		keep := true
-		par.timer += 1
-		if par.timer >= 10 ? {
-			par.timer = 0
-			par.frame += 1
-			if par.frame >= grass_particle_images:tally() ? {
-				keep = false
-			}
-		}
-		if keep ? {
-			new_particles:add(par)
-			view:set_src_image(grass_particle_images:idx(par.frame))
-			view:draw_image(par.x,par.y)
-			par.x += sin(par.random * total_time * PI) * par.random + sin(par.random * total_time * PI * 0.1) * 1.1
-			par.y -= 0.5;
-		}
-	}
-	grass_particles = new_particles
+	// new_particles := {}
+	// for par = grass_particles[...] ? {
+	// 	keep := true
+	// 	par.timer += 1
+	// 	if par.timer >= 10 ? {
+	// 		par.timer = 0
+	// 		par.frame += 1
+	// 		if par.frame >= grass_particle_images:tally() ? {
+	// 			keep = false
+	// 		}
+	// 	}
+	// 	if keep ? {
+	// 		new_particles:add(par)
+	// 		view:set_src_image(grass_particle_images:idx(par.frame))
+	// 		view:draw_image(par.x,par.y)
+	// 		par.x += sin(par.random * total_time * PI) * par.random + sin(par.random * total_time * PI * 0.1) * 1.1
+	// 		par.y -= 0.5;
+	// 	}
+	// }
+	// grass_particles = new_particles
 
-	view:draw_circle(force.x,force.y,sqrt(force.radSq))
-	view:draw_text(""+(1.0 / view.time), 0,0, 255, 255, 255, 255)
+	// view:draw_circle(force.x,force.y,sqrt(force.radSq))
+	// view:draw_text(""+(1.0 / view.time), 0,0, 255, 255, 255, 255)
 }
 
 
