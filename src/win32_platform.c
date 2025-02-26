@@ -4,9 +4,11 @@
 
 #pragma comment(lib, "Comdlg32")
 #pragma comment(lib, "Xinput")
+#pragma comment(lib, "Winmm")
 #include "windows.h"
 #include <commdlg.h>
 #include <xinput.h>
+#include <timeapi.h>
 
 
 typedef BOOL win32_SetProcessDPIAwarenessContext(void* value);
@@ -22,6 +24,7 @@ struct{
 	/* key is OS cursor */
 	HCURSOR cursors[OS_Cursor_COUNT];
 	HCURSOR cursor;
+	f64 clocks_to_seconds;
 } global platform;
 
 #define WIN32_CURSOR_XMAP(_)               \
@@ -77,35 +80,19 @@ static b32 os_get_controller_state(Controller_State *state, i32 player) {
 
 #if 0
 internal
-i32x2 os_get_window_size(jam_State window) {
+vec2i os_get_window_size(jam_State window) {
 	RECT rect;
 	GetClientRect((HWND)window,&rect);
-	return (i32x2){rect.right - rect.left, rect.bottom - rect.top};
+	return (vec2i){rect.right - rect.left, rect.bottom - rect.top};
 }
 #endif
 
-internal
-i64 os_get_time() {
+i64 jam_get_main_clock() {
 	LARGE_INTEGER p = {};
 	QueryPerformanceCounter(&p);
 	return p.QuadPart;
 }
 
-internal
-f64 os_time_to_s(i64 time_ticks) {
-	LARGE_INTEGER f = {};
-	QueryPerformanceFrequency(&f);
-	return time_ticks / (f64) f.QuadPart;
-}
-
-internal
-f64 os_get_time_s() {
-	LARGE_INTEGER p = {};
-	QueryPerformanceCounter(&p);
-	LARGE_INTEGER pf = {};
-	QueryPerformanceFrequency(&pf);
-	return p.QuadPart / (f64) pf.QuadPart;
-}
 
 LRESULT win32_window_proc(HWND, UINT, WPARAM, LPARAM);
 
@@ -176,7 +163,20 @@ void os_init() {
 	// }
 
 	os_set_cursor(OS_Cursor_Pointer);
+
+	timeBeginPeriod(1);
+	LARGE_INTEGER large = {};
+	QueryPerformanceFrequency(&large);
+	f64 frequency = large.QuadPart;
+	platform.clocks_to_seconds = (f64) 1.0 / frequency;
+	int DEBUGBREAK;
+	DEBUGBREAK = 0;
 }
+
+void os_sleep(f64 seconds) {
+	Sleep(seconds * 1000.0);
+}
+
 
 typedef struct {
 	char *name;
@@ -189,7 +189,7 @@ typedef struct {
 	int success;
 } Window_Token;
 
-static void cycle_window(jam_State *app);
+static void _jam_os_cycle(jam_State *app);
 
 Window_Token equip_window(jam_State *app, Equip_Window params) {
 
@@ -213,13 +213,13 @@ Window_Token equip_window(jam_State *app, Equip_Window params) {
 	ShowWindow(window,SW_SHOW);
 	SetWindowLongPtrA(window,GWLP_USERDATA,(LONG_PTR)app);
 	app->window = window;
-	cycle_window(app);
+	_jam_os_cycle(app);
 
 	return (Window_Token) { true };
 }
 
 
-static void cycle_window(jam_State *app) {
+static void _jam_os_cycle(jam_State *app) {
 	RECT rect;
 	GetClientRect(app->window,&rect);
 	app->window_dimensions.x = rect.right - rect.left;

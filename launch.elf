@@ -4,6 +4,14 @@ elf.change_work_dir("W:\\MicroRJ\\game9")
 load "main.elf"
 #eof
 
+a := 0
+b := a
+c := a
+elf.pf(#getmem(a))
+elf.pf(#getmem(b))
+elf.pf(#getmem(c))
+#eof
+
 elf.pf(elf.const_expr("{0={0=1,1=2,2=3}}"))
 elf.pf(elf.const_expr("7"))
 elf.pf(elf.const_expr("7.0"))

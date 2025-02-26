@@ -50,7 +50,7 @@ typedef union {
 typedef union {
 	struct{ i32 x, y; };
 	i32 xy[2];
-} i32x2;
+} vec2i;
 
 typedef union {
 	struct{ f32 x, y, z; };
@@ -83,15 +83,49 @@ typedef u8x4 Color;
 
 typedef struct {
 	union{
-		i32x2 xy;
+		vec2i xy;
 		struct{i32 x,y;};
 	};
 	union{
 		struct{i32 size_x,size_y;};
-		struct{i32x2 size;};
+		struct{vec2i size;};
 		struct{i32 w,h;};
 	};
 } r_i32;
+
+typedef struct {
+	vec2 basis_x,basis_y;
+	vec2 center;
+	vec2 translation;
+} trans2d;
+
+static inline trans2d trans2d_rotation(f32 rotation, vec2 center) {
+	vec2 basis_x = (vec2){cos(rotation),sin(rotation)};
+	vec2 basis_y = (vec2){-basis_x.y,basis_x.x};
+	return (trans2d){basis_x,basis_y,center,vec2(0,0)};
+}
+static inline trans2d trans2d_translation(vec2 translation) {
+	return (trans2d){vec2(1,0),vec2(0,1),vec2(0,0),translation};
+}
+//
+// todo: simplify this...
+//
+// T + C + ((X - C) * BX + (Y - C) * BY)
+//
+// T + C +
+//  X * BX - C * BX +
+//  Y * BY - C * BY
+//
+static inline vec2 apply_trans2d(trans2d trans, vec2 v) {
+	vec2 o =
+	vec2_add(vec2_add(trans.translation,trans.center)
+	, vec2_add(
+		vec2_mul(trans.basis_x,vec2_sub(vec2(v.x,v.x),trans.center)),
+		vec2_mul(trans.basis_y,vec2_sub(vec2(v.y,v.y),trans.center))));
+	return o;
+}
+
+
 
 typedef struct Controller_State Controller_State;
 struct Controller_State {
@@ -117,13 +151,52 @@ enum {
 	FILTER_COUNT,
 };
 
+static char *j_obj2str[]={
+	"none",
+	"image",
+	"sound",
+	"texture",
+};
+typedef enum {
+	JAM_NONE = 0,
+	JAM_IMAGE,
+	JAM_SOUND,
+	JAM_TEXTURE,
+} jam_type;
+
+typedef struct jam_Object jam_Object;
+struct jam_Object {
+	elf_Object obj;
+	i32 type;
+};
+
+typedef struct jam_Image jam_Image;
+struct jam_Image {
+	jam_Object base;
+	vec2i size;
+	// todo: could be allocated along with the object
+	Color *pixels;
+};
+
 typedef struct jam_Texture jam_Texture;
 struct jam_Texture {
-	i32x2 size;
+	jam_Object base;
+	vec2i size;
 	ID3D11SamplerState *sampler;
 	ID3D11ShaderResourceView *view;
 	ID3D11Texture2D *texture;
 };
+
+typedef struct jam_Sound jam_Sound;
+struct jam_Sound {
+	jam_Object base;
+	ma_sound sound;
+};
+
+
+
+
+
 
 typedef struct Per_Pass_Constants Per_Pass_Constants;
 struct Per_Pass_Constants {
@@ -145,10 +218,18 @@ struct Vertex2D {
 
 STATIC_ASSERT(!(sizeof(Vertex2D) & 15));
 
+typedef struct jam_Audio jam_Audio;
+struct jam_Audio {
+	ma_engine engine;
+	// all the sounds in here are never referenced by
+	// anyone else, they are freed on demand
+	jam_Sound *voices[16];
+};
+
 typedef struct jam_State jam_State;
 struct jam_State {
 	HWND window;
-	i32x2 window_dimensions;
+	vec2i window_dimensions;
 
 	b32 resizing;
 
@@ -156,14 +237,18 @@ struct jam_State {
 	u8 now_input[256];
 	u32   key;
 	u32   character;
-	i32x2 mouse_xy;
-	i32x2 mouse_wheel;
+	vec2i mouse_xy;
+	vec2i mouse_wheel;
 
-	ma_engine sound_engine;
+	jam_Audio audio;
 
 	jam_Texture default_font_texture;
 
 	temp_b32 resizable;
+	i64 begin_cycle_clock;
+	f64 clocks_to_seconds;
+	f64 target_seconds_to_sleep;
+	f64 pending_seconds_to_sleep;
 
 	ID3D11InfoQueue     *info_queue;
 	ID3D11Device        *device;
@@ -174,12 +259,12 @@ struct jam_State {
 
 	jam_Texture fallback_texture;
 
-	i32x2 window_render_target_resolution;
+	vec2i window_render_target_resolution;
 	IDXGISwapChain2 *window_present_mechanism;
 	ID3D11Texture2D *window_render_target;
 	ID3D11RenderTargetView *window_render_target_view;
 
-	i32x2 base_resolution;
+	vec2i base_resolution;
 	ID3D11Texture2D *base_render_target_texture;
 	ID3D11RenderTargetView *base_render_target_view;
 	ID3D11ShaderResourceView *base_render_target_shader_view;
@@ -196,6 +281,7 @@ struct jam_State {
 	ID3D11Buffer *vertex_buffer;
 	i32 vertex_buffer_capacity;
 	i32 vertex_buffer_write;
+
 };
 
 

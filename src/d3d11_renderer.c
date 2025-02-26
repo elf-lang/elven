@@ -1,4 +1,4 @@
-jam_Texture jam_new_texture(jam_State *jam, i32 size_x, i32 size_y, void *contents);
+static void r_equip_texture(jam_State *jam, jam_Texture *texture, i32 size_x, i32 size_y, void *contents);
 
 typedef struct {
 	int res_x;
@@ -175,11 +175,15 @@ b32 r_equip(jam_State *jam, Window_Token window_token, Equip_Renderer params) {
 	}
 
 	{
-		// more than good enough I think,
-		// storage for around ~700,000 rectangles should
-		// be more than plenty of buffering space for
-		// the CPU not to catch up to the GPU
-		jam->vertex_buffer_capacity = MEGABYTES(128);
+		// the reasoning behind creating this single large
+		// buffer is A) use this buffer for all dynamic
+		// geometry and avoid creating other buffers
+		// which complicates my life, B) if the buffer
+		// is large enough we can guarantee the CPU
+		// and GPU won't overlap and so we can do much
+		// faster maps. I don't actually know anything,
+		// so perhaps there's another way of doing this.
+		jam->vertex_buffer_capacity = MEGABYTES(256);
 
 		D3D11_BUFFER_DESC config = {};
 		config.Usage = D3D11_USAGE_DYNAMIC;
@@ -192,7 +196,7 @@ b32 r_equip(jam_State *jam, Window_Token window_token, Equip_Renderer params) {
 	}
 
 	u8x4 color = {255, 255, 255, 255};
-	jam->fallback_texture = jam_new_texture(jam,1,1,&color);
+	r_equip_texture(jam,&jam->fallback_texture,1,1,&color);
 
 	{
 		D3D11_BUFFER_DESC config = {};
@@ -307,10 +311,7 @@ b32 r_equip(jam_State *jam, Window_Token window_token, Equip_Renderer params) {
 	return success;
 }
 
-static jam_Texture jam_new_texture(jam_State *jam, i32 size_x, i32 size_y, void *contents) {
-	jam_Texture texture = {};
-	texture.sampler = jam->samplers[FILTER_POINT];
-
+static void r_equip_texture(jam_State *jam, jam_Texture *texture, i32 size_x, i32 size_y, void *contents) {
 	i32 bytes_per_pixel = 4;
 
    /* Todo: ensure sizes are proper */
@@ -333,24 +334,23 @@ static jam_Texture jam_new_texture(jam_State *jam, i32 size_x, i32 size_y, void 
 		sub_config.SysMemPitch = size_x * bytes_per_pixel;
 		D3D11_SUBRESOURCE_DATA *psub_config = 0;
 		if(contents){ psub_config = &sub_config; }
-		if (FAILED(ID3D11Device_CreateTexture2D(jam->device,&config,psub_config,&texture.texture))) {
+		if (FAILED(ID3D11Device_CreateTexture2D(jam->device,&config,psub_config,&texture->texture))) {
 		}
 	}
 
-	if (texture.texture) {
+	if (texture->texture) {
 		D3D11_SHADER_RESOURCE_VIEW_DESC config = {};
 		config.Format = DXGI_FORMAT_UNKNOWN;
 		config.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		config.Texture2D.MostDetailedMip = 0;
 		config.Texture2D.MipLevels = 1;
 
-		ID3D11Device_CreateShaderResourceView(jam->device,(ID3D11Resource*)texture.texture,&config,&texture.view);
+		ID3D11Device_CreateShaderResourceView(jam->device,(ID3D11Resource*)texture->texture,&config,&texture->view);
 
-		texture.size.x = size_x;
-		texture.size.y = size_y;
+		texture->sampler = jam->samplers[FILTER_POINT];
+		texture->size.x = size_x;
+		texture->size.y = size_y;
 	}
-
-	return texture;
 }
 
 static int _r_write_vertices(jam_State *jam, Vertex2D *vertices, i32 num_vertices) {
@@ -373,8 +373,8 @@ static int _r_write_vertices(jam_State *jam, Vertex2D *vertices, i32 num_vertice
 	return result;
 }
 
-static void _jr_cycle(jam_State *jam){
-	i32x2 window_dimensions = jam->window_dimensions;
+static void _jam_renderer_cycle(jam_State *jam){
+	vec2i window_dimensions = jam->window_dimensions;
 
 	b32 resolution_mismatch =
 	jam->window_render_target_resolution.x != window_dimensions.x ||
@@ -407,6 +407,8 @@ static void _jr_cycle(jam_State *jam){
 		ID3D11DeviceContext_Unmap(jam->context, (ID3D11Resource *)constant_buffer, 0);
 	}
 	{
+		vec2i window_resolution = jam->window_render_target_resolution;
+		// f32 aspect_ratio = window_resolution.x / (f32) window_resolution.y;
 		Vertex2D vertices[] = {
 			{{-1,-1},{0,1},{255,255,255,255}},
 			{{-1,1},{0,0},{255,255,255,255}},
@@ -416,8 +418,7 @@ static void _jr_cycle(jam_State *jam){
 			{{1,-1},{1,1},{255,255,255,255}},
 		};
 		i32 vertex_offset = _r_write_vertices(jam,vertices,_countof(vertices));
-		i32x2 resolution = jam->window_render_target_resolution;
-		D3D11_VIEWPORT viewport = { 0.0f, 0.0f, resolution.x, resolution.y, 0.0f, 1.0f };
+		D3D11_VIEWPORT viewport = { 0.0f, 0.0f, window_resolution.x, window_resolution.y, 0.0f, 1.0f };
 		ID3D11DeviceContext_RSSetViewports(jam->context, 1, &viewport);
 		ID3D11DeviceContext_OMSetRenderTargets(jam->context, 1, &jam->window_render_target_view, 0);
 		ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &jam->base_render_target_shader_view);
@@ -429,7 +430,7 @@ static void _jr_cycle(jam_State *jam){
 	}
 	#endif
 
-	IDXGISwapChain_Present(jam->window_present_mechanism,1u,0);
+	IDXGISwapChain_Present(jam->window_present_mechanism,1,0);
 
 	ID3D11DeviceContext_OMSetRenderTargets(jam->context, 1, &jam->base_render_target_view, 0);
 	// todo: let user call this...
@@ -438,14 +439,15 @@ static void _jr_cycle(jam_State *jam){
 }
 
 // the only thing that this renderer knows how to do...
-static int r_texture_pass(jam_State *jam, jam_Texture texture, Vertex2D *vertices, i32 num_vertices) {
+static int r_texture_pass(jam_State *jam, jam_Texture *texture, Vertex2D *vertices, i32 num_vertices) {
 	int result = _r_write_vertices(jam,vertices,num_vertices);
 
-	if(!texture.texture) texture = jam->fallback_texture;
-	ID3D11ShaderResourceView *texture_view = texture.view;
-	ID3D11SamplerState *sampler = texture.sampler;
+	if(!texture) texture = &jam->fallback_texture;
 
-	i32x2 resolution = jam->base_resolution;
+	ID3D11ShaderResourceView *texture_view = texture->view;
+	ID3D11SamplerState *sampler = texture->sampler;
+
+	vec2i resolution = jam->base_resolution;
 
 	{
 		vec2 scale = { 2.0 / resolution.x, 2.0 / resolution.y };

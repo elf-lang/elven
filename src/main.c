@@ -29,8 +29,11 @@
 #include "win32_platform.c"
 #include "d3d11_renderer.c"
 
+
+
+
 jam_State     JAM;
-jam_Texture   r_texture;
+jam_Texture  *r_texture;
 // todo: the reason behind having an intermediate
 // buffer is due to how the rendering API works,
 // perhaps this should be abstracted in the API
@@ -38,17 +41,42 @@ jam_Texture   r_texture;
 Vertex2D     *r_mem_vertices;
 i32           r_num_vertices;
 i32           r_max_vertices;
+
 // these persist across draw calls, I don't do
 // them on the GPU because this way is simpler,
 // but maybe eventually for other more rendering
 // pipelines we may want to move away from this
 // since does incur a cost...
-vec2 	        r_scale;
-vec2 	        r_offset;
 // todo: instead compute the basis from the
 // rotation
-f32 	        r_rotation;
-vec2 	        r_center;
+
+vec2 r_scale;
+vec2 r_offset;
+f32  r_rotation;
+vec2 r_center;
+
+static void *j_get(elf_State *S, int arg, jam_type type) {
+	if (elf_get_tag(S,arg) != elf_tag_userobj) {
+		elf_error(S,0,elf_tpf("jam expects '%s' object", j_obj2str[type]));
+	}
+	jam_Object *obj = (jam_Object *) elf_get_object(S,arg);
+	if (obj->type != type) {
+		elf_error(S,0,elf_tpf("jam expects '%s' object", j_obj2str[type]));
+	}
+	return obj;
+}
+
+// todo: mini audio expects objects to get deallocated
+// through their backend, so we can't just use GC, unless
+// the GC called some _collect function or something...
+static void *j_new(elf_State *S, int type, int size) {
+	// jam_Object *obj = (jam_Object *) elf_new_object(S,size);
+	jam_Object *obj = (jam_Object *) calloc(1,size);
+	elf_add_object(S, (elf_Object*) obj);
+	obj->type = type;
+	ASSERT(size >= sizeof(*obj));
+	return obj;
+}
 
 
 int _get_rect(elf_State *S, int i, r_i32 *rect) {
@@ -67,32 +95,20 @@ int _get_color(elf_State *S, int i, u8x4 *color) {
 	return i;
 }
 
-void r_flush() {
+void _jam_flush_render_pass() {
 	if (r_num_vertices) {
 		r_texture_pass(&JAM,r_texture,r_mem_vertices,r_num_vertices);
 		r_num_vertices = 0;
 	}
 }
-void _jr_set_texture(jam_Texture texture) {
-	if (r_texture.texture != texture.texture) {
-		r_flush();
+void _jr_set_texture(jam_Texture *texture) {
+	if (r_texture != texture) {
+		_jam_flush_render_pass();
 		r_texture = texture;
 	}
 }
 
-static int l_audio(elf_State *S) {
-	ma_result error = ma_engine_init(NULL,&JAM.sound_engine);
-	elf_add_int(S,error==MA_SUCCESS);
-	return 1;
-}
-
-static int l_audio_play(elf_State *S) {
-	char *name = elf_get_text(S,0);
-	ma_engine_play_sound(&JAM.sound_engine,name, NULL);
-	return 0;
-}
-
-static void _j_cycle_globals(elf_State *S) {
+static void _jam_update_globals(elf_State *S) {
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.video.res_x")),VALUE_INTEGER(JAM.base_resolution.x));
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.video.res_y")),VALUE_INTEGER(JAM.base_resolution.y));
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.mouse_x")),VALUE_INTEGER(JAM.mouse_xy.x));
@@ -100,21 +116,31 @@ static void _j_cycle_globals(elf_State *S) {
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.mouse_y")),VALUE_INTEGER(JAM.base_resolution.y - JAM.mouse_xy.y));
 }
 
+static int j_video_guard;
+
 static int j_video(elf_State *S) {
+	if (j_video_guard) {
+		elf_error(S,0,"video has already begun");
+	}
+	j_video_guard = true;
+
+
 	int i = 0;
 	char *name       = elf_get_text(S,i++);
 	int base_res_x   = elf_get_int(S,i++);
 	int base_res_y   = elf_get_int(S,i++);
 	int window_scale = elf_get_int(S,i++);
 
+	elf_debug_log("jam: begin video mode");
+
 	os_init();
 
-	r_mem_vertices = VirtualAlloc(0, MEGABYTES(32), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-	r_max_vertices = MEGABYTES(32) / sizeof(*r_mem_vertices);
+	r_mem_vertices = VirtualAlloc(0, MEGABYTES(128), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+	r_max_vertices = MEGABYTES(128) / sizeof(*r_mem_vertices);
 	r_num_vertices = 0;
 	r_scale.x = 1;
 	r_scale.y = 1;
-
+	JAM.target_seconds_to_sleep = 1.0 / 60.0;
 
 	if (window_scale == 0) window_scale = 1;
 	Window_Token window_token = equip_window(&JAM,(Equip_Window){
@@ -133,10 +159,12 @@ static int j_video(elf_State *S) {
 	// 	JAM.default_font_texture = r_texture(&JAM,FORMAT_RGBA_U8,x,y,pixels);
 	// }
 
-	_j_cycle_globals(S);
+	_jam_update_globals(S);
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.keys.KEY_DOWN")),VALUE_INTEGER(1));
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.keys.KEY_PRESSED")),VALUE_INTEGER(2));
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.keys.KEY_RELEASED")),VALUE_INTEGER(4));
+
+	JAM.begin_cycle_clock = jam_get_main_clock();
 	return 0;
 }
 
@@ -152,31 +180,82 @@ static int l_get_input(elf_State *S){
 }
 
 
-static int l_cycle(elf_State *S) {
-	r_flush();
+static int jl_cycle(elf_State *S) {
+	_jam_os_cycle(&JAM);
+	_jam_flush_render_pass();
+	_jam_renderer_cycle(&JAM);
+	_jam_update_globals(S);
 
-	cycle_window(&JAM);
-	_jr_cycle(&JAM);
-	_j_cycle_globals(S);
+	// todo: this seems to work pretty good,
+	// but we have to actually do it properly...
+	S->G.paused = false;
+	_gc_check(S,0);
+	S->G.paused = true;
+
+	// todo:
+	i64 end_cycle_clock = jam_get_main_clock();
+	i64 elapsed_clocks = end_cycle_clock - JAM.begin_cycle_clock;
+	f64 elapsed_seconds = elapsed_clocks * platform.clocks_to_seconds;
+	JAM.pending_seconds_to_sleep += JAM.target_seconds_to_sleep - elapsed_seconds;
+
+
+	f64 clock_accuracy = 1.0 / 1000.0;
+	JAM.begin_cycle_clock = jam_get_main_clock();
+	while (JAM.pending_seconds_to_sleep > clock_accuracy) {
+		os_sleep(JAM.pending_seconds_to_sleep);
+		JAM.begin_cycle_clock = jam_get_main_clock();
+		JAM.pending_seconds_to_sleep -= (JAM.begin_cycle_clock - end_cycle_clock) * platform.clocks_to_seconds;
+	}
+
 	elf_add_int(S,true);
 	return 1;
 }
 
-typedef struct GCtexture GCtexture;
-struct GCtexture {
-	elf_Object object;
-	jam_Texture texture;
-};
-
 static int l_get_texture_size(elf_State *S) {
-	GCtexture *texture_o = (GCtexture *) elf_get_object(S,0);
+	jam_Texture *texture_o = j_get(S,0,JAM_TEXTURE);
 	if(!texture_o){
 		elf_error(S,0,elf_tpf("invalid argument, is: %s", tag2s[elf_get_tag(S,0)]));
 	}
 	elf_Table *size_table = elf_new_table(S);
-	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"x")),VALUE_INTEGER(texture_o->texture.size.x));
-	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"y")),VALUE_INTEGER(texture_o->texture.size.y));
+	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"x")),VALUE_INTEGER(texture_o->size.x));
+	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"y")),VALUE_INTEGER(texture_o->size.y));
 	elf_add_table(S,size_table);
+	return 1;
+}
+
+static int j_get_image_size(elf_State *S) {
+	jam_Image *image = (jam_Image *) elf_get_object(S,0);
+	elf_Table *size_table = elf_new_table(S);
+	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"x")),VALUE_INTEGER(image->size.x));
+	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"y")),VALUE_INTEGER(image->size.y));
+	elf_add_table(S,size_table);
+	return 1;
+}
+
+static int j_get_image_pixel(elf_State *S) {
+	jam_Image *image = (jam_Image *) elf_get_object(S,0);
+	i32 x = elf_get_int(S,1);
+	i32 y = elf_get_int(S,2);
+	if(x < 0 || x >= image->size.x || y < 0 || y >= image->size.y) {
+		elf_error(S,0,"invalid pixel coordinates");
+	}
+	Color pixel = image->pixels[image->size.x * y + x];
+	u32 packed = pixel.r << 24 | pixel.g << 16 | pixel.b << 8 | pixel.a;
+	elf_add_int(S,packed);
+	return 1;
+}
+static int j_load_image(elf_State *S) {
+	int i = 0;
+	char *name = elf_get_text(S,i++);
+	Color *pixels = 0;
+	int n=0,x=0,y=0;
+	if(name){
+		pixels = (Color *) stbi_load(name,&x,&y,&n,4);
+	}
+	jam_Image *image = j_new(S,JAM_IMAGE,sizeof(*image));
+	image->size.x = x;
+	image->size.y = y;
+	image->pixels = pixels;
 	return 1;
 }
 
@@ -209,12 +288,12 @@ static int j_load_texture(elf_State *S) {
 				}
 			}
 		}
-		jam_Texture texture = jam_new_texture(&JAM,w,h,pixels);
+		jam_Texture *texture_o = j_new(S,JAM_TEXTURE,sizeof(*texture_o));
+		r_equip_texture(&JAM,texture_o,w,h,pixels);
+
 		free(pixels);
 
-		GCtexture *texture_o = (GCtexture *) elf_new_object(S,sizeof(*texture_o));
-		texture_o->texture = texture;
-		elf_add_object(S,(elf_Object *) texture_o);
+		elf_add_object(S, (elf_Object *) texture_o);
 	}else{
 		elf_add_nil(S);
 	}
@@ -248,21 +327,23 @@ int jl_render_offset(elf_State *S) {
 // batching, or at least make that process easier and
 // more intuitive, it would be best to remove the texture
 // argument from here
-int j_draw_sprite(elf_State *S) {
+static int j_draw_sprite(elf_State *S) {
 	int i = 0;
 
 	int nargs = elf_get_num_args(S);
 
-	jam_Texture texture = JAM.fallback_texture;
-	GCtexture *texture_o = (GCtexture *) elf_get_object(S,i++);
-	if(texture_o){
-		texture = texture_o->texture;
+	jam_Texture *texture = 0;
+	if(elf_get_tag(S,0) != elf_tag_nil) {
+		texture = j_get(S,i++,JAM_TEXTURE);
+	} else {
+		i ++;
 	}
+	if(!texture) texture = & JAM.fallback_texture;
 
 	r_i32 src_r;
 	i = _get_rect(S, i, &src_r);
-	if(src_r.size.x == 0) src_r.size.x = texture.size.x;
-	if(src_r.size.y == 0) src_r.size.y = texture.size.y;
+	if(src_r.size.x == 0) src_r.size.x = texture->size.x;
+	if(src_r.size.y == 0) src_r.size.y = texture->size.y;
 
 	r_i32 dst_r;
 	i = _get_rect(S, i, &dst_r);
@@ -282,20 +363,26 @@ int j_draw_sprite(elf_State *S) {
 
 	if (elf_get_num_args(S)-i >= 1) {
 		f32 rotation = elf_get_num(S,i ++);
-		// todo: pass in basis instead!
-		vec2 basis_x = (vec2){cos(rotation),sin(rotation)};
-		vec2 basis_y = (vec2){-basis_x.y,basis_x.x};
-		r_p0 = vec2_add(vec2_mul(vec2(r_p0.x,r_p0.x),basis_x),vec2_mul(vec2(r_p0.y,r_p0.y),basis_y));
-		r_p1 = vec2_add(vec2_mul(vec2(r_p1.x,r_p1.x),basis_x),vec2_mul(vec2(r_p1.y,r_p1.y),basis_y));
-		r_p2 = vec2_add(vec2_mul(vec2(r_p2.x,r_p2.x),basis_x),vec2_mul(vec2(r_p2.y,r_p2.y),basis_y));
-		r_p3 = vec2_add(vec2_mul(vec2(r_p3.x,r_p3.x),basis_x),vec2_mul(vec2(r_p3.y,r_p3.y),basis_y));
+
+		trans2d rot_trans = trans2d_rotation(rotation,vec2(0,0));
+		r_p0 = apply_trans2d(rot_trans,r_p0);
+		r_p1 = apply_trans2d(rot_trans,r_p1);
+		r_p2 = apply_trans2d(rot_trans,r_p2);
+		r_p3 = apply_trans2d(rot_trans,r_p3);
+		// todo: pass in trans2d instead!
+	}
+
+	int flip_x = false;
+	int flip_y = false;
+	if (elf_get_num_args(S)-i >= 2) {
+		flip_x = elf_get_int(S,i ++);
+		flip_y = elf_get_int(S,i ++);
 	}
 
 	_jr_set_texture(texture);
 
-
-	f32 inv_src_w = 1.0 / texture.size.x;
-	f32 inv_src_h = 1.0 / texture.size.y;
+	f32 inv_src_w = 1.0 / texture->size.x;
+	f32 inv_src_h = 1.0 / texture->size.y;
 
 	f32 u0 = src_r.x * inv_src_w;
 	f32 v0 = src_r.y * inv_src_h;
@@ -303,24 +390,20 @@ int j_draw_sprite(elf_State *S) {
 	f32 v1 = (src_r.y + src_r.h) * inv_src_h;
 
 	vec2 dst_pos = vec2(dst_r.x,dst_r.y);
-	r_p0 = vec2_add(dst_pos,r_p0);
-	r_p1 = vec2_add(dst_pos,r_p1);
-	r_p2 = vec2_add(dst_pos,r_p2);
-	r_p3 = vec2_add(dst_pos,r_p3);
-	if (r_rotation) {
-		f32 rotation = r_rotation;
-		// todo: pass in basis instead!
-		vec2 basis_x = (vec2){cos(rotation),sin(rotation)};
-		vec2 basis_y = (vec2){-basis_x.y,basis_x.x};
-		r_p0 = vec2_add(vec2_mul(vec2_sub(vec2(r_p0.x,r_p0.x),vec2(r_center.x,r_center.x)),basis_x),vec2_mul(vec2_sub(vec2(r_p0.y,r_p0.y),vec2(r_center.y,r_center.y)),basis_y));
-		r_p1 = vec2_add(vec2_mul(vec2_sub(vec2(r_p1.x,r_p1.x),vec2(r_center.x,r_center.x)),basis_x),vec2_mul(vec2_sub(vec2(r_p1.y,r_p1.y),vec2(r_center.y,r_center.y)),basis_y));
-		r_p2 = vec2_add(vec2_mul(vec2_sub(vec2(r_p2.x,r_p2.x),vec2(r_center.x,r_center.x)),basis_x),vec2_mul(vec2_sub(vec2(r_p2.y,r_p2.y),vec2(r_center.y,r_center.y)),basis_y));
-		r_p3 = vec2_add(vec2_mul(vec2_sub(vec2(r_p3.x,r_p3.x),vec2(r_center.x,r_center.x)),basis_x),vec2_mul(vec2_sub(vec2(r_p3.y,r_p3.y),vec2(r_center.y,r_center.y)),basis_y));
+	vec2 translation = vec2_add(r_offset,dst_pos);
+	// todo: we're doing too many multiplies, we can do
+	// 2 multiplies on the actual rectangle dimensions
+	// instead of the 8 we're doing here.
+	r_p0 = vec2_add(translation,vec2_mul(r_scale,r_p0));
+	r_p1 = vec2_add(translation,vec2_mul(r_scale,r_p1));
+	r_p2 = vec2_add(translation,vec2_mul(r_scale,r_p2));
+	r_p3 = vec2_add(translation,vec2_mul(r_scale,r_p3));
+
+	if (flip_x) {
+		f32 temp = u0;
+		u0 = u1;
+		u1 = temp;
 	}
-	r_p0 = vec2_add(r_offset,vec2_mul(r_scale,r_p0));
-	r_p1 = vec2_add(r_offset,vec2_mul(r_scale,r_p1));
-	r_p2 = vec2_add(r_offset,vec2_mul(r_scale,r_p2));
-	r_p3 = vec2_add(r_offset,vec2_mul(r_scale,r_p3));
 
 	r_mem_vertices[r_num_vertices ++]=(Vertex2D){r_p0,{u0,v1},color};
 	r_mem_vertices[r_num_vertices ++]=(Vertex2D){r_p1,{u0,v0},color};
@@ -330,6 +413,96 @@ int j_draw_sprite(elf_State *S) {
 	r_mem_vertices[r_num_vertices ++]=(Vertex2D){r_p3,{u1,v1},color};
 	return 0;
 }
+
+// elf_ffi_i32_1_f32_2,
+// elf_ffi_i32_1_f32_4,
+// elf_ffi_i32_1_f32_8,
+// elf_ffi_i32_1_f32_16,
+
+// elf_ffi_i32_2,
+// elf_ffi_i32_4,
+// elf_ffi_i32_8,
+// elf_ffi_i32_16,
+
+//
+// audio
+//
+
+static int l_audio(elf_State *S) {
+	ma_result error = ma_engine_init(NULL,&JAM.audio.engine);
+	elf_add_int(S,error==MA_SUCCESS);
+	return 1;
+}
+
+static int l_audio_load(elf_State *S) {
+
+	char *name = elf_get_text(S,0);
+
+	jam_Sound *obj = j_new(S,JAM_SOUND,sizeof(*obj));
+
+	char *name_stable = malloc(strlen(name) + 1);
+	strcpy(name_stable,name);
+
+	ma_result result = ma_sound_init_from_file(&JAM.audio.engine, name_stable, 0, NULL, NULL, &obj->sound);
+
+	if (result != MA_SUCCESS) {
+		elf_error(S,0,"failed to load sound");
+	}
+	return 1;
+}
+
+static int l_audio_play(elf_State *S) {
+	jam_Audio *audio = &JAM.audio;
+	if (elf_get_tag(S,0) == elf_tag_userobj) {
+		jam_Sound *obj = j_get(S,0,JAM_SOUND);
+		f32 pitch = 1.0;
+		if (elf_get_num_args(S) > 1) {
+			pitch = elf_get_num(S,1);
+		}
+
+		jam_Sound *to_play = 0;
+		i32 open_voice_slot = -1;
+		for (i32 i = 0; i < _countof(audio->voices); i ++) {
+			jam_Sound *voice = audio->voices[i];
+			if (voice) {
+				if (ma_sound_at_end(&voice->sound)) {
+					to_play = voice;
+					break;
+				}
+			} else {
+				open_voice_slot = i;
+				break;
+			}
+		}
+		if (to_play) {
+			// todo: only uninit if the sound that we found isn't
+			// the same one we're trying to play
+			ma_sound_uninit(&to_play->sound);
+			ma_result result = ma_sound_init_copy(&audio->engine,&obj->sound,0,0,&to_play->sound);
+		} else if (open_voice_slot != -1) {
+			to_play = j_new(S,JAM_SOUND,sizeof(*to_play));
+			ma_result result = ma_sound_init_copy(&audio->engine,&obj->sound,0,0,&to_play->sound);
+			audio->voices[open_voice_slot] = to_play;
+		} else {
+			elf_debug_log("too many sounds playing simultaneously");
+		}
+		if (to_play) {
+			ma_sound_set_pitch(&to_play->sound,pitch);
+			ma_sound_start(&to_play->sound);
+		}
+	} else {
+		char *name = elf_get_text(S,0);
+		ma_engine_play_sound(&JAM.audio.engine,name, NULL);
+	}
+	return 0;
+}
+
+static int l_audio_stop(elf_State *S) {
+	jam_Sound *obj = j_get(S,0,JAM_SOUND);
+	ma_sound_stop(&obj->sound);
+	return 0;
+}
+
 
 
 
@@ -341,8 +514,13 @@ int main() {
 	elf_Table *globals = M.globals;
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.video")),VALUE_FUNCTION(j_video));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.audio")),VALUE_FUNCTION(l_audio));
-	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.audio.play")),VALUE_FUNCTION(l_audio_play));
-	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.cycle")),VALUE_FUNCTION(l_cycle));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.audio_play")),VALUE_FUNCTION(l_audio_play));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.audio_load")),VALUE_FUNCTION(l_audio_load));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.audio_stop")),VALUE_FUNCTION(l_audio_stop));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.cycle")),VALUE_FUNCTION(jl_cycle));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.load_image")),VALUE_FUNCTION(j_load_image));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.get_image_pixel")),VALUE_FUNCTION(j_get_image_pixel));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.get_image_size")),VALUE_FUNCTION(j_get_image_size));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.load_texture")),VALUE_FUNCTION(j_load_texture));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.get_texture_size")),VALUE_FUNCTION(l_get_texture_size));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.draw_sprite")),VALUE_FUNCTION(j_draw_sprite));
