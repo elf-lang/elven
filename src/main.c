@@ -30,30 +30,91 @@
 #include "d3d11_renderer.c"
 
 
-
+#define MODE_NONE 		D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED
+#define MODE_TEXTURES 	D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+#define MODE_LINES 		D3D11_PRIMITIVE_TOPOLOGY_LINELIST
 
 jam_State     JAM;
+
+i32           r_mode;
 jam_Texture  *r_texture;
-// todo: the reason behind having an intermediate
-// buffer is due to how the rendering API works,
-// perhaps this should be abstracted in the API
-// itself...
 Vertex2D     *r_mem_vertices;
 i32           r_num_vertices;
 i32           r_max_vertices;
 
-// these persist across draw calls, I don't do
-// them on the GPU because this way is simpler,
-// but maybe eventually for other more rendering
-// pipelines we may want to move away from this
-// since does incur a cost...
-// todo: instead compute the basis from the
-// rotation
+vec2      	  r_scale;
+vec2      	  r_offset;
+f32       	  r_rotation;
+vec2      	  r_center;
 
-vec2 r_scale;
-vec2 r_offset;
-f32  r_rotation;
-vec2 r_center;
+static void _r_complete(i32 type, Vertex2D *mem_vertices, i32 num_vertices) {
+	ASSERT(type != MODE_NONE);
+	ASSERT(num_vertices != 0);
+
+	i32 offset = _r_write_vertices(&JAM, mem_vertices, num_vertices);
+	switch (type) {
+		case MODE_TEXTURES: {
+			ASSERT(num_vertices % 6 == 0);
+
+			D3D11_PRIMITIVE_TOPOLOGY topology;
+			ID3D11DeviceContext_IAGetPrimitiveTopology(JAM.context, &topology);
+			ASSERT(topology == D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			ID3D11ShaderResourceView *inputs[1] = {};
+			ID3D11DeviceContext_PSGetShaderResources(JAM.context, 0, 1, inputs);
+			ASSERT(inputs[0] != 0);
+
+			ID3D11DeviceContext_Draw(JAM.context, num_vertices, offset);
+		} break;
+		case MODE_LINES: {
+			ASSERT(num_vertices % 2 == 0);
+
+			D3D11_PRIMITIVE_TOPOLOGY topology;
+			ID3D11DeviceContext_IAGetPrimitiveTopology(JAM.context, &topology);
+			ASSERT(topology == D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+			ID3D11ShaderResourceView *inputs[1] = {};
+			ID3D11DeviceContext_PSGetShaderResources(JAM.context, 0, 1, inputs);
+			ASSERT(inputs[0] != 0);
+
+			ID3D11DeviceContext_Draw(JAM.context, num_vertices, offset);
+		} break;
+	}
+}
+
+static void _jam_flush_render_pass() {
+	if (r_mode != MODE_NONE && r_num_vertices != 0) {
+		_r_complete(r_mode, r_mem_vertices, r_num_vertices);
+		r_num_vertices = 0;
+	}
+}
+
+static void _r_change_mode(D3D11_PRIMITIVE_TOPOLOGY mode) {
+	if (r_mode != mode) {
+		_jam_flush_render_pass();
+
+		ID3D11DeviceContext_IASetPrimitiveTopology(JAM.context, mode);
+		r_mode = mode;
+	}
+}
+
+void _r_change_texture(jam_Texture *texture) {
+	if(!texture) texture = &JAM.fallback_texture;
+
+	if (r_texture != texture) {
+		_jam_flush_render_pass();
+
+		r_texture = texture;
+
+		ID3D11ShaderResourceView *input = texture->view;
+		ID3D11SamplerState *sampler = texture->sampler;
+		ID3D11DeviceContext_PSSetShaderResources(JAM.context, 0, 1, &input);
+		ID3D11DeviceContext_PSSetSamplers(JAM.context, 0, 1, &sampler);
+	}
+}
+
+
+
 
 static void *j_get(elf_State *S, int arg, jam_type type) {
 	if (elf_get_tag(S,arg) != elf_tag_userobj) {
@@ -93,19 +154,6 @@ int _get_color(elf_State *S, int i, u8x4 *color) {
 	color->b = elf_get_int(S,i++) & 255;
 	color->a = elf_get_int(S,i++) & 255;
 	return i;
-}
-
-void _jam_flush_render_pass() {
-	if (r_num_vertices) {
-		r_texture_pass(&JAM,r_texture,r_mem_vertices,r_num_vertices);
-		r_num_vertices = 0;
-	}
-}
-void _jr_set_texture(jam_Texture *texture) {
-	if (r_texture != texture) {
-		_jam_flush_render_pass();
-		r_texture = texture;
-	}
 }
 
 static void _jam_update_globals(elf_State *S) {
@@ -185,6 +233,7 @@ static int jl_cycle(elf_State *S) {
 	_jam_flush_render_pass();
 	_jam_renderer_cycle(&JAM);
 	_jam_update_globals(S);
+	r_texture = 0;
 
 	// todo: this seems to work pretty good,
 	// but we have to actually do it properly...
@@ -323,6 +372,23 @@ int jl_render_offset(elf_State *S) {
 	return 0;
 }
 
+static int j_draw_line(elf_State *S) {
+	i32 i = 0;
+	f32 x0 = elf_get_num(S, i ++);
+	f32 y0 = elf_get_num(S, i ++);
+	f32 x1 = elf_get_num(S, i ++);
+	f32 y1 = elf_get_num(S, i ++);
+	Color color = {255,255,255,255};
+	if (elf_get_num_args(S)-i >= 4) {
+		i = _get_color(S, i, &color);
+	}
+	_r_change_mode(MODE_LINES);
+	_r_change_texture(&JAM.fallback_texture);
+	r_mem_vertices[r_num_vertices ++] = (Vertex2D){{x0,y0},{0,0},color};
+	r_mem_vertices[r_num_vertices ++] = (Vertex2D){{x1,y1},{1,1},color};
+	return 0;
+}
+
 // todo: if the idea is to encourage users to do sprite
 // batching, or at least make that process easier and
 // more intuitive, it would be best to remove the texture
@@ -379,7 +445,8 @@ static int j_draw_sprite(elf_State *S) {
 		flip_y = elf_get_int(S,i ++);
 	}
 
-	_jr_set_texture(texture);
+	_r_change_mode(MODE_TEXTURES);
+	_r_change_texture(texture);
 
 	f32 inv_src_w = 1.0 / texture->size.x;
 	f32 inv_src_h = 1.0 / texture->size.y;
@@ -524,6 +591,7 @@ int main() {
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.load_texture")),VALUE_FUNCTION(j_load_texture));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.get_texture_size")),VALUE_FUNCTION(l_get_texture_size));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.draw_sprite")),VALUE_FUNCTION(j_draw_sprite));
+	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.draw_line")),VALUE_FUNCTION(j_draw_line));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.render_scale")),VALUE_FUNCTION(jl_render_scale));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.render_offset")),VALUE_FUNCTION(jl_render_offset));
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.render_rotation")),VALUE_FUNCTION(jl_render_rotation));

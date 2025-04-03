@@ -10,8 +10,8 @@ max := fun(a,b) ? { if a > b ? --> a else --> b }
 min := fun(a,b) ? { if a < b ? --> a else --> b }
 
 UPSCALE  	::= 2
-WIND_W   	::= 320
-WIND_H   	::= 240
+WIND_W   	::= 256
+WIND_H   	::= 256
 UNIT 			::= 8
 ASPECT_R 	::= WIND_W / iton(WIND_H)
 CENTER_X 	::= WIND_W / 2
@@ -20,20 +20,19 @@ CELL 			::= UNIT
 
 _rgb = fun(r,g,b,a) ? ({r=r,g=g,b=b,a=a??255})
 
-VIEW ::= new elf.gfx.Window("Graph!",WIND_W,WIND_H,UPSCALE)
-PRESSED  = elf.gfx.Window.PRESSED
-DOWN 		= elf.gfx.Window.DOWN
-RELEASED = elf.gfx.Window.RELEASED
-INITIAL_OFFSET ::= {
-	x=CENTER_X,
-	y=CENTER_Y
-}
-VIEW.ofs = INITIAL_OFFSET:clone()
-VIEW.Z   = 1.0
+elf.jam.video("Graph!",WIND_W,WIND_H,UPSCALE)
+
+DOWN 		= 1
+PRESSED  = 2
+RELEASED = 4
+
+initial_offset = { x = CENTER_X, y = CENTER_Y }
+offset = { x = CENTER_X, y = CENTER_Y }
+zoom = 1
 
 zoom_in_at_mouse ::= fun(by) ? {
 	by ?= 0.01
-	new_scale ::= VIEW.Z + VIEW.Z * by
+	new_scale ::= zoom + zoom * by
 	if new_scale <= 0 ? {
 		ret
 	}
@@ -41,31 +40,40 @@ zoom_in_at_mouse ::= fun(by) ? {
 	mouse_x ::= VIEW.mouse_x
 	mouse_y ::= VIEW.mouse_y
 
-	a ::= VIEW.Z / new_scale
+	a ::= zoom / new_scale
 	if a != 0 ? {
-		VIEW.ofs.x = mouse_x - (mouse_x - VIEW.ofs.x) / a
-		VIEW.ofs.y = mouse_y - (mouse_y - VIEW.ofs.y) / a
-		VIEW.Z = new_scale
+		offset.x = mouse_x - (mouse_x - offset.x) / a
+		offset.y = mouse_y - (mouse_y - offset.y) / a
+		zoom = new_scale
 	}
 }
 
 draw_grid ::= fun() ? {
-	scale 		::= VIEW.Z
+	scale 		::= zoom
 	cell_size   ::= CELL * scale
 	grid_size_x ::= WIND_W / cell_size + 1
 	grid_size_y ::= WIND_H / cell_size + 1
 
-	VIEW:set_color(255,255,255,255*0.25)
+	// VIEW:set_color(255,255,255,255*0.25)
 	for y = 0...grid_size_y ? {
-		VIEW:draw_rect(0,VIEW.ofs.y%cell_size+y*cell_size,WIND_W,1)
+		// VIEW:draw_rect(0,offset.y%cell_size+y*cell_size,WIND_W,1)
+		y0 := offset.y % cell_size + y * cell_size
+		elf.jam.draw_line(0, y0, WIND_W, y0, 255, 255, 255, 255 * 0.25)
 	}
 	for x = 0...grid_size_x ? {
-		VIEW:draw_rect(VIEW.ofs.x%cell_size+x*cell_size,0,1,WIND_H)
+		// VIEW:draw_rect(offset.x%cell_size+x*cell_size,0,1,WIND_H)
+		x0 := offset.x % cell_size + x * cell_size
+		elf.jam.draw_line(x0, 0, x0, WIND_H, 255, 255, 255, 255 * 0.25)
 	}
-	VIEW:set_color(255,0,0,255*0.80)
-	VIEW:draw_rect(VIEW.ofs.x,0,1,WIND_H)
-	VIEW:set_color(0,255,0,255*0.80)
-	VIEW:draw_rect(0,VIEW.ofs.y,WIND_W,1)
+	// VIEW:set_color(255,0,0,255*0.80)
+	// VIEW:draw_rect(offset.x,0,1,WIND_H)
+
+	elf.jam.draw_line(offset.x, 0, offset.x, WIND_H, 255,0,0,255*0.80)
+
+	// VIEW:set_color(0,255,0,255*0.80)
+	// VIEW:draw_rect(0,offset.y,WIND_W,1)
+
+	elf.jam.draw_line(0, offset.y, WIND_W, offset.y, 0,255,0,255*0.80)
 }
 
 global name ?= 1
@@ -74,41 +82,47 @@ global name ?= 1
 offset_minus_mouse := {x=0,y=0}
 user_input ::= fun() ? {
 
-	if VIEW.keys['Z'] & DOWN ? { zoom_in_at_mouse(0.01) }
-	if VIEW.keys['X'] & DOWN ? { zoom_in_at_mouse(-0.01) }
-	if VIEW.keys['W'] & DOWN ? { VIEW.ofs.y -= 1 }
-	if VIEW.keys['S'] & DOWN ? { VIEW.ofs.y += 1 }
-	if VIEW.keys['A'] & DOWN ? { VIEW.ofs.x -= 1 }
-	if VIEW.keys['D'] & DOWN ? { VIEW.ofs.x += 1 }
-	if VIEW.keys['R'] & DOWN ? {
-		VIEW.ofs = INITIAL_OFFSET:clone()
-		VIEW.Z   = 1.0
-	}
+	// if VIEW.keys['Z'] & DOWN ? { zoom_in_at_mouse(0.01) }
+	// if VIEW.keys['X'] & DOWN ? { zoom_in_at_mouse(-0.01) }
+	// if VIEW.keys['W'] & DOWN ? { offset.y -= 1 }
+	// if VIEW.keys['S'] & DOWN ? { offset.y += 1 }
+	// if VIEW.keys['A'] & DOWN ? { offset.x -= 1 }
+	// if VIEW.keys['D'] & DOWN ? { offset.x += 1 }
+	// if VIEW.keys['R'] & DOWN ? {
+	// 	offset = INITIAL_OFFSET:clone()
+	// 	zoom   = 1.0
+	// }
 
-	mouse_x ::= VIEW.mouse_x
-	mouse_y ::= VIEW.mouse_y
-	if VIEW.mouse[1] & PRESSED ? {
-		dragging = true
-		offset_minus_mouse.x = VIEW.ofs.x - mouse_x
-		offset_minus_mouse.y = VIEW.ofs.y - mouse_y
-	}
-	if VIEW.mouse[1] & DOWN ? {
-		if dragging ? {
-			VIEW.ofs.x = offset_minus_mouse.x + mouse_x
-			VIEW.ofs.y = offset_minus_mouse.y + mouse_y
-		}
-	}
+	mouse_x ::= 0
+	mouse_y ::= 0
+	// if VIEW.mouse[1] & PRESSED ? {
+	// 	dragging = true
+	// 	offset_minus_mouse.x = offset.x - mouse_x
+	// 	offset_minus_mouse.y = offset.y - mouse_y
+	// }
+	// if VIEW.mouse[1] & DOWN ? {
+	// 	if dragging ? {
+	// 		offset.x = offset_minus_mouse.x + mouse_x
+	// 		offset.y = offset_minus_mouse.y + mouse_y
+	// 	}
+	// }
 }
 
-while VIEW:poll() ? {
+while elf.jam.cycle() ? {
 	user_input()
 
 	draw_grid()
-	Z ::= VIEW.Z
+	Z ::= zoom
 
 	force_radius := 8.0
 	force_dropoff := 16.0
 	sources := {
+		{
+			c = _rgb(0,0,255)
+			f = fun(x) ? {
+				--> x
+			},
+		},
 		{
 			c = _rgb(255,255,0)
 			f = fun(x) ? {
@@ -161,11 +175,13 @@ while VIEW:poll() ? {
 	for src = sources[...] ? {
 		f ::= src.f
 		c ::= src.c
-		VIEW:set_color(c.r,c.g,c.b,c.a)
+
+		// VIEW:set_color(c.r,c.g,c.b,c.a)
+
 		// sample in screen space, number of samples
 		// remains the same regardless of the scale
 		for p = 0...WIND_W ? {
-			xv ::= p - VIEW.ofs.x
+			xv ::= p - offset.x
 			x0 ::= (xv + 0) / Z
 			x1 ::= (xv + 1) / Z
 			y0 ::= f(x0 / UNIT) * UNIT
@@ -174,8 +190,8 @@ while VIEW:poll() ? {
 			if (y1 - y0) != 0 ? {
 				ddx = (x1 - x0) / (y1 - y0)
 			}
-			sy0 := VIEW.ofs.y - y0 * Z
-			sy1 := VIEW.ofs.y - y1 * Z
+			sy0 := offset.y - y0 * Z
+			sy1 := offset.y - y1 * Z
 			// window space clipping
 			// todo: clipping should depend on the slope,
 			// like if we're going up then x0 will be on
@@ -188,8 +204,9 @@ while VIEW:poll() ? {
 			if sy1 < 0 ? {
 				sy1 = 0
 			}
+
 			// todo: figure out how to make this more efficient...
-			VIEW:draw_line((p+0),sy0,(p+1),sy1)
+			elf.jam.draw_line((p+0),sy0,(p+1),sy1, c.r,c.g,c.b,c.a)
 		}
 	}
 }

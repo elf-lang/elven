@@ -305,7 +305,7 @@ b32 r_equip(jam_State *jam, Window_Token window_token, Equip_Renderer params) {
 
 	u32 stride = sizeof(Vertex2D);
 	u32 offset = 0;
-	ID3D11DeviceContext_IASetPrimitiveTopology(jam->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 	ID3D11DeviceContext_IASetInputLayout(jam->context, input_layout);
 	ID3D11DeviceContext_IASetVertexBuffers(jam->context, 0, 1, &vertex_buffer, &stride, &offset);
 	return success;
@@ -420,6 +420,12 @@ static void _jam_renderer_cycle(jam_State *jam){
 		i32 vertex_offset = _r_write_vertices(jam,vertices,_countof(vertices));
 		D3D11_VIEWPORT viewport = { 0.0f, 0.0f, window_resolution.x, window_resolution.y, 0.0f, 1.0f };
 		ID3D11DeviceContext_RSSetViewports(jam->context, 1, &viewport);
+
+		D3D11_PRIMITIVE_TOPOLOGY topology;
+		ID3D11DeviceContext_IAGetPrimitiveTopology(jam->context, &topology);
+
+		ID3D11DeviceContext_IASetPrimitiveTopology(jam->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 		ID3D11DeviceContext_OMSetRenderTargets(jam->context, 1, &jam->window_render_target_view, 0);
 		ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &jam->base_render_target_shader_view);
 		ID3D11DeviceContext_PSSetSamplers(jam->context, 0, 1, &jam->samplers[FILTER_POINT]);
@@ -427,6 +433,8 @@ static void _jam_renderer_cycle(jam_State *jam){
 
 		ID3D11ShaderResourceView *nullptr_shader_resource_view = {0};
 		ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &nullptr_shader_resource_view);
+
+		ID3D11DeviceContext_IASetPrimitiveTopology(jam->context, topology);
 	}
 	#endif
 
@@ -436,20 +444,10 @@ static void _jam_renderer_cycle(jam_State *jam){
 	// todo: let user call this...
 	f32 clear_color[] = {0.2f,0.2f,0.2f,1.f};
 	ID3D11DeviceContext_ClearRenderTargetView(jam->context,jam->base_render_target_view,clear_color);
-}
-
-// the only thing that this renderer knows how to do...
-static int r_texture_pass(jam_State *jam, jam_Texture *texture, Vertex2D *vertices, i32 num_vertices) {
-	int result = _r_write_vertices(jam,vertices,num_vertices);
-
-	if(!texture) texture = &jam->fallback_texture;
-
-	ID3D11ShaderResourceView *texture_view = texture->view;
-	ID3D11SamplerState *sampler = texture->sampler;
 
 	vec2i resolution = jam->base_resolution;
-
 	{
+
 		vec2 scale = { 2.0 / resolution.x, 2.0 / resolution.y };
 		vec2 offset = { -1.0, -1.0 };
 
@@ -470,12 +468,17 @@ static int r_texture_pass(jam_State *jam, jam_Texture *texture, Vertex2D *vertic
 		D3D11_VIEWPORT viewport = { 0.0f, 0.0f, resolution.x, resolution.y, 0.0f, 1.0f };
 		ID3D11DeviceContext_RSSetViewports(jam->context, 1, &viewport);
 	}
+}
 
-	ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &texture_view);
+// the only thing that this renderer knows how to do...
+static int r_texture_pass(jam_State *jam, jam_Texture *texture, Vertex2D *vertices, i32 num_vertices) {
+	int result = _r_write_vertices(jam,vertices,num_vertices);
+	if(!texture) texture = &jam->fallback_texture;
+	ID3D11ShaderResourceView *input = texture->view;
+	ID3D11SamplerState *sampler = texture->sampler;
+	ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &input);
 	ID3D11DeviceContext_PSSetSamplers(jam->context, 0, 1, &sampler);
-
 	ID3D11DeviceContext_Draw(jam->context, num_vertices, result);
-
 	return result;
 }
 

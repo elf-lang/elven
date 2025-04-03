@@ -1,0 +1,167 @@
+
+elf.jam.video("ProcGen",180,180,2)
+
+WHITE = {r=255,g=255,b=255}
+BLUE  = {r=0,g=0,b=255}
+RED   = {r=255,g=0,b=0}
+
+WORLD_SIZE = 30
+hash2d = fun(x,y) ? {
+	--> x << 16 | y
+}
+path_find = fun(input,size,x0,y0,x1,y1) ? {
+	visited := {}
+	queue := {}
+	queue:add({x=x0,y=y0,square=0,length=0,switched=false,visited=false})
+	index := 0
+	while index < queue:tally() ? {
+		p := queue:idx(index)
+		cx := p.x
+		cy := p.y
+		if cx == x1 || cy == y1 ? {
+			--> ;
+		}
+	}
+}
+random_noise = fun(size) ? {
+	output := {}
+	for y = 0 ... size ? {
+		for x = 0 ... size ? {
+			output[hash2d(x,y)] = ntoi(random() * 100) % 2
+		}
+	}
+	--> output
+}
+cellular_pass = fun(input,size,times) ? {
+	output := {}
+	for y = 0 ... size ? {
+		for x = 0 ... size ? {
+			n := 0
+			for ny = y - 1, y, y + 1 ? {
+				for nx = x - 1, x, x + 1 ? {
+					value := input[hash2d(nx,ny)]
+					if value == 0 ? {
+						n += 1
+					}
+				}
+			}
+			if n > 4 ? {
+				output[hash2d(x,y)] = 0
+			} else {
+				output[hash2d(x,y)] = 1
+			}
+		}
+	}
+	--> output
+}
+scan_right = fun(input,size,x,y) ? {
+	length := 0
+	while input[hash2d(x,y)] == 0 ? {
+		length += 1
+		x += 1
+	}
+	--> length
+}
+scan_down = fun(input,size,x,y) ? {
+	length := 0
+	while input[hash2d(x,y)] == 0 ? {
+		length += 1
+		y -= 1
+	}
+	--> length
+}
+scan_up = fun(input,size,x,y) ? {
+	length := 0
+	while input[hash2d(x,y)] == 0 ? {
+		length += 1
+		y += 1
+	}
+	--> length
+}
+try_place_bridge = fun(input,size,x,y) ? {
+	output := false
+	across := scan_right(input,size,x,y)
+	// is the bridge long enough
+	if across > 4 ? {
+		has_enough_clearance := true
+		for i = x ... x + across ? {
+			clearance := scan_up(world,size,i,y)
+			if clearance < 5 ? {
+				has_enough_clearance = false
+				break
+			}
+		}
+		if has_enough_clearance ? {
+			x1 := x + across
+			a := input[hash2d(x1,y)]     == 1
+			b := input[hash2d(x1-1,y+1)] == 0
+			c := input[hash2d(x1,y+1)]   == 0
+			if a == 0 ? colors[hash2d(x1,y)]     = RED
+			if b == 0 ? colors[hash2d(x1-1,y+1)] = GREEN
+			if c == 0 ? colors[hash2d(x1,y+1)]   = BLUE
+			if a && b ? {
+			// colors[hash2d(x1,y+1)] = BLUE
+				depth := 0
+				for i = x ... x + across ? {
+					depth += scan_down(input,size,i,y)
+				}
+				if depth > 10 ? {
+					if input[hash2d(x+across,y)] == 1 && input[hash2d(x+across,y+1)] && input[hash2d(x+across+1,y+1)] == 1 ? {
+						output = true
+					}
+				}
+			}
+		}
+	}
+
+	if output ? {
+		for i = x ... x + across ? {
+			// colors[hash2d(i,y)] = BLUE
+			input[hash2d(i,y)] = 1
+		}
+	}
+
+	--> output
+}
+bridge_pass = fun(input,size) ? {
+	output := input
+	for y = 0 ... size ? {
+		for x = 0 ... size ? {
+			if output[hash2d(x,y)] == 0 && output[hash2d(x-1,y)] == 1 ? {
+				try_place_bridge(input,size,x,y)
+			}
+		}
+	}
+	--> output
+}
+
+
+while elf.jam.cycle() ? {
+	if elf.jam.get_input('R') & 4 ? {
+		world = nil
+	}
+	if world == nil ? {
+		colors = {}
+		world = random_noise(WORLD_SIZE)
+		for i = 0 ... 8 ? {
+			world = cellular_pass(world,WORLD_SIZE)
+		}
+		world = bridge_pass(world,WORLD_SIZE)
+	}
+
+	for y = 0 ... WORLD_SIZE ? {
+		for x = 0 ... WORLD_SIZE ? {
+			value := world[hash2d(x,y)]
+			if value == 1 ? {
+				elf.jam.draw_sprite(nil, 0,0,0,0, x*6,y*6,6,6, 0,0,0,255)
+			} else if value == 2 ? {
+				elf.jam.draw_sprite(nil, 0,0,0,0, x*6,y*6,6,6, 0,0,255,255)
+			}
+			color := colors[hash2d(x,y)]
+			if color ? {
+				elf.jam.draw_sprite(nil, 0,0,0,0, x*6,y*6,6,6, color.r,color.g,color.b,128)
+			}
+		}
+	}
+
+}

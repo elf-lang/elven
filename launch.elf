@@ -1,6 +1,40 @@
 // this is the file elf looks for by default
-load "play\\rnd.elf"
-elf.change_work_dir("W:\\MicroRJ\\game9")
+elf.change_work_dir("play\\graph")
+load "main.elf"
+#eof
+
+
+dot = fun(a, b) ? {
+	--> a.x * b.x + a.y * b.y
+}
+length = fun(a) {
+	--> sqrt(dot(a, a))
+}
+normalize = fun(a) ? {
+	l := length(a)
+	--> { x = a.x / l, y = a.y / l }
+}
+
+//
+// 2x + -y = 0
+// -x + 2y = 3
+//
+// x [ 2 ]  y [ -1 ] = [0]
+// x [-1 ]  y [  2 ] = [3]
+//
+a = { x =  2, y = -1 }
+b = { x = -1, y =  2 }
+s = { x =  0, y =  3 }
+
+d0 = dot(a, s)
+d1 = dot(b, s)
+
+elf.pf("dot: ", d0)
+elf.pf("dot: ", d1)
+
+#eof
+
+elf.change_work_dir("C:\\work\\MicroRJ\\leap")
 load "main.elf"
 #eof
 
