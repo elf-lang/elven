@@ -1,6 +1,13 @@
 // this is the file elf looks for by default
-elf.change_work_dir("play\\graph")
+load "play\\rnd.elf"
+elf.change_work_dir("W:\\MicroRJ\\game5")
 load "main.elf"
+#eof
+
+
+elf.change_work_dir("play")
+load "rnd.elf"
+load "proc_gen.elf"
 #eof
 
 
@@ -34,9 +41,6 @@ elf.pf("dot: ", d1)
 
 #eof
 
-elf.change_work_dir("C:\\work\\MicroRJ\\leap")
-load "main.elf"
-#eof
 
 a := 0
 b := a

@@ -1,14 +1,15 @@
 static void r_equip_texture(jam_State *jam, jam_Texture *texture, i32 size_x, i32 size_y, void *contents);
 
 typedef struct {
+	jam_State *jam;
+	HWND window;
 	int res_x;
 	int res_y;
 	int resizable;
-} Equip_Renderer;
+} Init_Renderer;
 
-internal
-b32 r_equip(jam_State *jam, Window_Token window_token, Equip_Renderer params) {
-
+b32 init_renderer(Init_Renderer params) {
+	jam_State *jam = params.jam;
 	jam->resizable = params.resizable;
 	jam->base_resolution.x = params.res_x;
 	jam->base_resolution.y = params.res_y;
@@ -68,9 +69,9 @@ b32 r_equip(jam_State *jam, Window_Token window_token, Equip_Renderer params) {
 		fullscreen_config.RefreshRate.Denominator = 1;
 		fullscreen_config.Windowed = TRUE;
 
-		HRESULT errorcode = IDXGIFactory2_CreateSwapChainForHwnd(factory_dxgi,(IUnknown *)jam->device,(HWND)jam->window,&config,&fullscreen_config,NULL,(IDXGISwapChain1 **)&jam->window_present_mechanism);
+		HRESULT errorcode = IDXGIFactory2_CreateSwapChainForHwnd(factory_dxgi,(IUnknown *)jam->device,(HWND)params.window,&config,&fullscreen_config,NULL,(IDXGISwapChain1 **)&jam->window_present_mechanism);
 		if(FAILED(errorcode)){
-			os_display_error_dialog(0);
+			// os_display_error_dialog(0);
 		}
 
 		IDXGIFactory_Release(factory_dxgi);

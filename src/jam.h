@@ -228,17 +228,15 @@ struct jam_Audio {
 
 typedef struct jam_State jam_State;
 struct jam_State {
-	HWND window;
+	// HWND window;
 	vec2i window_dimensions;
-
-	b32 resizing;
-
-	u8 was_input[256];
-	u8 now_input[256];
-	u32   key;
-	u32   character;
-	vec2i mouse_xy;
-	vec2i mouse_wheel;
+	// b32 resizing;
+	// u8 was_input[256];
+	// u8 now_input[256];
+	// u32   key;
+	// u32   character;
+	// vec2i mouse_xy;
+	// vec2i mouse_wheel;
 
 	jam_Audio audio;
 

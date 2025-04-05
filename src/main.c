@@ -4,8 +4,10 @@
 // <3
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
@@ -47,7 +49,89 @@ vec2      	  r_offset;
 f32       	  r_rotation;
 vec2      	  r_center;
 
-static void _r_complete(i32 type, Vertex2D *mem_vertices, i32 num_vertices) {
+typedef BOOL win32_SetProcessDPIAwarenessContext(void* value);
+typedef UINT win32_GetDPIForWindow(HWND hwnd);
+#define WIN32_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((void*)-4)
+
+#define WIN32_WINDOW_CLASS_NAME L"graphical-window"
+
+
+enum {
+	DOWN_BIT       = 1,
+	PRESSED_BIT    = 2,
+	RELEASED_BIT   = 4,
+};
+
+enum {
+	BUTTON_NONE = 0,
+
+	BUTTON_MOUSE_LEFT,
+	BUTTON_MOUSE_MIDDLE,
+	BUTTON_MOUSE_RIGHT,
+	BUTTON_MOUSE_COUNT,
+
+	BUTTON_MENU,
+	BUTTON_BACK,
+	BUTTON_DEBUG,
+
+	BUTTON_LEFT,
+	BUTTON_UP,
+	BUTTON_RIGHT,
+	BUTTON_DOWN,
+
+	BUTTON_DPAD_LEFT,
+	BUTTON_DPAD_UP,
+	BUTTON_DPAD_RIGHT,
+	BUTTON_DPAD_DOWN,
+
+	BUTTON_0, BUTTON_1, BUTTON_2, BUTTON_3, BUTTON_4,
+	BUTTON_5, BUTTON_6, BUTTON_7, BUTTON_8, BUTTON_9,
+
+	BUTTON_JUMP,
+	BUTTON_DASH,
+	BUTTON_USE,
+	BUTTON_SHOW_MINIMAP,
+
+	BUTTON_COUNT,
+};
+
+typedef u8 Button;
+
+struct {
+	HWND                   window;
+	Button                 keyboard[256];
+	Button                 controller[16];
+	HCURSOR                cursor;
+	b32                    close_window;
+	f64                    clocks_to_seconds;
+	// vec2i                  mouse_xy;
+	// vec2i                  mouse_wheel;
+} global os;
+
+
+static inline i64 os_clock() {
+	LARGE_INTEGER p = {};
+	QueryPerformanceCounter(&p);
+	return p.QuadPart;
+}
+
+static void os_error_dialog(char *msg) {
+	if (!msg) {
+		DWORD error = GetLastError();
+		LPSTR message = NULL;
+		FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+		, NULL, error, 0, (LPSTR) &message, 0, NULL);
+		msg = message;
+	}
+	MessageBoxA(NULL, msg, "Error", MB_OK | MB_ICONERROR);
+}
+
+static inline void onoff(Button *btn, i32 on) {
+	*btn = on | (*btn ^ 1) << (on + 1);
+}
+
+
+static void _r_draw(i32 type, Vertex2D *mem_vertices, i32 num_vertices) {
 	ASSERT(type != MODE_NONE);
 	ASSERT(num_vertices != 0);
 
@@ -84,7 +168,7 @@ static void _r_complete(i32 type, Vertex2D *mem_vertices, i32 num_vertices) {
 
 static void _jam_flush_render_pass() {
 	if (r_mode != MODE_NONE && r_num_vertices != 0) {
-		_r_complete(r_mode, r_mem_vertices, r_num_vertices);
+		_r_draw(r_mode, r_mem_vertices, r_num_vertices);
 		r_num_vertices = 0;
 	}
 }
@@ -129,7 +213,8 @@ static void *j_get(elf_State *S, int arg, jam_type type) {
 
 // todo: mini audio expects objects to get deallocated
 // through their backend, so we can't just use GC, unless
-// the GC called some _collect function or something...
+// the GC called some _collect function or something, which
+// elf doesn't do...
 static void *j_new(elf_State *S, int type, int size) {
 	// jam_Object *obj = (jam_Object *) elf_new_object(S,size);
 	jam_Object *obj = (jam_Object *) calloc(1,size);
@@ -159,46 +244,77 @@ int _get_color(elf_State *S, int i, u8x4 *color) {
 static void _jam_update_globals(elf_State *S) {
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.video.res_x")),VALUE_INTEGER(JAM.base_resolution.x));
 	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.video.res_y")),VALUE_INTEGER(JAM.base_resolution.y));
-	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.mouse_x")),VALUE_INTEGER(JAM.mouse_xy.x));
-	// todo:
-	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.mouse_y")),VALUE_INTEGER(JAM.base_resolution.y - JAM.mouse_xy.y));
+	// elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.mouse_x")),VALUE_INTEGER(JAM.mouse_xy.x));
+	// elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.mouse_y")),VALUE_INTEGER(JAM.base_resolution.y - JAM.mouse_xy.y));
 }
 
-static int j_video_guard;
+static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l);
 
 static int j_video(elf_State *S) {
-	if (j_video_guard) {
-		elf_error(S,0,"video has already begun");
-	}
-	j_video_guard = true;
-
+	elf_debug_log("jam: begin video mode");
 
 	int i = 0;
 	char *name       = elf_get_text(S,i++);
-	int base_res_x   = elf_get_int(S,i++);
-	int base_res_y   = elf_get_int(S,i++);
+	int resolution_x = elf_get_int(S,i++);
+	int resolution_y = elf_get_int(S,i++);
 	int window_scale = elf_get_int(S,i++);
 
-	elf_debug_log("jam: begin video mode");
+	if (window_scale == 0) window_scale = 1;
 
-	os_init();
-
+#if defined(_WIN32)
 	r_mem_vertices = VirtualAlloc(0, MEGABYTES(128), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	r_max_vertices = MEGABYTES(128) / sizeof(*r_mem_vertices);
 	r_num_vertices = 0;
 	r_scale.x = 1;
 	r_scale.y = 1;
-	JAM.target_seconds_to_sleep = 1.0 / 60.0;
 
-	if (window_scale == 0) window_scale = 1;
-	Window_Token window_token = equip_window(&JAM,(Equip_Window){
-		.name = name,
-		.size_x = base_res_x * window_scale,
-		.size_y = base_res_y * window_scale
-	});
-	r_equip(&JAM,window_token,(Equip_Renderer){
-		.res_x = base_res_x,
-		.res_y = base_res_y
+	i32 screen_x = GetSystemMetrics(SM_CXSCREEN);
+	i32 screen_y = GetSystemMetrics(SM_CYSCREEN);
+   // i32 max_scale_x = screen_x / (f32) BASE_RES_X;
+   // i32 max_scale_y = screen_y / (f32) BASE_RES_Y;
+   // i32 scale = MIN(max_scale_x, max_scale_y);
+	i32 client_size_x = resolution_x * window_scale;
+	i32 client_size_y = resolution_y * window_scale;
+
+	RECT window_rect = {
+		.left = 0,
+		.top = 0,
+		.right = client_size_x,
+		.bottom = client_size_y,
+	};
+
+	b32 error = AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, FALSE);
+	ASSERT(error != 0);
+
+	i32 size_x = window_rect.right - window_rect.left;
+	i32 size_y = window_rect.bottom - window_rect.top;
+
+	i32 window_x = screen_x * 0.5 - size_x * 0.5;
+	i32 window_y = screen_y * 0.5 - size_y * 0.5;
+
+	wchar_t window_title[256] = {};
+	MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,name,-1,window_title,sizeof(window_title));
+
+	HWND window = CreateWindowExW(0
+	, WIN32_WINDOW_CLASS_NAME, window_title
+	, WS_OVERLAPPEDWINDOW, window_x, window_y, size_x, size_y
+	, NULL, NULL, GetModuleHandle(0), NULL);
+
+	if (!IsWindow(window)) {
+		os_error_dialog(0);
+	}
+
+	ShowWindow(window, SW_SHOW);
+
+	os.window = window;
+#endif
+
+
+	init_renderer((Init_Renderer) {
+		.jam = &JAM,
+		.window = window,
+		.res_x = resolution_x,
+		.res_y = resolution_y
 	});
 
 	// {
@@ -208,28 +324,43 @@ static int j_video(elf_State *S) {
 	// }
 
 	_jam_update_globals(S);
-	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.keys.KEY_DOWN")),VALUE_INTEGER(1));
-	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.keys.KEY_PRESSED")),VALUE_INTEGER(2));
-	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.input.keys.KEY_RELEASED")),VALUE_INTEGER(4));
+	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.DOWN_BIT")),VALUE_INTEGER(1));
+	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.PRESSED_BIT")),VALUE_INTEGER(2));
+	elf_table_set(S->M->globals,VALUE_STRING(elf_alloc_string(S,"elf.jam.RELEASED_BIT")),VALUE_INTEGER(4));
 
-	JAM.begin_cycle_clock = jam_get_main_clock();
+	JAM.target_seconds_to_sleep = 1.0 / 60.0;
+	JAM.begin_cycle_clock = os_clock();
 	return 0;
 }
 
 static int l_get_input(elf_State *S){
 	i32 key = elf_get_int(S,0);
-	i32 was = JAM.was_input[key];
-	b32 now = JAM.now_input[key];
-	b32 is_pressed = now && !was;
-	b32 is_released = !now && was;
-	b32 input = is_released << 2 | is_pressed << 1 | now << 0;
-	elf_add_int(S,input);
+	// i32 was = JAM.was_input[key];
+	// b32 now = JAM.now_input[key];
+	// b32 is_pressed = now && !was;
+	// b32 is_released = !now && was;
+	// b32 input = is_released << 2 | is_pressed << 1 | now << 0;
+	// elf_add_int(S,input);
+	elf_add_int(S, 0);
 	return 1;
 }
 
-
 static int jl_cycle(elf_State *S) {
-	_jam_os_cycle(&JAM);
+#if defined(_WIN32)
+	{
+		MSG window_message = {};
+		while(PeekMessage(&window_message, os.window, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&window_message);
+			DispatchMessageW(&window_message);
+		}
+
+		RECT window_r;
+		GetClientRect(os.window, &window_r);
+		JAM.window_dimensions.x = window_r.right - window_r.left;
+		JAM.window_dimensions.y = window_r.bottom - window_r.top;
+	}
+#endif
+
 	_jam_flush_render_pass();
 	_jam_renderer_cycle(&JAM);
 	_jam_update_globals(S);
@@ -242,21 +373,21 @@ static int jl_cycle(elf_State *S) {
 	S->G.paused = true;
 
 	// todo:
-	i64 end_cycle_clock = jam_get_main_clock();
+	i64 end_cycle_clock = os_clock();
 	i64 elapsed_clocks = end_cycle_clock - JAM.begin_cycle_clock;
-	f64 elapsed_seconds = elapsed_clocks * platform.clocks_to_seconds;
+	f64 elapsed_seconds = elapsed_clocks * os.clocks_to_seconds;
 	JAM.pending_seconds_to_sleep += JAM.target_seconds_to_sleep - elapsed_seconds;
 
 
 	f64 clock_accuracy = 1.0 / 1000.0;
-	JAM.begin_cycle_clock = jam_get_main_clock();
+	JAM.begin_cycle_clock = os_clock();
 	while (JAM.pending_seconds_to_sleep > clock_accuracy) {
-		os_sleep(JAM.pending_seconds_to_sleep);
-		JAM.begin_cycle_clock = jam_get_main_clock();
-		JAM.pending_seconds_to_sleep -= (JAM.begin_cycle_clock - end_cycle_clock) * platform.clocks_to_seconds;
+		Sleep(JAM.pending_seconds_to_sleep * 1000);
+		JAM.begin_cycle_clock = os_clock();
+		JAM.pending_seconds_to_sleep -= (JAM.begin_cycle_clock - end_cycle_clock) * os.clocks_to_seconds;
 	}
 
-	elf_add_int(S,true);
+	elf_add_int(S,!os.close_window);
 	return 1;
 }
 
@@ -481,16 +612,6 @@ static int j_draw_sprite(elf_State *S) {
 	return 0;
 }
 
-// elf_ffi_i32_1_f32_2,
-// elf_ffi_i32_1_f32_4,
-// elf_ffi_i32_1_f32_8,
-// elf_ffi_i32_1_f32_16,
-
-// elf_ffi_i32_2,
-// elf_ffi_i32_4,
-// elf_ffi_i32_8,
-// elf_ffi_i32_16,
-
 //
 // audio
 //
@@ -570,13 +691,46 @@ static int l_audio_stop(elf_State *S) {
 	return 0;
 }
 
-
-
-
 int main() {
 	elf_State R = {};
 	elf_Module M = {};
-	elf_init(&R,&M);
+	elf_init(&R, &M);
+
+	// init platform stuff
+	{
+		HMODULE user32 = LoadLibraryA("user32.dll");
+		if (user32) {
+			win32_SetProcessDPIAwarenessContext *set_dpi_awareness = (win32_SetProcessDPIAwarenessContext*)GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+			if (set_dpi_awareness) {
+				set_dpi_awareness(WIN32_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+			}
+			FreeLibrary(user32);
+		}
+	}
+	{
+		WNDCLASSEXW window_class = {
+			.cbSize = sizeof(window_class),
+			.lpfnWndProc = win32_window_proc,
+			.hInstance = GetModuleHandle(0),
+			.lpszClassName = WIN32_WINDOW_CLASS_NAME,
+			.hCursor = LoadCursorA(NULL, IDC_ARROW),
+			.hIcon = LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(1)),
+		};
+		if (!RegisterClassExW(&window_class)) {
+			os_error_dialog(0);
+		}
+	}
+	{
+		timeBeginPeriod(1);
+		{
+			LARGE_INTEGER i = {};
+			QueryPerformanceFrequency(&i);
+			f64 frequency = i.QuadPart;
+			os.clocks_to_seconds = (f64) 1.0 / frequency;
+		}
+	}
+
+
 
 	elf_Table *globals = M.globals;
 	elf_table_set(globals,VALUE_STRING(elf_alloc_string(&R,"elf.jam.video")),VALUE_FUNCTION(j_video));
@@ -603,4 +757,71 @@ int main() {
 	elf_new_string(&R,"launch.elf");
 	elf_call(&R,2,0);
 }
+
+#if defined(_WIN32)
+static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
+	LRESULT yield = FALSE;
+
+	switch(msg) {
+		case WM_CLOSE: {
+			TRACELOG("Close Window");
+			os.close_window = true;
+		} break;
+		case WM_ENTERSIZEMOVE:
+		case WM_EXITSIZEMOVE: {
+         // app->resizing = msg == WM_ENTERSIZEMOVE;
+		} break;
+		case WM_LBUTTONUP: {
+			onoff(&os.keyboard[VK_LBUTTON], FALSE);
+		} break;
+		case WM_MBUTTONUP: {
+			onoff(&os.keyboard[VK_MBUTTON], FALSE);
+		} break;
+		case WM_RBUTTONUP: {
+			onoff(&os.keyboard[VK_RBUTTON], FALSE);
+		} break;
+		case WM_SYSKEYUP: case WM_KEYUP: {
+			onoff(&os.keyboard[w], FALSE);
+		} break;
+		case WM_LBUTTONDOWN: {
+			onoff(&os.keyboard[VK_LBUTTON], TRUE);
+		} break;
+		case WM_MBUTTONDOWN: {
+			onoff(&os.keyboard[VK_MBUTTON], TRUE);
+		} break;
+		case WM_RBUTTONDOWN: {
+			onoff(&os.keyboard[VK_RBUTTON], TRUE);
+		} break;
+		case WM_SYSKEYDOWN: case WM_KEYDOWN: {
+			onoff(&os.keyboard[w], TRUE);
+		} break;
+		case WM_MOUSEMOVE: {
+			// os.mouse_xy.x = LOWORD(l);
+			// os.mouse_xy.y = HIWORD(l);
+		} break;
+		case WM_MOUSEWHEEL: {
+			// os.mouse_wheel.y = GET_WHEEL_DELTA_WPARAM(w);
+			// os.mouse_wheel.y = os.mouse_wheel.y < 0 ? -1 : 1;
+		} break;
+		case WM_MOUSEHWHEEL: {
+			// os.mouse_wheel.x = HIWORD(w);
+		} break;
+		case WM_CHAR: {
+		} break;
+		// case WM_SETCURSOR: {
+		// 	SetCursor(os.cursor);
+		// } break;
+		// case WM_KILLFOCUS: {
+		// 	ReleaseCapture();
+		// } break;
+      // case WM_DPICHANGED: {
+      // } break;
+		default: {
+			yield = DefWindowProcW(window, msg, w, l);
+		} break;
+	}
+
+	return yield;
+}
+#endif
 
