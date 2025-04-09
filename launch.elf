@@ -1,6 +1,6 @@
 elf.change_work_dir("play")
 load "rnd.elf"
-load "worm.elf"
+load "random.elf"
 
 #eof
 

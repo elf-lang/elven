@@ -1,4 +1,12 @@
 
+-- core.c the signature of the function elf knows
+how to call is (elf_State *S), but this means that
+if we want to know the number of arguments, and have
+access to the arguments, and place return values it
+means we have to call 3 additional functions, as supposed
+to simply having access to the memory and number of arguments
+in the signature itself
+
 -- parse.c core.c: why is nil not being properly handled
 name = nil
 if name ? {
