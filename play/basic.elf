@@ -1,0 +1,47 @@
+
+TAU ::= 6.283185307179586
+
+InitWindow("Basic", 256, 256, 2)
+
+while PollWindow() ? {
+	Clear(32, 32, 32)
+	SetColor(255, 255, 255, 255)
+
+	SetColor(255, 0, 0, 255)
+	for i = 0...16 ? {
+		DrawRectangle((8 + 2) * i, 256 - 8, 8, 8)
+	}
+
+	cr := 32
+	cx := 128
+	cy := 128
+	cc := 16
+
+	SetColor(0, 255, 0, 255)
+	DrawCircle(cx, cy, cr, 16)
+
+	// for i = 0 ... cc ? {
+	// 	a := ((i + 0) / iton(cc)) * TAU
+	// 	ex := cx + cos(a) * cr
+	// 	ey := cy + sin(a) * cr
+
+	// 	b := ((i + 1) / iton(cc)) * TAU
+	// 	sx := cx + cos(b) * cr
+	// 	sy := cy + sin(b) * cr
+	// 	DrawTriangle(cx, cy, ex, ey, sx, sy)
+	// }
+
+	SetColor(255, 255, 255, 255)
+	for i = 0 ... cc ? {
+		n := i / iton(cc)
+		angle := n * TAU
+		ex := cx + cos(angle) * cr
+		ey := cy + sin(angle) * cr
+		DrawLine(cx, cy, ex, ey)
+	}
+
+	SetColor(0, 0, 255, 255)
+	for i = 0...16 ? {
+		DrawRectangle((8 + 2) * i, 0, 8, 8)
+	}
+}

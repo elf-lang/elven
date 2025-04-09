@@ -1,4 +1,6 @@
-
+#if !defined(TAU)
+#define TAU 6.283185307179586
+#endif
 #if !defined(TRACELOG)
 #define TRACELOG(msg,...) printf(msg"\n",__VA_ARGS__)
 #endif
@@ -69,7 +71,7 @@ typedef union {
 		vec2 xy;
 		vec2 zw;
 	};
-} f32x4;
+} vec4;
 
 typedef union {
 	struct{ u8 x, y, z, w; };
@@ -92,6 +94,49 @@ typedef struct {
 		struct{i32 w,h;};
 	};
 } r_i32;
+
+
+
+enum {
+	DOWN_BIT       = 1,
+	PRESSED_BIT    = 2,
+	RELEASED_BIT   = 4,
+};
+
+enum {
+	BUTTON_NONE = 0,
+
+	BUTTON_MOUSE_LEFT,
+	BUTTON_MOUSE_MIDDLE,
+	BUTTON_MOUSE_RIGHT,
+	BUTTON_MOUSE_COUNT,
+
+	BUTTON_MENU,
+	BUTTON_BACK,
+	BUTTON_DEBUG,
+
+	BUTTON_LEFT,
+	BUTTON_UP,
+	BUTTON_RIGHT,
+	BUTTON_DOWN,
+
+	BUTTON_DPAD_LEFT,
+	BUTTON_DPAD_UP,
+	BUTTON_DPAD_RIGHT,
+	BUTTON_DPAD_DOWN,
+
+	BUTTON_0, BUTTON_1, BUTTON_2, BUTTON_3, BUTTON_4,
+	BUTTON_5, BUTTON_6, BUTTON_7, BUTTON_8, BUTTON_9,
+
+	BUTTON_JUMP,
+	BUTTON_DASH,
+	BUTTON_USE,
+	BUTTON_SHOW_MINIMAP,
+
+	BUTTON_COUNT,
+};
+
+typedef u8 Button;
 
 typedef struct {
 	vec2 basis_x,basis_y;
@@ -120,8 +165,8 @@ static inline vec2 apply_trans2d(trans2d trans, vec2 v) {
 	vec2 o =
 	vec2_add(vec2_add(trans.translation,trans.center)
 	, vec2_add(
-		vec2_mul(trans.basis_x,vec2_sub(vec2(v.x,v.x),trans.center)),
-		vec2_mul(trans.basis_y,vec2_sub(vec2(v.y,v.y),trans.center))));
+	vec2_mul(trans.basis_x,vec2_sub(vec2(v.x,v.x),trans.center)),
+	vec2_mul(trans.basis_y,vec2_sub(vec2(v.y,v.y),trans.center))));
 	return o;
 }
 
@@ -180,11 +225,11 @@ struct jam_Image {
 
 typedef struct jam_Texture jam_Texture;
 struct jam_Texture {
-	jam_Object base;
-	vec2i size;
-	ID3D11SamplerState *sampler;
-	ID3D11ShaderResourceView *view;
-	ID3D11Texture2D *texture;
+	vec2i resolution;
+	ID3D11SamplerState       *sampler;
+	ID3D11Texture2D          *texture;
+	ID3D11ShaderResourceView *shader_resource_view;
+	ID3D11RenderTargetView   *render_target_view;
 };
 
 typedef struct jam_Sound jam_Sound;
@@ -200,13 +245,10 @@ struct jam_Sound {
 
 typedef struct Per_Pass_Constants Per_Pass_Constants;
 struct Per_Pass_Constants {
-	f32x4 transform[4];
+	vec4 transform[4];
+	vec4 storage[12];
 };
 STATIC_ASSERT(!(sizeof(Per_Pass_Constants) & 15) && sizeof(Per_Pass_Constants) >= 64 && sizeof(Per_Pass_Constants) <= D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT);
-
-typedef i32 Index2D;
-
-#define INDEX_BUFFER_FORMAT DXGI_FORMAT_R32_UINT
 
 typedef struct Vertex2D Vertex2D;
 struct Vertex2D {
@@ -226,21 +268,33 @@ struct jam_Audio {
 	jam_Sound *voices[16];
 };
 
+
+typedef enum {
+	MODE_NONE      = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED,
+	MODE_TRIANGLES = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+	MODE_LINES     = D3D11_PRIMITIVE_TOPOLOGY_LINELIST,
+} Topology;
+
+typedef enum {
+	TEXTURE_NONE = 0,
+	TEXTURE_FALLBACK,
+	MAX_TEXTURES = 128,
+} TextureId;
+
+typedef struct {
+	Topology  topology;
+	TextureId texture;
+} Draw_State;
+
 typedef struct jam_State jam_State;
 struct jam_State {
-	// HWND window;
+	elf_State  R;
+	elf_Module M;
+
 	vec2i window_dimensions;
-	// b32 resizing;
-	// u8 was_input[256];
-	// u8 now_input[256];
-	// u32   key;
-	// u32   character;
-	// vec2i mouse_xy;
-	// vec2i mouse_wheel;
 
-	jam_Audio audio;
-
-	jam_Texture default_font_texture;
+	Draw_State draw_prev;
+	Draw_State draw_prox;
 
 	temp_b32 resizable;
 	i64 begin_cycle_clock;
@@ -248,15 +302,13 @@ struct jam_State {
 	f64 target_seconds_to_sleep;
 	f64 pending_seconds_to_sleep;
 
+	jam_Texture textures[MAX_TEXTURES];
+
 	ID3D11InfoQueue     *info_queue;
 	ID3D11Device        *device;
 	ID3D11DeviceContext *context;
 	ID3D11Query *time_frame_start_query;
 	ID3D11Query *time_frame_end_query;
-
-
-	jam_Texture fallback_texture;
-
 	vec2i window_render_target_resolution;
 	IDXGISwapChain2 *window_present_mechanism;
 	ID3D11Texture2D *window_render_target;
@@ -266,12 +318,10 @@ struct jam_State {
 	ID3D11Texture2D *base_render_target_texture;
 	ID3D11RenderTargetView *base_render_target_view;
 	ID3D11ShaderResourceView *base_render_target_shader_view;
-
 	ID3D11RasterizerState *default_rasterizer;
 	ID3D11BlendState *default_blender;
 	ID3D11DepthStencilState *default_depth_stencil;
 	ID3D11SamplerState *samplers[FILTER_COUNT];
-
 	ID3D11Buffer *constant_buffer;
 	ID3D11PixelShader  *pixel_shader;
 	ID3D11VertexShader *vertex_shader;
@@ -279,53 +329,4 @@ struct jam_State {
 	ID3D11Buffer *vertex_buffer;
 	i32 vertex_buffer_capacity;
 	i32 vertex_buffer_write;
-
 };
-
-
-typedef enum OS_Cursor {
-	OS_Cursor_Pointer,
-	OS_Cursor_IBar,
-	OS_Cursor_LeftRight,
-	OS_Cursor_UpDown,
-	OS_Cursor_DownRight,
-	OS_Cursor_UpRight,
-	OS_Cursor_UpDownLeftRight,
-	OS_Cursor_HandPoint,
-	OS_Cursor_Disabled,
-	OS_Cursor_COUNT,
-} OS_Cursor;
-
-/* Note: mouse button order must be left, right and middle,
-so that conveniently, left + 0 is left, left + 1 is right */
-#define OS_KEYDEF(_) \
-_(NONE)\
-_(CLOSE)\
-_(ESCAPE)\
-_(F1)_(F2)_(F3)_(F4)_(F5)_(F6)_(F7)_(F8)_(F9)\
-_(F10)_(F11)_(F12)_(F13)_(F14)_(F15)_(F16)\
-_(F17)_(F18)_(F19)_(F20)_(F21)_(F22)_(F23)_(F24)\
-_(SCROLL_V)_(SCROLL_H)\
-_(MOUSE_LEFT)_(MOUSE_RIGHT)_(MOUSE_MIDDLE)\
-_(UP)\
-_(LEFT)\
-_(DOWN)\
-_(RIGHT)\
-/* end */
-
-typedef enum OS_Key {
-#define OSKEY(NAME) INPUT_##NAME,
-	OS_KEYDEF(OSKEY)
-#undef OSKEY
-	INPUT_COUNT,
-} OS_Key;
-
-/* Todo: remove this */
-global
-char *INPUT_Name[] = {
-#define OSKEY(NAME) #NAME,
-	OS_KEYDEF(OSKEY)
-#undef OSKEY
-};
-
-

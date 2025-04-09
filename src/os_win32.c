@@ -1,3 +1,192 @@
+#include     <windows.h>
+#include     <timeapi.h>
+
+typedef BOOL win32_SetProcessDPIAwarenessContext(void* value);
+typedef UINT win32_GetDPIForWindow(HWND hwnd);
+#define WIN32_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((void*)-4)
+#define WIN32_WINDOW_CLASS_NAME L"graphical-window"
+
+struct {
+	HWND    window;
+	Button  keyboard[256];
+	Button  controller[16];
+	HCURSOR cursor;
+	b32     close_window;
+	f64     clocks_to_seconds;
+	vec2i   mouse_xy;
+	vec2i   mouse_wheel;
+} global os;
+
+
+static inline void onoff(Button *btn, i32 state) {
+	if (state) {
+		*btn = ((*btn) ^ 1) << 1 | 1;
+	} else {
+		*btn = ((*btn) & 1) << 2;
+	}
+}
+
+static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l);
+
+
+static void os_error_dialog(char *msg);
+static inline i64 os_clock();
+
+static HWND init_os(char *name, vec2i resolution, i32 scale) {
+	{
+		HMODULE user32 = LoadLibraryA("user32.dll");
+		if (user32) {
+			win32_SetProcessDPIAwarenessContext *set_dpi_awareness = (win32_SetProcessDPIAwarenessContext*)GetProcAddress(user32, "SetProcessDpiAwarenessContext");
+			if (set_dpi_awareness) {
+				set_dpi_awareness(WIN32_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+			}
+			FreeLibrary(user32);
+		}
+	}
+	{
+		WNDCLASSEXW window_class = {
+			.cbSize = sizeof(window_class),
+			.lpfnWndProc = win32_window_proc,
+			.hInstance = GetModuleHandle(0),
+			.lpszClassName = WIN32_WINDOW_CLASS_NAME,
+			.hCursor = LoadCursorA(NULL, IDC_ARROW),
+			.hIcon = LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(1)),
+		};
+		if (!RegisterClassExW(&window_class)) {
+			os_error_dialog(0);
+		}
+	}
+
+	i32 screen_x = GetSystemMetrics(SM_CXSCREEN);
+	i32 screen_y = GetSystemMetrics(SM_CYSCREEN);
+	i32 client_size_x = resolution.x * scale;
+	i32 client_size_y = resolution.y * scale;
+
+	RECT window_rect = {
+		.left = 0,
+		.top = 0,
+		.right = client_size_x,
+		.bottom = client_size_y,
+	};
+
+	b32 error = AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, FALSE);
+	ASSERT(error != 0);
+
+	i32 size_x = window_rect.right - window_rect.left;
+	i32 size_y = window_rect.bottom - window_rect.top;
+
+	i32 window_x = screen_x * 0.5 - size_x * 0.5;
+	i32 window_y = screen_y * 0.5 - size_y * 0.5;
+
+
+	HWND window;
+
+	{
+		wchar_t window_title[256] = {};
+		MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,name,-1,window_title,sizeof(window_title));
+
+		window = CreateWindowExW(0
+		, WIN32_WINDOW_CLASS_NAME, window_title
+		, WS_OVERLAPPEDWINDOW, window_x, window_y, size_x, size_y
+		, NULL, NULL, GetModuleHandle(0), NULL);
+	}
+
+	if (!IsWindow(window)) {
+		os_error_dialog(0);
+	}
+
+	ShowWindow(window, SW_SHOW);
+
+	os.window = window;
+	return window;
+}
+
+static inline i64 os_clock() {
+	LARGE_INTEGER p = {};
+	QueryPerformanceCounter(&p);
+	return p.QuadPart;
+}
+
+static void os_error_dialog(char *msg) {
+	if (!msg) {
+		DWORD error = GetLastError();
+		LPSTR message = NULL;
+		FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+		, NULL, error, 0, (LPSTR) &message, 0, NULL);
+		msg = message;
+	}
+	MessageBoxA(NULL, msg, "Error", MB_OK | MB_ICONERROR);
+}
+
+static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
+	LRESULT yield = FALSE;
+
+	switch(msg) {
+		case WM_CLOSE: {
+			TRACELOG("Close Window");
+			os.close_window = true;
+		} break;
+		case WM_ENTERSIZEMOVE:
+		case WM_EXITSIZEMOVE: {
+         // app->resizing = msg == WM_ENTERSIZEMOVE;
+		} break;
+		case WM_LBUTTONUP: {
+			onoff(&os.keyboard[VK_LBUTTON], FALSE);
+		} break;
+		case WM_MBUTTONUP: {
+			onoff(&os.keyboard[VK_MBUTTON], FALSE);
+		} break;
+		case WM_RBUTTONUP: {
+			onoff(&os.keyboard[VK_RBUTTON], FALSE);
+		} break;
+		case WM_SYSKEYUP: case WM_KEYUP: {
+			onoff(&os.keyboard[w], FALSE);
+		} break;
+		case WM_LBUTTONDOWN: {
+			onoff(&os.keyboard[VK_LBUTTON], TRUE);
+		} break;
+		case WM_MBUTTONDOWN: {
+			onoff(&os.keyboard[VK_MBUTTON], TRUE);
+		} break;
+		case WM_RBUTTONDOWN: {
+			onoff(&os.keyboard[VK_RBUTTON], TRUE);
+		} break;
+		case WM_SYSKEYDOWN: case WM_KEYDOWN: {
+			onoff(&os.keyboard[w], TRUE);
+		} break;
+		case WM_MOUSEMOVE: {
+			os.mouse_xy.x = LOWORD(l);
+			os.mouse_xy.y = HIWORD(l);
+		} break;
+		case WM_MOUSEWHEEL: {
+			// os.mouse_wheel.y = GET_WHEEL_DELTA_WPARAM(w);
+			// os.mouse_wheel.y = os.mouse_wheel.y < 0 ? -1 : 1;
+		} break;
+		case WM_MOUSEHWHEEL: {
+			// os.mouse_wheel.x = HIWORD(w);
+		} break;
+		case WM_CHAR: {
+		} break;
+		// case WM_SETCURSOR: {
+		// 	SetCursor(os.cursor);
+		// } break;
+		// case WM_KILLFOCUS: {
+		// 	ReleaseCapture();
+		// } break;
+      // case WM_DPICHANGED: {
+      // } break;
+		default: {
+			yield = DefWindowProcW(window, msg, w, l);
+		} break;
+	}
+
+	return yield;
+}
+
+
+
+
+
 // #define                NOMINMAX
 // #define     WIN32_LEAN_AND_MEAN
 // #define    _NO_CRT_STDIO_INLINE
@@ -111,7 +300,7 @@
 // }
 
 // internal
-// void os_init() {
+// void init_os() {
 // #define win32_cursor_mapper(w32_name, app_name) \
 // 	platform.cursors[app_name] = LoadCursorA(0, w32_name);
 

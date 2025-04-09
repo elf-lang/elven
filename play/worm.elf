@@ -1,47 +1,45 @@
-WINDOW ::= new elf.gfx.Window("Worm Thing!",320,320,1)
+TAU ::= 6.283185307179586
 
 /* wormy thing */
 circles = {}
-add_circle = fun(x,y) ? {
+add_circle = fun(x,y,r) ? {
 	circles:add {
-		x = x
-		y = y
-		vx = 0
-		vy = 0
+		x  = x,
+		y  = y,
+		vx = 0,
+		vy = 1,
+		r  = r,
 	}
 }
+
 for i = 0...10 ? {
-	add_circle(i*10,64)
+	add_circle(128,128-i*10, 4 + 10 - i)
 }
 
-let time = 1.0 / 144.0
-let total_time = 0
+time = 1.0 / 144.0
+total_time = 0
 
 apply_force = fun(p,x,y) ? {
 	p.vx += x
 	p.vy += y
 }
 get_perp = fun(dx,dy) ? {
-	let p_x = - dy
-	let p_y = + dx
-	let l = sqrt(p_x*p_x + p_y*p_y)
+	p_x := - dy
+	p_y := + dx
+	l := sqrt(p_x*p_x + p_y*p_y)
 	p_x /= l
 	p_y /= l
-	leave {x=p_x,y=p_y}
+	--> {x=p_x,y=p_y}
 }
 
-draw_circ = fun(x,y,r) ? {
-	WINDOW:set_color(255,255,255,255)
-	WINDOW:draw_circle(x-r,y-r,r*2)
-}
 
 get_dir = fun(dst,src) ? {
-	let sx = dst.x - src.x
-	let sy = dst.y - src.y
-	let l = sqrt(sx*sx + sy*sy)
-	let dx = sx / l
-	let dy = sy / l
-	leave {x=dx,y=dy}
+	sx := dst.x - src.x
+	sy := dst.y - src.y
+	l := sqrt(sx*sx + sy*sy)
+	dx := sx / l
+	dy := sy / l
+	--> {x=dx,y=dy}
 }
 physics_clock = fun(p,time) ? {
 	p.x += p.vx * time
@@ -50,27 +48,63 @@ physics_clock = fun(p,time) ? {
 	p.vy -= p.vy * 4.0 * time
 }
 
-while WINDOW:poll() ? {
+normalize = fun(v) ? {
+	l := sqrt(v.x * v.x + v.y * v.y)
+	x := v.x / l
+	y := v.y / l
+	--> { x = x, y = y }
+}
 
-	p ::= circles:idx(0)
-	d ::= get_dir({x=WINDOW.mouse_x,y=WINDOW.mouse_y},p)
+random_steer = fun(along, radius) ? {
+	reference := atan2(along.y, along.x)
+	angle := reference + (random() - 0.5) * radius
+	--> { x = cos(angle), y = sin(angle) }
+}
+
+InitWindow("Worm Thing!",256,256,2)
+while PollWindow() ? {
+	Clear(0, 0, 0)
+
+	p := circles:idx(0)
+
+	mouse_x := GetCursorX() * 256
+	mouse_y := GetCursorY() * 256
+
+	// d := random_steer(normalize({x = p.vx, y = p.vy}), TAU * 0.125)
+	d := get_dir({x=mouse_x,y=mouse_y},p)
 	perp ::= get_perp(d.x,d.y)
 	phase ::= total_time * 3.14
-	weave := sin(phase * 2) * 1.2
+	weave := sin(phase * 2) * 4.2
 	apply_force(p,perp.x*weave,perp.y*weave)
 	apply_force(p,d.x*2,d.y*2)
 	physics_clock(p,time)
 	total_time += time
 
-	for i = 1...circles:tally() ? {
-		let c = circles:idx(i)
-		let dir = get_dir(p,c)
-		c.x = p.x - dir.x * 12
-		c.y = p.y - dir.y * 12
+	for c = circles[1...circles:tally()] ? {
+		d := get_dir(p, c)
+		c.x = p.x - d.x * (p.r + c.r) * 0.8
+		c.y = p.y - d.y * (p.r + c.r) * 0.8
 		p = c
 	}
-	for i = 0...circles:tally() ? {
-		let it = circles:idx(i)
-		draw_circ(it.x,it.y,3,3, 255,255,255,255)
+
+	SetColor(255,255,255,255)
+	for i = circles[...] ? {
+		if i.x < i.r       ? { i.x = i.r }
+		if i.y < i.r       ? { i.y = i.r }
+		if i.x > 256 - i.r ? { i.x = 256 - i.r }
+		if i.y > 256 - i.r ? { i.y = 256 - i.r }
+		DrawCircle(i.x,i.y,i.r,4)
+	}
+
+	p = circles:idx(0)
+	SetColor(0, 255, 0, 255)
+	v := normalize({x = p.vx, y = p.vy})
+	DrawLine(p.x, p.y, p.x + v.x * 10, p.y + v.y * 10)
+
+	SetColor(255, 0, 0, 255)
+	for c = circles[1...circles:tally()] ? {
+		d := get_dir(p, c)
+		DrawLine(c.x, c.y, c.x + d.x * 10, c.y + d.y * 10)
+		p = c
 	}
 }

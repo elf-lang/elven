@@ -1,0 +1,285 @@
+
+// todo: maybe adjust this
+// to the average frame rate
+// instead? the idea is to
+// avoid noise introduced
+// by GC...
+MAX_DELTA = 16. / 1000.
+
+log ?= elf.pf
+err ?= elf.pf
+
+if elf.PLATFORM == "WEB" ? {
+	log("not for this platform")
+}
+
+iff load "../vec.elf" ? err("failed to load vec.elf") then leave false
+iff load "../rnd.elf" ? err("failed to load rnd.elf") then leave false
+iff load "../iq.elf" ? err("failed to load iq.elf") then leave false
+
+elf.include("elf.ray")
+
+.InitWindow(512,512,"strandbeest")
+lastly .CloseWindow()
+
+
+GetMoveController = fun() ? {
+	let move = vec3(0,0,0)
+	if .IsKeyDown('W') ? move = move + DOWN
+	if .IsKeyDown('A') ? move = move + LEFT
+	if .IsKeyDown('S') ? move = move + UP
+	if .IsKeyDown('D') ? move = move + RIGHT
+	leave move:norm()
+}
+
+Camera = {
+	offset = vec(),
+	target = vec(),
+	rotation = 0.
+	zoom = 1.,
+}
+
+GetCursor = fun() ? {
+	leave vec2(+1.,-1.) * (vec2(.GetMouseX(),.GetMouseY())-vec2(.GetScreenWidth()*.5,.GetScreenHeight()*.5))
+}
+
+load "verlet.elf"
+
+
+//
+// MACHINE
+//
+
+SCALE = 1.5
+
+// NOTE: LINK LENGTHS
+LINK_A = 38.0 * SCALE
+LINK_B = 41.5 * SCALE
+LINK_C = 39.3 * SCALE
+LINK_D = 40.1 * SCALE
+LINK_E = 55.8 * SCALE
+LINK_F = 39.4 * SCALE
+LINK_G = 36.7 * SCALE
+LINK_H = 65.7 * SCALE
+LINK_I = 49.0 * SCALE
+LINK_J = 50.0 * SCALE
+LINK_K = 61.9 * SCALE
+LINK_L = 7.8  * SCALE
+LINK_M = 15.0 * SCALE
+
+//
+// ANALYTIC JOINTS
+//
+// NOTE: BCD IS FIXED AND SERVES AS ORIGIN
+IK_BCD   = vec2(0,0)
+// NOTE: AL IS FIXED
+IK_AL 	= vec2(LINK_A,LINK_L)
+// NOTE: JK IS FIXED AROUND AL
+IK_JK 	= IK_AL+vec2(LINK_M,0)
+IK_BEJ   = vec()
+IK_CGKI 	= vec()
+IK_DEF 	= vec()
+IK_FGH 	= vec()
+IK_HI 	= vec()
+
+
+SolveIK = fun() ? {
+	let error = vec2(0,0)
+	IK_BEJ  = iqSolveSimpleIKGlobal(IK_JK,LINK_J,IK_BCD,LINK_B,-1,error)
+	IK_CGKI = iqSolveSimpleIKGlobal(IK_JK,LINK_K,IK_BCD,LINK_C,+1,error)
+	IK_DEF  = iqSolveSimpleIKGlobal(IK_BEJ,LINK_E,IK_BCD,LINK_D,-1,error)
+	IK_FGH  = iqSolveSimpleIKGlobal(IK_DEF,LINK_F,IK_CGKI,LINK_G,-1,error)
+	IK_HI   = iqSolveSimpleIKGlobal(IK_FGH,LINK_H,IK_CGKI,LINK_I,-1,error)
+}
+
+
+SolveIK()
+
+
+// NOTE: VERLET COUNTERPARTS, INITIALLY SET TO
+// IK SOLUTION
+JOINT_BCD  = NewParticle(IK_BCD)
+JOINT_AL   = NewParticle(IK_AL)
+JOINT_JK   = NewParticle(IK_JK)
+JOINT_BEJ  = NewParticle(IK_BEJ)
+JOINT_DEF  = NewParticle(IK_DEF)
+JOINT_FGH  = NewParticle(IK_FGH)
+JOINT_CGKI = NewParticle(IK_CGKI)
+JOINT_HI   = NewParticle(IK_HI)
+
+JOINT_BCD.locked = true
+
+
+NewStick(JOINT_DEF ,JOINT_BCD ,LINK_D,.  RED,"D")
+NewStick(JOINT_BEJ ,JOINT_BCD ,LINK_B,.GREEN,"B")
+NewStick(JOINT_BEJ ,JOINT_DEF ,LINK_E,. BLUE,"E")
+NewStick(JOINT_CGKI,JOINT_BCD ,LINK_C,.WHITE,"C")
+NewStick(JOINT_CGKI,JOINT_FGH ,LINK_G,.WHITE,"G")
+NewStick(JOINT_CGKI,JOINT_JK  ,LINK_K,.WHITE,"K")
+NewStick(JOINT_CGKI,JOINT_HI  ,LINK_I,.WHITE,"I")
+NewStick(JOINT_HI	 ,JOINT_FGH ,LINK_H,.WHITE,"H")
+NewStick(JOINT_DEF ,JOINT_FGH ,LINK_F,.WHITE,"F")
+NewStick(JOINT_JK  ,JOINT_BEJ ,LINK_J,. BLUE,"J")
+
+Rotor = {
+	crank = NewStick(JOINT_AL,JOINT_JK,LINK_M,.DARKGRAY)
+	cycle = 0.
+}
+Rotor.crank.p0.locked = true
+Rotor.crank.p1.locked = true
+Rotor.crank.p1.curPos = Rotor.crank.p0.curPos + RIGHT:rotateByAngle2d(Rotor.cycle) * Rotor.crank.length
+
+
+OverlayIK = fun() ? {
+	.DrawCircle(IK_BEJ,4,.MAGENTA)
+	.DrawCircle(IK_CGKI,4,.MAGENTA)
+	.DrawCircle(IK_DEF,4,.MAGENTA)
+	.DrawCircle(IK_FGH,4,.MAGENTA)
+	.DrawCircle(IK_HI,4,.MAGENTA)
+	.DrawCircleLines(IK_JK,LINK_J,.MAGENTA)
+	.DrawCircleLines(IK_JK,LINK_K,.MAGENTA)
+	.DrawCircleLines(IK_BCD,LINK_B,.MAGENTA)
+	.DrawCircleLines(IK_BCD,LINK_C,.MAGENTA)
+	.DrawCircleLines(IK_BCD,LINK_D,.MAGENTA)
+	.DrawCircleLines(IK_BEJ,LINK_E,.MAGENTA)
+}
+
+
+let b00 = NewParticle(vec2(0,0))
+let b10 = NewParticle(vec2(32*4,0))
+let b11 = NewParticle(vec2(32*4,32*1))
+let b01 = NewParticle(vec2(0,32*1))
+// b00.locked = true
+// b10.locked = true
+NewStick(b00,b10)
+NewStick(b01,b11)
+NewStick(b10,b11)
+NewStick(b00,b01)
+NewStick(b01,b10)
+NewStick(b00,b11)
+
+
+MakeTire = fun(origin,radius,segments,spokeStiffness,treadStiffness) ? {
+	let stride = (2*PI)/segments
+	let particles = {}
+	for i = 0..segments ? {
+		let theta = i * stride
+		particles:add (
+			NewParticle(vec2(origin.curPos.x+cos(theta)*radius,origin.curPos.y+sin(theta)*radius))
+		)
+	}
+	let spokes = {}
+	for i = 0..segments ? {
+		NewStick(particles:idx(i), particles:idx((i+1)%segments))
+		spokes:add(NewStick(particles:idx(i),origin))
+		NewStick(particles:idx(i), particles:idx((i+5)%segments))
+
+	}
+	leave spokes
+}
+
+MakeWheel = MakeTire
+
+
+// let axle = NewParticle(vec2(0,0))
+// axle.locked = true
+let wheel0 = MakeWheel(b01,32.,8)
+let wheel1 = MakeWheel(b11,32.,8)
+// let wheel2 = MakeTire(NewParticle(vec()),64.,8)
+
+
+Tick = fun() ? {
+
+	// let ngc = elf.gc_objects()
+	.BeginDrawing();
+	.BeginCartesianMode()
+
+	// let cursorOnScreen = vec2(.GetMouseX(),.GetMouseY())
+	// let cursor = vec(.GetScreenToWorld2D(Camera,cursorOnScreen))
+	let cursor = GetCursor()
+	let delta = min(MAX_DELTA,.GetFrameTime())
+
+	CurrentlyHoveringParticle = nil
+	for i = 0..Particles:tally() ? {
+		let p = Particles:idx(i)
+		if (p.curPos-cursor):len() < p.size*2 ? {
+			CurrentlyHoveringParticle = p
+			break
+		}
+	}
+	if .IsMouseButtonDown(0) ? {
+		if CurrentlyDraggingParticle == nil ? {
+			if CurrentlyHoveringParticle != nil ? {
+				WasCurrentlyDraggingParticleLocked = CurrentlyHoveringParticle.locked
+				CurrentlyDraggingParticle = CurrentlyHoveringParticle
+			}
+		} else {
+			// CurrentlyDraggingParticle.locked = true
+			CurrentlyDraggingParticle.curPos = cursor
+			CurrentlyDraggingParticle.oldPos = cursor
+		}
+		if .IsKeyPressed('L') ? {
+			WasCurrentlyDraggingParticleLocked = WasCurrentlyDraggingParticleLocked != true
+			CurrentlyDraggingParticle.locked = WasCurrentlyDraggingParticleLocked
+		}
+	} else {
+		if CurrentlyDraggingParticle != nil ? {
+			CurrentlyDraggingParticle.locked = WasCurrentlyDraggingParticleLocked
+			CurrentlyDraggingParticle = nil
+		}
+	}
+
+	if .IsKeyDown(.KeyboardKey.LEFT) ? {
+		ApplyTorque(wheel0:idx(0),5.5,.5)
+		ApplyTorque(wheel1:idx(0),5.5,.5)
+	}
+	if .IsKeyDown(.KeyboardKey.RIGHT) ? {
+		ApplyTorque(wheel0:idx(0),-5.5,.5)
+		ApplyTorque(wheel1:idx(0),-5.5,.5)
+	}
+	if .IsKeyDown(' ') ? {
+		Rotor.cycle += TAU*.25*delta
+		let rotation = RIGHT:rotateByAngle2d(Rotor.cycle) * Rotor.crank.length
+		IK_JK = IK_AL + rotation
+		Rotor.crank.p1.curPos = IK_JK:clone()
+		// wheel0.cycle += TAU*.25*delta
+		// wheel0.crank.p1.curPos = wheel0.crank.p0.curPos + RIGHT:rotateByAngle2d(wheel0.cycle) * wheel0.crank.length
+	}
+
+	TickParticles()
+	for i = 0..5 ? {
+		TickConstraints()
+	}
+	SolveIK()
+
+	let center = vec2(.GetScreenWidth()*.5,.GetScreenHeight()*.5)
+	.BeginMode2D(Camera)
+
+	.ClearBackground(.BLACK);
+
+	DrawParticles()
+	OverlayIK()
+
+	let color = .WHITE
+	if CurrentlyHoveringParticle != nil ? {
+		.DrawCircleLines(CurrentlyHoveringParticle.curPos,16,.RED)
+	}
+	if CurrentlyDraggingParticle != nil ? {
+		.DrawCircleLines(CurrentlyDraggingParticle.curPos,24,.YELLOW)
+	}
+
+	.EndMode2D()
+
+	.EndCartesianMode()
+	.DrawFPS(0,0)
+	// let dif = elf.gc_objects() - ngc
+	// .DrawText("":append(dif),0,20,20,.RED)
+	.EndDrawing()
+
+}
+
+while .WindowShouldClose() != true ? {
+	Tick()
+}
+
+leave 0

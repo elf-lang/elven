@@ -1,10 +1,6 @@
-// global_prefix "${elf.get_unique_file_id()}" as file
-
-MATH ::= {
-	PI   	= 3.14159,
-	TAU  	= 6.28318,
-	E  	= 2.71828,
-}
+PI  = 3.14159
+TAU = 6.28318
+E   = 2.71828
 
 max := fun(a,b) ? { if a > b ? --> a else --> b }
 min := fun(a,b) ? { if a < b ? --> a else --> b }
@@ -13,14 +9,13 @@ UPSCALE  	::= 2
 WIND_W   	::= 256
 WIND_H   	::= 256
 UNIT 			::= 8
-ASPECT_R 	::= WIND_W / iton(WIND_H)
 CENTER_X 	::= WIND_W / 2
 CENTER_Y 	::= WIND_H / 2
 CELL 			::= UNIT
 
 _rgb = fun(r,g,b,a) ? ({r=r,g=g,b=b,a=a??255})
 
-elf.jam.video("Graph!",WIND_W,WIND_H,UPSCALE)
+InitWindow("Graph!",WIND_W,WIND_H,UPSCALE)
 
 DOWN 		= 1
 PRESSED  = 2
@@ -54,26 +49,19 @@ draw_grid ::= fun() ? {
 	grid_size_x ::= WIND_W / cell_size + 1
 	grid_size_y ::= WIND_H / cell_size + 1
 
-	// VIEW:set_color(255,255,255,255*0.25)
+	SetColor(255,255,255,255*0.25)
 	for y = 0...grid_size_y ? {
-		// VIEW:draw_rect(0,offset.y%cell_size+y*cell_size,WIND_W,1)
 		y0 := offset.y % cell_size + y * cell_size
-		elf.jam.draw_line(0, y0, WIND_W, y0, 255, 255, 255, 255 * 0.25)
+		DrawLine(0, y0, WIND_W, y0)
 	}
 	for x = 0...grid_size_x ? {
-		// VIEW:draw_rect(offset.x%cell_size+x*cell_size,0,1,WIND_H)
 		x0 := offset.x % cell_size + x * cell_size
-		elf.jam.draw_line(x0, 0, x0, WIND_H, 255, 255, 255, 255 * 0.25)
+		DrawLine(x0, 0, x0, WIND_H)
 	}
-	// VIEW:set_color(255,0,0,255*0.80)
-	// VIEW:draw_rect(offset.x,0,1,WIND_H)
-
-	elf.jam.draw_line(offset.x, 0, offset.x, WIND_H, 255,0,0,255*0.80)
-
-	// VIEW:set_color(0,255,0,255*0.80)
-	// VIEW:draw_rect(0,offset.y,WIND_W,1)
-
-	elf.jam.draw_line(0, offset.y, WIND_W, offset.y, 0,255,0,255*0.80)
+	SetColor(255,0,0,255*0.80)
+	DrawLine(offset.x, 0, offset.x, WIND_H)
+	SetColor(0,255,0,255*0.80)
+	DrawLine(0, offset.y, WIND_W, offset.y)
 }
 
 global name ?= 1
@@ -108,7 +96,9 @@ user_input ::= fun() ? {
 	// }
 }
 
-while elf.jam.cycle() ? {
+while PollWindow() ? {
+	Clear(0, 0, 0, 0)
+
 	user_input()
 
 	draw_grid()
@@ -175,9 +165,7 @@ while elf.jam.cycle() ? {
 	for src = sources[...] ? {
 		f ::= src.f
 		c ::= src.c
-
-		// VIEW:set_color(c.r,c.g,c.b,c.a)
-
+		SetColor(c.r,c.g,c.b,c.a)
 		// sample in screen space, number of samples
 		// remains the same regardless of the scale
 		for p = 0...WIND_W ? {
@@ -206,7 +194,7 @@ while elf.jam.cycle() ? {
 			}
 
 			// todo: figure out how to make this more efficient...
-			elf.jam.draw_line((p+0),sy0,(p+1),sy1, c.r,c.g,c.b,c.a)
+			DrawLine((p+0),sy0,(p+1),sy1)
 		}
 	}
 }

@@ -1,4 +1,4 @@
-static void r_equip_texture(jam_State *jam, jam_Texture *texture, i32 size_x, i32 size_y, void *contents);
+#include "renderer.h"
 
 typedef struct {
 	jam_State *jam;
@@ -116,19 +116,19 @@ b32 init_renderer(Init_Renderer params) {
 		ID3D11Device_CreateDepthStencilState(jam->device,&config,&jam->default_depth_stencil);
 	}
 
-   /* todo: multisampling */
 	{
-		D3D11_RASTERIZER_DESC config = {};
-		config.FillMode = D3D11_FILL_SOLID;
-		config.CullMode = D3D11_CULL_NONE;
-		config.FrontCounterClockwise = FALSE;
-		config.DepthBias = D3D11_DEFAULT_DEPTH_BIAS;
-		config.DepthBiasClamp = D3D11_DEFAULT_DEPTH_BIAS_CLAMP;
-		config.SlopeScaledDepthBias = D3D11_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		config.DepthClipEnable = FALSE;
-		config.ScissorEnable = FALSE;
-		config.MultisampleEnable = FALSE;
-		config.AntialiasedLineEnable = FALSE;
+		D3D11_RASTERIZER_DESC config = {
+			.FillMode = D3D11_FILL_SOLID,
+			.CullMode = D3D11_CULL_NONE,
+			.FrontCounterClockwise = FALSE,
+			.DepthBias = D3D11_DEFAULT_DEPTH_BIAS,
+			.DepthBiasClamp = D3D11_DEFAULT_DEPTH_BIAS_CLAMP,
+			.SlopeScaledDepthBias = D3D11_DEFAULT_SLOPE_SCALED_DEPTH_BIAS,
+			.DepthClipEnable = FALSE,
+			.ScissorEnable = FALSE,
+			.MultisampleEnable = FALSE,
+			.AntialiasedLineEnable = FALSE,
+		};
 		ID3D11Device_CreateRasterizerState(jam->device,&config,&jam->default_rasterizer);
 	}
 
@@ -186,18 +186,19 @@ b32 init_renderer(Init_Renderer params) {
 		// so perhaps there's another way of doing this.
 		jam->vertex_buffer_capacity = MEGABYTES(256);
 
-		D3D11_BUFFER_DESC config = {};
-		config.Usage = D3D11_USAGE_DYNAMIC;
-		config.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		config.MiscFlags = 0;
-		config.StructureByteStride = 0;
-		config.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		config.ByteWidth = jam->vertex_buffer_capacity;
+		D3D11_BUFFER_DESC config = {
+			.Usage = D3D11_USAGE_DYNAMIC,
+			.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+			.MiscFlags = 0,
+			.StructureByteStride = 0,
+			.BindFlags = D3D11_BIND_VERTEX_BUFFER,
+			.ByteWidth = jam->vertex_buffer_capacity,
+		};
 		ID3D11Device_CreateBuffer(jam->device,&config,NULL,&jam->vertex_buffer);
 	}
 
 	u8x4 color = {255, 255, 255, 255};
-	r_equip_texture(jam,&jam->fallback_texture,1,1,&color);
+	InstallTexture(jam, TEXTURE_FALLBACK, (vec2i){1,1}, &color);
 
 	{
 		D3D11_BUFFER_DESC config = {};
@@ -312,31 +313,42 @@ b32 init_renderer(Init_Renderer params) {
 	return success;
 }
 
-static void r_equip_texture(jam_State *jam, jam_Texture *texture, i32 size_x, i32 size_y, void *contents) {
+#define DX_RELEASE(I) ((I)->lpVtbl->Release(I))
+
+// todo: ensure sizes are proper
+static void InstallTexture(jam_State *J, TextureId id, vec2i resolution, void *contents) {
+
+	jam_Texture *texture = & J->textures[id];
+
+	if (texture->texture) DX_RELEASE(texture->texture);
+	if (texture->shader_resource_view) DX_RELEASE(texture->shader_resource_view);
+	if (texture->render_target_view) DX_RELEASE(texture->render_target_view);
+
 	i32 bytes_per_pixel = 4;
-
-   /* Todo: ensure sizes are proper */
 	{
-		D3D11_TEXTURE2D_DESC config = {};
-		config.Width = size_x;
-		config.Height = size_y;
-		config.MipLevels = 1;
-		config.ArraySize = 1;
-		config.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		config.SampleDesc.Count = 1;
-		config.SampleDesc.Quality = 0;
-		config.Usage = D3D11_USAGE_DYNAMIC;
-		config.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		config.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		config.MiscFlags = 0;
+		D3D11_TEXTURE2D_DESC config = {
+			.Width = resolution.x,
+			.Height = resolution.y,
+			.MipLevels = 1,
+			.ArraySize = 1,
+			.Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+			.SampleDesc.Count = 1,
+			.SampleDesc.Quality = 0,
+			.Usage = D3D11_USAGE_DYNAMIC,
+			.BindFlags = D3D11_BIND_SHADER_RESOURCE,
+			.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+			.MiscFlags = 0,
+		};
 
-		D3D11_SUBRESOURCE_DATA sub_config = {};
-		sub_config.pSysMem = contents;
-		sub_config.SysMemPitch = size_x * bytes_per_pixel;
+		D3D11_SUBRESOURCE_DATA sub_config = {
+			.pSysMem = contents,
+			.SysMemPitch = resolution.x * bytes_per_pixel,
+		};
+
 		D3D11_SUBRESOURCE_DATA *psub_config = 0;
 		if(contents){ psub_config = &sub_config; }
-		if (FAILED(ID3D11Device_CreateTexture2D(jam->device,&config,psub_config,&texture->texture))) {
-		}
+
+		ID3D11Device_CreateTexture2D(J->device, &config, psub_config, &texture->texture);
 	}
 
 	if (texture->texture) {
@@ -346,15 +358,14 @@ static void r_equip_texture(jam_State *jam, jam_Texture *texture, i32 size_x, i3
 		config.Texture2D.MostDetailedMip = 0;
 		config.Texture2D.MipLevels = 1;
 
-		ID3D11Device_CreateShaderResourceView(jam->device,(ID3D11Resource*)texture->texture,&config,&texture->view);
+		ID3D11Device_CreateShaderResourceView(J->device,(ID3D11Resource*)texture->texture,&config,&texture->shader_resource_view);
 
-		texture->sampler = jam->samplers[FILTER_POINT];
-		texture->size.x = size_x;
-		texture->size.y = size_y;
+		texture->sampler = J->samplers[FILTER_POINT];
+		texture->resolution = resolution;
 	}
 }
 
-static int _r_write_vertices(jam_State *jam, Vertex2D *vertices, i32 num_vertices) {
+static int SubmitVertices(jam_State *jam, Vertex2D *vertices, i32 num_vertices) {
 	i32 vertices_in_buffer = jam->vertex_buffer_write + num_vertices;
 	if (vertices_in_buffer * sizeof(*vertices) > jam->vertex_buffer_capacity) {
 		jam->vertex_buffer_write = 0;
@@ -374,7 +385,7 @@ static int _r_write_vertices(jam_State *jam, Vertex2D *vertices, i32 num_vertice
 	return result;
 }
 
-static void _jam_renderer_cycle(jam_State *jam){
+static void EndFrame(jam_State *jam){
 	vec2i window_dimensions = jam->window_dimensions;
 
 	b32 resolution_mismatch =
@@ -397,10 +408,10 @@ static void _jam_renderer_cycle(jam_State *jam){
 	{
 		ID3D11Buffer *constant_buffer = jam->constant_buffer;
 		Per_Pass_Constants globals = {};
-		globals.transform[0] = (f32x4){1, 0, 0, 0};
-		globals.transform[1] = (f32x4){0, 1, 0, 0};
-		globals.transform[2] = (f32x4){0, 0, 1, 0};
-		globals.transform[3] = (f32x4){0, 0, 0, 1};
+		globals.transform[0] = (vec4){1, 0, 0, 0};
+		globals.transform[1] = (vec4){0, 1, 0, 0};
+		globals.transform[2] = (vec4){0, 0, 1, 0};
+		globals.transform[3] = (vec4){0, 0, 0, 1};
 
 		D3D11_MAPPED_SUBRESOURCE map;
 		ID3D11DeviceContext_Map(jam->context, (ID3D11Resource *)constant_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
@@ -418,7 +429,7 @@ static void _jam_renderer_cycle(jam_State *jam){
 			{{1,1},{1,0},{255,255,255,255}},
 			{{1,-1},{1,1},{255,255,255,255}},
 		};
-		i32 vertex_offset = _r_write_vertices(jam,vertices,_countof(vertices));
+		i32 vertex_offset = SubmitVertices(jam,vertices,_countof(vertices));
 		D3D11_VIEWPORT viewport = { 0.0f, 0.0f, window_resolution.x, window_resolution.y, 0.0f, 1.0f };
 		ID3D11DeviceContext_RSSetViewports(jam->context, 1, &viewport);
 
@@ -428,6 +439,9 @@ static void _jam_renderer_cycle(jam_State *jam){
 		ID3D11DeviceContext_IASetPrimitiveTopology(jam->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		ID3D11DeviceContext_OMSetRenderTargets(jam->context, 1, &jam->window_render_target_view, 0);
+		f32 fcolor[4] = { };
+		ID3D11DeviceContext_ClearRenderTargetView(jam->context, jam->window_render_target_view, fcolor);
+
 		ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &jam->base_render_target_shader_view);
 		ID3D11DeviceContext_PSSetSamplers(jam->context, 0, 1, &jam->samplers[FILTER_POINT]);
 		ID3D11DeviceContext_Draw(jam->context, 6, vertex_offset);
@@ -442,9 +456,6 @@ static void _jam_renderer_cycle(jam_State *jam){
 	IDXGISwapChain_Present(jam->window_present_mechanism,1,0);
 
 	ID3D11DeviceContext_OMSetRenderTargets(jam->context, 1, &jam->base_render_target_view, 0);
-	// todo: let user call this...
-	f32 clear_color[] = {0.2f,0.2f,0.2f,1.f};
-	ID3D11DeviceContext_ClearRenderTargetView(jam->context,jam->base_render_target_view,clear_color);
 
 	vec2i resolution = jam->base_resolution;
 	{
@@ -453,10 +464,10 @@ static void _jam_renderer_cycle(jam_State *jam){
 		vec2 offset = { -1.0, -1.0 };
 
 		Per_Pass_Constants globals = {};
-		globals.transform[0] = (f32x4){scale.x, 0, 0, offset.x};
-		globals.transform[1] = (f32x4){0, scale.y, 0, offset.y};
-		globals.transform[2] = (f32x4){0, 0, 1, 0};
-		globals.transform[3] = (f32x4){0, 0, 0, 1};
+		globals.transform[0] = (vec4){scale.x, 0, 0, offset.x};
+		globals.transform[1] = (vec4){0, scale.y, 0, offset.y};
+		globals.transform[2] = (vec4){0, 0, 1, 0};
+		globals.transform[3] = (vec4){0, 0, 0, 1};
 
 		ID3D11Buffer *constant_buffer = jam->constant_buffer;
 		D3D11_MAPPED_SUBRESOURCE map;
@@ -471,17 +482,16 @@ static void _jam_renderer_cycle(jam_State *jam){
 	}
 }
 
-// the only thing that this renderer knows how to do...
-static int r_texture_pass(jam_State *jam, jam_Texture *texture, Vertex2D *vertices, i32 num_vertices) {
-	int result = _r_write_vertices(jam,vertices,num_vertices);
-	if(!texture) texture = &jam->fallback_texture;
-	ID3D11ShaderResourceView *input = texture->view;
-	ID3D11SamplerState *sampler = texture->sampler;
-	ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &input);
-	ID3D11DeviceContext_PSSetSamplers(jam->context, 0, 1, &sampler);
-	ID3D11DeviceContext_Draw(jam->context, num_vertices, result);
-	return result;
-}
+//	static int r_texture_pass(jam_State *jam, jam_Texture *texture, Vertex2D *vertices, i32 num_vertices) {
+//		int result = SubmitVertices(jam,vertices,num_vertices);
+//		if(!texture) texture = &jam->fallback_texture;
+//		ID3D11ShaderResourceView *input = texture->view;
+//		ID3D11SamplerState *sampler = texture->sampler;
+//		ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &input);
+//		ID3D11DeviceContext_PSSetSamplers(jam->context, 0, 1, &sampler);
+//		ID3D11DeviceContext_Draw(jam->context, num_vertices, result);
+//		return result;
+//	}
 
 
 

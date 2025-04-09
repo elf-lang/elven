@@ -102,7 +102,11 @@ while elf.jam.cycle() ? {
 	// 	view:draw_rect(blade.x,blade.y,8,8)
 	// }
 
-	force := {x=elf.jam.input.mouse_x,y=elf.jam.input.mouse_y,radSq=32*32}
+	force := {
+		x = 0, // elf.jam.input.mouse_x,
+		y = 0, // elf.jam.input.mouse_y,
+		radSq=32*32
+	}
 	force_x := force.x
 	force_y := force.y
 	force_radSq := force.radSq

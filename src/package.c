@@ -3,7 +3,7 @@ int lib_package_create(elf_State *S);
 int lib_package_get_info(elf_State *S);
 
 
-static elf_CBinding lib_package[] = {
+static NameFunctionPair lib_package[] = {
 	{"create",lib_package_create},
 	{"get_info",lib_package_get_info},
 };
@@ -20,11 +20,11 @@ static void package_close(elf_State *S, FILE *file) {
 
 static FILE *package_open(elf_State *S, char *name) {
 	fileT *file = 0;
-	elf_value res = elf_table_get(package_info, VALUE_STRING(elf_new_string(S,name)));
+	elf_Value res = elf_table_get(package_info, VALUE_STRING(elf_new_string(S,name)));
 	if (res.tag == elf_tag_tab) {
 		elf_Table *entry = res.x_tab;
-		elf_value pos = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"pos")));
-		elf_value size = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"size")));
+		elf_Value pos = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"pos")));
+		elf_Value size = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"size")));
 		ASSERT(pos.tag==elf_tag_int);
 		ASSERT(size.tag==elf_tag_int);
 		file = malloc(sizeof(*file));
@@ -98,7 +98,7 @@ int lib_package_create(elf_State *S) {
 	}
 
 	FOR_ARRAY(i,info->array) {
-		elf_value v = info->array[i];
+		elf_Value v = info->array[i];
 		ASSERT(v.tag == elf_tag_str);
 
 		file=fopen(v.x_str->text,"rb");

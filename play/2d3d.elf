@@ -1,0 +1,80 @@
+InitWindow("2D 3D", 512, 512, 1)
+points := {
+	{0, 0, 0},
+	{0, 1, 0},
+	{1, 1, 0},
+	{0, 0, 0},
+	{1, 1, 0},
+	{1, 0, 0},
+
+	{0, 0, 1},
+	{0, 1, 1},
+	{1, 1, 1},
+	{0, 0, 1},
+	{1, 1, 1},
+	{1, 0, 1},
+
+	// {0, 0, 0},
+	// {0, 0, 1},
+	// {0, 1, 0},
+}
+
+time_start := elf.get_clock_time()
+while PollWindow() ? {
+	total_time := elf.get_time_diff_s(time_start)
+
+	Clear()
+	SetColor(255, 255, 255, 255)
+	for i = 0...points:tally() / 3 ? {
+		t := i * 3
+		tp := {}
+
+		for j = 0...3 ? {
+			p := points:idx(t + j)
+			x := p:idx(0)
+			y := p:idx(1)
+			z := p:idx(2)
+
+			x -= 0.5
+			y -= 0.5
+
+			// x = x * (cos(total_time) * 0.5 + 0.5)
+			// z = z * (sin(total_time) * 0.5 + 0.5)
+
+			z *= 2
+
+			if z != 0 ? {
+				x /= iton(z)
+				y /= iton(z)
+			}
+			x = x * 256 + 256
+ 			y = y * 256 + 256
+			tp:add({x, y})
+		}
+
+		p0 := tp:idx(0)
+		p1 := tp:idx(1)
+		p2 := tp:idx(2)
+
+		x0 := p0:idx(0)
+		y0 := p0:idx(1)
+
+		x1 := p1:idx(0)
+		y1 := p1:idx(1)
+
+		x2 := p2:idx(0)
+		y2 := p2:idx(1)
+
+		SetColor(255, 255, 255)
+		DrawLine(x0, y0, x1, y1)
+		DrawLine(x1, y1, x2, y2)
+		DrawLine(x2, y2, x0, y0)
+
+		SetColor(255, 0, 0)
+		DrawRectangle(x0, y0, 2, 2)
+		SetColor(0, 255, 0)
+		DrawRectangle(x1, y1, 2, 2)
+		SetColor(0, 0, 255)
+		DrawRectangle(x2, y2, 2, 2)
+	}
+}
