@@ -1,4 +1,3 @@
 
 
-
-static void InstallTexture(jam_State *J, TextureId id, vec2i resolution, void *contents);
+static void rInstallTexture(JState *J, TextureId id, TextureType type, vec2i resolution, void *contents);

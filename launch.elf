@@ -1,6 +1,58 @@
+
+InitWindow("Square", 320 * 4, 180 * 4, 1)
+LoadFont("C:\\Windows\\Fonts\\times.ttf")
+
+abs = fun(x) ? {
+	if x < 0 ? {
+		--> - x
+	}
+	--> x
+}
+
+r0 = { x = 32, y = 32, w = 16, h = 16 }
+r1 = { x = 64, y = 32, w = 32, h = 32 }
+
+
+while PollWindow() ? {
+	Clear()
+
+	mx := (Button('D') & 1) - (Button('A') & 1)
+	my := (Button('W') & 1) - (Button('S') & 1)
+
+	r0.x += mx
+	r0.y += my
+
+	overlapping := false
+
+	xd := r1.x - r0.x + (r1.w - r0.w) * 0.5
+	yd := r1.y - r0.y + (r1.h - r0.h) * 0.5
+
+	xp := abs(xd) - (r0.w + r1.w) * 0.5
+	yp := abs(yd) - (r0.h + r1.h) * 0.5
+
+	if xp < 0 && yp < 0 ? {
+		overlapping = true
+	}
+
+	SolidFill()
+	SetColor(255, 255, 255, 255)
+	if overlapping ? {
+		SetColor(255, 0, 0, 255)
+	}
+	// SetColor(0, 0, 255, 255)
+	DrawRectangle(r0.x, r0.y, r0.w, r0.h)
+	// SetColor(255, 0, 0, 255)
+	DrawRectangle(r1.x, r1.y, r1.w, r1.h)
+
+	SetColor(255, 255, 255, 255)
+	DrawText(32, 512, "determine how much love a man deserves..., or how much love he desires, but then again...")
+}
+
+#eof
+
+
 elf.change_work_dir("play")
-load "rnd.elf"
-load "random.elf"
+load "basic.elf"
 
 #eof
 

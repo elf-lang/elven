@@ -96,6 +96,11 @@ typedef struct {
 } r_i32;
 
 
+typedef struct {
+	f32 x, y, w, h;
+} r_f32;
+
+
 
 enum {
 	DOWN_BIT       = 1,
@@ -136,22 +141,24 @@ enum {
 	BUTTON_COUNT,
 };
 
-typedef u8 Button;
-
 typedef struct {
-	vec2 basis_x,basis_y;
-	vec2 center;
-	vec2 translation;
-} trans2d;
+	u8 u;
+} Button;
 
-static inline trans2d trans2d_rotation(f32 rotation, vec2 center) {
-	vec2 basis_x = (vec2){cos(rotation),sin(rotation)};
-	vec2 basis_y = (vec2){-basis_x.y,basis_x.x};
-	return (trans2d){basis_x,basis_y,center,vec2(0,0)};
-}
-static inline trans2d trans2d_translation(vec2 translation) {
-	return (trans2d){vec2(1,0),vec2(0,1),vec2(0,0),translation};
-}
+// typedef struct {
+// 	vec2 basis_x,basis_y;
+// 	vec2 center;
+// 	vec2 translation;
+// } trans2d;
+
+// static inline trans2d trans2d_rotation(f32 rotation, vec2 center) {
+// 	vec2 basis_x = (vec2){cos(rotation),sin(rotation)};
+// 	vec2 basis_y = (vec2){-basis_x.y,basis_x.x};
+// 	return (trans2d){basis_x,basis_y,center,vec2(0,0)};
+// }
+// static inline trans2d trans2d_translation(vec2 translation) {
+// 	return (trans2d){vec2(1,0),vec2(0,1),vec2(0,0),translation};
+// }
 //
 // todo: simplify this...
 //
@@ -161,16 +168,14 @@ static inline trans2d trans2d_translation(vec2 translation) {
 //  X * BX - C * BX +
 //  Y * BY - C * BY
 //
-static inline vec2 apply_trans2d(trans2d trans, vec2 v) {
-	vec2 o =
-	vec2_add(vec2_add(trans.translation,trans.center)
-	, vec2_add(
-	vec2_mul(trans.basis_x,vec2_sub(vec2(v.x,v.x),trans.center)),
-	vec2_mul(trans.basis_y,vec2_sub(vec2(v.y,v.y),trans.center))));
-	return o;
-}
-
-
+// static inline vec2 apply_trans2d(trans2d trans, vec2 v) {
+// 	vec2 o =
+// 	vec2_add(vec2_add(trans.translation,trans.center)
+// 	, vec2_add(
+// 	vec2_mul(trans.basis_x,vec2_sub(vec2(v.x,v.x),trans.center)),
+// 	vec2_mul(trans.basis_y,vec2_sub(vec2(v.y,v.y),trans.center))));
+// 	return o;
+// }
 
 typedef struct Controller_State Controller_State;
 struct Controller_State {
@@ -184,47 +189,42 @@ struct Controller_State {
 	vec2 thumbs[2];
 };
 
-enum {
+typedef enum {
 	FORMAT_R_U8     = DXGI_FORMAT_R8_UNORM,
 	FORMAT_RGBA_U8  = DXGI_FORMAT_R8G8B8A8_UNORM,
 	FORMAT_RGBA_F32 = DXGI_FORMAT_R32G32B32A32_FLOAT,
-};
+} TextureType;
 
-enum {
-	FILTER_POINT = 0,
-	FILTER_LINEAR,
-	FILTER_COUNT,
-};
 
-static char *j_obj2str[]={
-	"none",
-	"image",
-	"sound",
-	"texture",
-};
-typedef enum {
-	JAM_NONE = 0,
-	JAM_IMAGE,
-	JAM_SOUND,
-	JAM_TEXTURE,
-} jam_type;
+// static char *j_obj2str[]={
+// 	"none",
+// 	"image",
+// 	"sound",
+// 	"texture",
+// };
+// typedef enum {
+// 	JAM_NONE = 0,
+// 	JAM_IMAGE,
+// 	JAM_SOUND,
+// 	JAM_TEXTURE,
+// } jam_type;
 
-typedef struct jam_Object jam_Object;
-struct jam_Object {
-	elf_Object obj;
-	i32 type;
-};
+// typedef struct jam_Object jam_Object;
+// struct jam_Object {
+// 	elf_Object obj;
+// 	i32 type;
+// };
 
-typedef struct jam_Image jam_Image;
-struct jam_Image {
-	jam_Object base;
-	vec2i size;
-	// todo: could be allocated along with the object
-	Color *pixels;
-};
+// typedef struct jam_Image jam_Image;
+// struct jam_Image {
+// 	jam_Object base;
+// 	vec2i size;
+// 	// todo: could be allocated along with the object
+// 	Color *pixels;
+// };
 
-typedef struct jam_Texture jam_Texture;
-struct jam_Texture {
+typedef struct rTextureStruct rTextureStruct;
+struct rTextureStruct {
 	vec2i resolution;
 	ID3D11SamplerState       *sampler;
 	ID3D11Texture2D          *texture;
@@ -232,14 +232,11 @@ struct jam_Texture {
 	ID3D11RenderTargetView   *render_target_view;
 };
 
-typedef struct jam_Sound jam_Sound;
-struct jam_Sound {
-	jam_Object base;
-	ma_sound sound;
-};
-
-
-
+// typedef struct jam_Sound jam_Sound;
+// struct jam_Sound {
+// 	jam_Object base;
+// 	ma_sound sound;
+// };
 
 
 
@@ -260,13 +257,13 @@ struct Vertex2D {
 
 STATIC_ASSERT(!(sizeof(Vertex2D) & 15));
 
-typedef struct jam_Audio jam_Audio;
-struct jam_Audio {
-	ma_engine engine;
-	// all the sounds in here are never referenced by
-	// anyone else, they are freed on demand
-	jam_Sound *voices[16];
-};
+// typedef struct jam_Audio jam_Audio;
+// struct jam_Audio {
+// 	ma_engine engine;
+// 	// all the sounds in here are never referenced by
+// 	// anyone else, they are freed on demand
+// 	jam_Sound *voices[16];
+// };
 
 
 typedef enum {
@@ -276,18 +273,58 @@ typedef enum {
 } Topology;
 
 typedef enum {
+	SAMPLER_NONE = 0,
+	SAMPLER_POINT,
+	SAMPLER_LINEAR,
+	SAMPLER_CAPACITY,
+} SamplerId;
+
+typedef enum {
+	BLENDER_NONE = 0,
+	BLENDER_CAPACITY,
+} BlenderId;
+
+typedef enum {
 	TEXTURE_NONE = 0,
-	TEXTURE_FALLBACK,
-	MAX_TEXTURES = 128,
+	TEXTURE_DEFAULT,
+	TEXTURE_FONT,
+	TEXTURE_CAPACITY = 128,
 } TextureId;
+
+enum {
+	SHADER_NONE = 0,
+	SHADER_DEFAULT,
+	SHADER_CAPACITY = 32,
+};
+
+typedef struct {
+	i32 index;
+} ShaderId;
 
 typedef struct {
 	Topology  topology;
 	TextureId texture;
+	ShaderId  shader;
+	SamplerId sampler;
+	BlenderId blender;
 } Draw_State;
 
-typedef struct jam_State jam_State;
-struct jam_State {
+enum {
+	FONT_NAME_CAPACITY = 128,
+	FONT_GLYPHS_CAPACITY = 256,
+};
+
+typedef struct JFont JFont;
+struct JFont {
+	JFont *prox;
+	TextureId texture;
+	char name[FONT_NAME_CAPACITY];
+	stbtt_bakedchar glyphs[FONT_GLYPHS_CAPACITY];
+};
+
+typedef struct JState JState;
+struct JState {
+	// MUST BE FIRST FIELD
 	elf_State  R;
 	elf_Module M;
 
@@ -295,6 +332,7 @@ struct jam_State {
 
 	Draw_State draw_prev;
 	Draw_State draw_prox;
+	JFont *font;
 
 	temp_b32 resizable;
 	i64 begin_cycle_clock;
@@ -302,7 +340,7 @@ struct jam_State {
 	f64 target_seconds_to_sleep;
 	f64 pending_seconds_to_sleep;
 
-	jam_Texture textures[MAX_TEXTURES];
+	rTextureStruct textures[TEXTURE_CAPACITY];
 
 	ID3D11InfoQueue     *info_queue;
 	ID3D11Device        *device;
@@ -314,6 +352,8 @@ struct jam_State {
 	ID3D11Texture2D *window_render_target;
 	ID3D11RenderTargetView *window_render_target_view;
 
+	ID3D11PixelShader *shaders[SHADER_CAPACITY];
+
 	vec2i base_resolution;
 	ID3D11Texture2D *base_render_target_texture;
 	ID3D11RenderTargetView *base_render_target_view;
@@ -321,12 +361,13 @@ struct jam_State {
 	ID3D11RasterizerState *default_rasterizer;
 	ID3D11BlendState *default_blender;
 	ID3D11DepthStencilState *default_depth_stencil;
-	ID3D11SamplerState *samplers[FILTER_COUNT];
 	ID3D11Buffer *constant_buffer;
-	ID3D11PixelShader  *pixel_shader;
 	ID3D11VertexShader *vertex_shader;
 	ID3D11InputLayout  *input_layout;
-	ID3D11Buffer *vertex_buffer;
-	i32 vertex_buffer_capacity;
-	i32 vertex_buffer_write;
+
+	ID3D11SamplerState *samplers[SAMPLER_CAPACITY];
+
+	ID3D11Buffer *vertices_submission_buffer;
+	i32 vertices_submission_buffer_capacity;
+	i32 vertices_submission_buffer_offset;
 };
