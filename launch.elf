@@ -45,7 +45,7 @@ while PollWindow() ? {
 	DrawRectangle(r1.x, r1.y, r1.w, r1.h)
 
 	SetColor(255, 255, 255, 255)
-	DrawText(32, 512, "determine how much love a man deserves..., or how much love he desires, but then again...")
+	DrawText(32, 512, "What Is Love")
 }
 
 #eof

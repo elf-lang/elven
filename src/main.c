@@ -32,6 +32,7 @@
 #include "os_win32.c"
 #include "d3d11_renderer.c"
 #include "fonts.c"
+#include "lib.h"
 
 Vertex2D     *r_mem_vertices;
 i32           r_num_vertices;
