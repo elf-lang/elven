@@ -3,28 +3,13 @@ TAU ::= 6.283185307179586
 
 InitWindow("Basic", 256, 256, 2)
 
-// layer0 := InstallLayer(256, 256)
-// layer1 := InstallLayer(256, 256)
-// layer2 := InstallLayer(256, 256)
-
-// BeginLayerMode(layer0)
-// {
-// 	SetOutput()
-// 	SetInput()
-// 	SetBlender()
-// 	SetSampler()
-// 	SetShader()
-// }
-// EndLayerMode()
-
-
 while PollWindow() ? {
 	Clear(32, 32, 32)
 	SetColor(255, 255, 255, 255)
 
 	SetColor(255, 0, 0, 255)
 	for i = 0...16 ? {
-		DrawRectangle((8 + 2) * i, 256 - 8, 8, 8)
+		jDrawRectangle((8 + 2) * i, 256 - 8, 8, 8)
 	}
 
 	cr := 32
@@ -57,6 +42,6 @@ while PollWindow() ? {
 
 	SetColor(0, 0, 255, 255)
 	for i = 0...16 ? {
-		DrawRectangle((8 + 2) * i, 0, 8, 8)
+		jDrawRectangle((8 + 2) * i, 0, 8, 8)
 	}
 }

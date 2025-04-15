@@ -1,21 +1,49 @@
+// <3
+
+#if !defined(JAPI)
+	#define JAPI static
+#endif
+
+
+// todo: remove these includes from here?
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
+#define MINIAUDIO_IMPLEMENTATION
+#include "miniaudio.h"
+
+
 #if !defined(TAU)
 #define TAU 6.283185307179586
 #endif
+
 #if !defined(TRACELOG)
 #define TRACELOG(msg,...) printf(msg"\n",__VA_ARGS__)
 #endif
+
 #if !defined(MEGABYTES)
 #define MEGABYTES(A) ((i64)(A) << 20LLU)
 #endif
+
 #if !defined(KILOBYTES)
 #define KILOBYTES(A) ((i64)(A) << 10LLU)
 #endif
+
 #if !defined(MIN)
 #define MIN(A,B) (((A) < (B)) ? (A) : (B))
 #endif
+
 #if !defined(MAX)
 #define MAX(A,B) (((A) > (B)) ? (A) : (B))
 #endif
+
 #if !defined(ABS)
 #define ABS(A) (((A) < 0) ? -(A) : (A))
 #endif
@@ -29,7 +57,6 @@ typedef unsigned long long    int        u64;
 typedef unsigned              int        u32;
 typedef                       int        i32;
 typedef                       int        b32;
-typedef                       int   temp_b32;
 typedef   signed            short        i16;
 typedef unsigned            short        u16;
 typedef unsigned             char         u8;
@@ -195,33 +222,39 @@ typedef enum {
 	FORMAT_RGBA_F32 = DXGI_FORMAT_R32G32B32A32_FLOAT,
 } TextureType;
 
-
 // static char *j_obj2str[]={
 // 	"none",
 // 	"image",
 // 	"sound",
 // 	"texture",
 // };
-// typedef enum {
-// 	JAM_NONE = 0,
-// 	JAM_IMAGE,
-// 	JAM_SOUND,
-// 	JAM_TEXTURE,
-// } jam_type;
 
-// typedef struct jam_Object jam_Object;
-// struct jam_Object {
-// 	elf_Object obj;
-// 	i32 type;
-// };
+typedef enum {
+	JAM_NONE = 0,
+	JAM_IMAGE,
+	JAM_SOUND,
+	JAM_TEXTURE,
+} jam_type;
 
-// typedef struct jam_Image jam_Image;
-// struct jam_Image {
-// 	jam_Object base;
-// 	vec2i size;
-// 	// todo: could be allocated along with the object
-// 	Color *pixels;
-// };
+typedef struct jam_Object jam_Object;
+struct jam_Object {
+	elf_Object obj;
+	jam_type   type;
+};
+
+typedef struct jam_Image jam_Image;
+struct jam_Image {
+	jam_Object base;
+	vec2i resolution;
+	// todo: could be allocated along with the object
+	Color *pixels;
+};
+
+typedef struct jam_Sound jam_Sound;
+struct jam_Sound {
+	jam_Object base;
+	ma_sound sound;
+};
 
 typedef struct rTextureStruct rTextureStruct;
 struct rTextureStruct {
@@ -232,11 +265,6 @@ struct rTextureStruct {
 	ID3D11RenderTargetView   *render_target_view;
 };
 
-// typedef struct jam_Sound jam_Sound;
-// struct jam_Sound {
-// 	jam_Object base;
-// 	ma_sound sound;
-// };
 
 
 
@@ -256,14 +284,6 @@ struct Vertex2D {
 };
 
 STATIC_ASSERT(!(sizeof(Vertex2D) & 15));
-
-// typedef struct jam_Audio jam_Audio;
-// struct jam_Audio {
-// 	ma_engine engine;
-// 	// all the sounds in here are never referenced by
-// 	// anyone else, they are freed on demand
-// 	jam_Sound *voices[16];
-// };
 
 
 typedef enum {
@@ -297,17 +317,51 @@ enum {
 	SHADER_CAPACITY = 32,
 };
 
-typedef struct {
-	i32 index;
-} ShaderId;
+enum {
+	VOICES_CAPACITY = 16,
+	SOUNDS_CAPACITY = 256,
+};
 
+
+typedef struct { i32 index; } ShaderId;
+typedef struct { i32 index; } SoundId;
+
+//
+// Vertices are submitted by the high-level API,
+// once we know how many we need for the draw call.
+// For instance, if I want to render N rectangles,
+// I know that I need N * 6, so I can call the
+// routine that submits these vertices and bypass
+// the accumulation process entirely.
+// Because we have functions like DrawRectangle,
+// and DrawCircle, which only add a small number
+// of vertices, I use a temporary buffer to accumulate
+// them until the call is issued.
+//
+//
+typedef struct {
+	i32 offset;
+} SubmissionQueueToken;
+
+//
+// Basic draw state for a given draw call,
+// the draw function is implemented by the
+// renderer backend itself.
+//
 typedef struct {
 	Topology  topology;
 	TextureId texture;
 	ShaderId  shader;
 	SamplerId sampler;
 	BlenderId blender;
-} Draw_State;
+} JDrawState;
+
+typedef struct {
+	JDrawState state;
+	SubmissionQueueToken vertices;
+	i32 num_vertices;
+} DrawCall;
+
 
 enum {
 	FONT_NAME_CAPACITY = 128,
@@ -322,19 +376,27 @@ struct JFont {
 	stbtt_bakedchar glyphs[FONT_GLYPHS_CAPACITY];
 };
 
-typedef struct JState JState;
-struct JState {
+typedef struct jam_State jam_State;
+struct jam_State {
 	// MUST BE FIRST FIELD
 	elf_State  R;
 	elf_Module M;
 
+	struct {
+		ma_engine engine;
+		ma_sound voices[VOICES_CAPACITY];
+		ma_sound sounds[SOUNDS_CAPACITY];
+		i32 sounds_index;
+	} audio;
+
+
 	vec2i window_dimensions;
 
-	Draw_State draw_prev;
-	Draw_State draw_prox;
+	JDrawState draw_prev;
+	JDrawState draw_prox;
 	JFont *font;
 
-	temp_b32 resizable;
+	b32 resizable;
 	i64 begin_cycle_clock;
 	f64 clocks_to_seconds;
 	f64 target_seconds_to_sleep;

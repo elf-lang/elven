@@ -35,7 +35,7 @@ NameFunctionPair lib[] = {
 	{ "SetColor", L_SetColor },
 	{ "DrawText", L_DrawText },
 	{ "SolidFill", L_SolidFill },
-	{ "DrawRectangle", L_DrawRectangle },
+	{ "jDrawRectangle", L_DrawRectangle },
 	{ "DrawTriangle", L_DrawTriangle },
 	{ "DrawLine", L_DrawLine },
 	{ "DrawCircle", L_DrawCircle },

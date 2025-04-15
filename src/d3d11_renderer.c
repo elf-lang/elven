@@ -1,7 +1,7 @@
 #include "renderer.h"
 
 typedef struct {
-	JState *jam;
+	jam_State *jam;
 	HWND window;
 	int res_x;
 	int res_y;
@@ -9,7 +9,7 @@ typedef struct {
 } Init_Renderer;
 
 b32 rInitRenderer(Init_Renderer params) {
-	JState *jam = params.jam;
+	jam_State *jam = params.jam;
 	jam->resizable = params.resizable;
 	jam->base_resolution.x = params.res_x;
 	jam->base_resolution.y = params.res_y;
@@ -302,7 +302,7 @@ b32 rInitRenderer(Init_Renderer params) {
 #define DX_RELEASE(I) ((I)->lpVtbl->Release(I))
 
 // todo: ensure sizes are proper
-static void rInstallTexture(JState *J, TextureId id, TextureType type, vec2i resolution, void *contents) {
+static void rInstallTexture(jam_State *J, TextureId id, TextureType type, vec2i resolution, void *contents) {
 
 	rTextureStruct *texture = & J->textures[id];
 
@@ -363,12 +363,10 @@ static void rInstallTexture(JState *J, TextureId id, TextureType type, vec2i res
 	}
 }
 
-typedef struct {
-	i32 offset;
-} rVertexOffsetInSubmissionBuffer;
 
-static rVertexOffsetInSubmissionBuffer
-rSubmitVertices(JState *renderer, Vertex2D *vertices, i32 number) {
+
+static SubmissionQueueToken
+rSubmitVertices(jam_State *renderer, Vertex2D *vertices, i32 number) {
 
 	i32 vertices_in_buffer = renderer->vertices_submission_buffer_offset + number;
 	if (vertices_in_buffer * sizeof(*vertices) > renderer->vertices_submission_buffer_capacity) {
@@ -387,10 +385,10 @@ rSubmitVertices(JState *renderer, Vertex2D *vertices, i32 number) {
 
 	ID3D11DeviceContext_Unmap(renderer->context, (ID3D11Resource *) renderer->vertices_submission_buffer, 0);
 
-	return (rVertexOffsetInSubmissionBuffer){ offset };
+	return (SubmissionQueueToken){ offset };
 }
 
-static void EndFrame(JState *jam){
+static void EndFrame(jam_State *jam){
 	vec2i window_dimensions = jam->window_dimensions;
 
 	b32 resolution_mismatch =
@@ -487,7 +485,7 @@ static void EndFrame(JState *jam){
 	}
 }
 
-//	static int r_texture_pass(JState *jam, rTextureStruct *texture, Vertex2D *vertices, i32 num_vertices) {
+//	static int r_texture_pass(jam_State *jam, rTextureStruct *texture, Vertex2D *vertices, i32 num_vertices) {
 //		int result = rSubmitVertices(jam,vertices,num_vertices);
 //		if(!texture) texture = &jam->fallback_texture;
 //		ID3D11ShaderResourceView *input = texture->view;

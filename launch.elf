@@ -1,4 +1,9 @@
 
+elf.change_work_dir("play")
+load "text.elf"
+#eof
+
+
 InitWindow("Square", 320 * 4, 180 * 4, 1)
 LoadFont("C:\\Windows\\Fonts\\times.ttf")
 
@@ -40,9 +45,9 @@ while PollWindow() ? {
 		SetColor(255, 0, 0, 255)
 	}
 	// SetColor(0, 0, 255, 255)
-	DrawRectangle(r0.x, r0.y, r0.w, r0.h)
+	jDrawRectangle(r0.x, r0.y, r0.w, r0.h)
 	// SetColor(255, 0, 0, 255)
-	DrawRectangle(r1.x, r1.y, r1.w, r1.h)
+	jDrawRectangle(r1.x, r1.y, r1.w, r1.h)
 
 	SetColor(255, 255, 255, 255)
 	DrawText(32, 512, "What Is Love")
@@ -51,8 +56,6 @@ while PollWindow() ? {
 #eof
 
 
-elf.change_work_dir("play")
-load "basic.elf"
 
 #eof
 
@@ -84,7 +87,7 @@ while PollWindow() ? {
 		w := 32 // * (0.4 + 0.6 * trim(1 - i / 4.0))
 		h := 64 // * (0.4 + 0.6 * trim(1 - i / 4.0))
 		y := 32 // 32 + 64 * 0.5 - h * 0.5
-		DrawRectangle(x, y, w, h)
+		jDrawRectangle(x, y, w, h)
 	}
 }
 

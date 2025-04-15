@@ -269,7 +269,7 @@ static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
 
 // #if 0
 // internal
-// vec2i os_get_window_size(JState window) {
+// vec2i os_get_window_size(jam_State window) {
 // 	RECT rect;
 // 	GetClientRect((HWND)window,&rect);
 // 	return (vec2i){rect.right - rect.left, rect.bottom - rect.top};
@@ -378,9 +378,9 @@ static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
 // 	int success;
 // } Window_Token;
 
-// static void _jam_os_cycle(JState *app);
+// static void _jam_os_cycle(jam_State *app);
 
-// Window_Token equip_window(JState *app, Equip_Window params) {
+// Window_Token equip_window(jam_State *app, Equip_Window params) {
 
 // 	i32 w = GetSystemMetrics(SM_CXSCREEN);
 // 	i32 h = GetSystemMetrics(SM_CYSCREEN);
@@ -408,7 +408,7 @@ static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
 // }
 
 
-// static void _jam_os_cycle(JState *app) {
+// static void _jam_os_cycle(jam_State *app) {
 // 	RECT rect;
 // 	GetClientRect(app->window,&rect);
 // 	app->window_dimensions.x = rect.right - rect.left;
@@ -426,7 +426,7 @@ static LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
 // internal
 // LRESULT win32_window_proc(HWND window, UINT msg, WPARAM w, LPARAM l) {
 // 	LRESULT yield = FALSE;
-// 	JState *app = (JState *)GetWindowLongPtr(window,GWLP_USERDATA);
+// 	jam_State *app = (jam_State *)GetWindowLongPtr(window,GWLP_USERDATA);
 
 // #define _win32_on(KEY) (app->now_input[(KEY)] = 1)
 // #define _win32_off(KEY) (app->now_input[(KEY)] = 0)

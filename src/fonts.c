@@ -27,7 +27,7 @@ static i32 LoadFileContents(char *name, void *memory, i32 max_bytes_to_read) {
 	return bytes_read;
 }
 
-static JFont *LoadFont(JState *J, char *name) {
+static JFont *LoadFont(jam_State *J, char *name) {
 
 	// todo:
 	JFont *font = calloc(1, sizeof(*font));

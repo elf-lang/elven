@@ -1,0 +1,10 @@
+InitWindow("Text", 320 * 3, 180 * 3, 1)
+InitAudio()
+LoadFont("C:\\Windows\\Fonts\\times.ttf")
+
+notes := {}
+
+while PollWindow() ? {
+	SetColor(255, 255, 255, 255)
+	DrawText(0, 0, "Hello World!")
+}

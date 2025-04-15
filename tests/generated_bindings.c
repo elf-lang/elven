@@ -1404,7 +1404,7 @@ int L_DrawRectangle(elf_State *S) {
 	int width = GetInteger(S, 2);
 	int height = GetInteger(S, 3);
 	Color color = undefined(S, 4);
-	DrawRectangle(posX, posY, width, height, color);
+	jDrawRectangle(posX, posY, width, height, color);
 	return result;
 }
 int L_DrawRectangleV(elf_State *S) {
