@@ -485,18 +485,6 @@ static void EndFrame(jam_State *jam){
 	}
 }
 
-//	static int r_texture_pass(jam_State *jam, rTextureStruct *texture, Vertex2D *vertices, i32 num_vertices) {
-//		int result = rSubmitVertices(jam,vertices,num_vertices);
-//		if(!texture) texture = &jam->fallback_texture;
-//		ID3D11ShaderResourceView *input = texture->view;
-//		ID3D11SamplerState *sampler = texture->sampler;
-//		ID3D11DeviceContext_PSSetShaderResources(jam->context, 0, 1, &input);
-//		ID3D11DeviceContext_PSSetSamplers(jam->context, 0, 1, &sampler);
-//		ID3D11DeviceContext_Draw(jam->context, num_vertices, result);
-//		return result;
-//	}
-
-
 
 #if 0
 	r_i32 clipping_region = pass->clipping_region;

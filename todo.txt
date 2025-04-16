@@ -1,11 +1,10 @@
 
--- core.c the signature of the function elf knows
-how to call is (elf_State *S), but this means that
-if we want to know the number of arguments, and have
-access to the arguments, and place return values it
-means we have to call 3 additional functions, as supposed
-to simply having access to the memory and number of arguments
-in the signature itself
+--	core.c freaking break is broken?
+
+-- core.c should the signature of the function elf
+knows how to call be (elf_State *S), this means that
+we have to use function calls just to know the number
+of arguments and get access to them.
 
 -- parse.c core.c: why is nil not being properly handled
 name = nil

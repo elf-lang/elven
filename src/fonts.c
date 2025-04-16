@@ -37,8 +37,6 @@ static JFont *LoadFont(jam_State *J, char *name) {
 	unsigned char *data = malloc(TEMP_SIZE);
 	LoadFileContents(name, data, TEMP_SIZE);
 
-	TRACELOG("Loaded File");
-
 	int h = 32;
 	int r = 1024;
 
@@ -47,7 +45,6 @@ static JFont *LoadFont(jam_State *J, char *name) {
 	if (error == 0) {
 		fprintf(stderr, "Could Not Create Font\n");
 	}
-	TRACELOG("Loaded Image");
 
 	font->texture = TEXTURE_FONT;
 	rInstallTexture(J, TEXTURE_FONT, FORMAT_R_U8, (vec2i){r, r}, atlas);

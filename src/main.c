@@ -38,6 +38,11 @@ static int L_LoadSound(elf_State *S) {
 	char *name = elf_get_text(S, 0);
 	SoundId id = NewSoundId(J);
 	LoadSoundFile(J, id, name);
+
+	// if only there was a way to tag this
+	// value as a special value
+	elf_add_int(S, id.index);
+
 	return 1;
 }
 
@@ -294,11 +299,9 @@ static int L_DrawText(elf_State *S) {
 	return 0;
 }
 
-
 int main() {
 	jam_State jam = {};
 	elf_init(&jam.R, &jam.M);
-
 
 	{
 		timeBeginPeriod(1);
@@ -334,15 +337,6 @@ int main() {
 		{ "InitAudio"     , L_InitAudio },
 		{ "LoadSound"     , L_LoadSound },
 		{ "PlaySound"     , L_PlaySound },
-		// {"elf.jam.audio", l_audio},
-		// {"elf.jam.audio_play", l_audio_play},
-		// {"elf.jam.audio_load", l_audio_load},
-		// {"elf.jam.audio_stop", l_audio_stop},
-		// {"elf.jam.load_image", j_load_image},
-		// {"elf.jam.get_image_pixel", j_get_image_pixel},
-		// {"elf.jam.get_image_size", j_get_image_size},
-		// {"elf.jam.get_texture_size", l_get_texture_size},
-		// {"elf.jam.get_input", l_get_input},
 	};
 
 	elf_Table *globals = jam.M.globals;
@@ -354,186 +348,5 @@ int main() {
 	elf_add_proc(&jam.R, core_lib_load_file);
 	elf_add_nil(&jam.R);
 	elf_new_string(&jam.R, "launch.elf");
-	elf_call(&jam.R,2,0);
+	elf_call(&jam.R, 2, 0);
 }
-
-
-#if 0
-
-// static int l_get_texture_size(elf_State *S) {
-// 	rTextureStruct *texture_o = j_get(S,0,JAM_TEXTURE);
-// 	if(!texture_o){
-// 		elf_error(S,0,elf_tpf("invalid argument, is: %s", tag2s[elf_get_tag(S,0)]));
-// 	}
-// 	elf_Table *size_table = elf_new_table(S);
-// 	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"x")),VALUE_INTEGER(texture_o->resolution.x));
-// 	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"y")),VALUE_INTEGER(texture_o->resolution.y));
-// 	elf_add_table(S,size_table);
-// 	return 1;
-// }
-
-// static int j_get_image_size(elf_State *S) {
-// 	jam_Image *image = (jam_Image *) elf_get_object(S,0);
-// 	elf_Table *size_table = elf_new_table(S);
-// 	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"x")),VALUE_INTEGER(image->size.x));
-// 	elf_table_set(size_table,VALUE_STRING(elf_alloc_string(S,"y")),VALUE_INTEGER(image->size.y));
-// 	elf_add_table(S,size_table);
-// 	return 1;
-// }
-
-// static int j_get_image_pixel(elf_State *S) {
-// 	jam_Image *image = (jam_Image *) elf_get_object(S,0);
-// 	i32 x = elf_get_int(S,1);
-// 	i32 y = elf_get_int(S,2);
-// 	if(x < 0 || x >= image->size.x || y < 0 || y >= image->size.y) {
-// 		elf_error(S,0,"invalid pixel coordinates");
-// 	}
-// 	Color pixel = image->pixels[image->size.x * y + x];
-// 	u32 packed = pixel.r << 24 | pixel.g << 16 | pixel.b << 8 | pixel.a;
-// 	elf_add_int(S,packed);
-// 	return 1;
-// }
-// static int j_load_image(elf_State *S) {
-// 	int i = 0;
-// 	char *name = elf_get_text(S,i++);
-// 	Color *pixels = 0;
-// 	int n=0,x=0,y=0;
-// 	if(name){
-// 		pixels = (Color *) stbi_load(name,&x,&y,&n,4);
-// 	}
-// 	jam_Image *image = j_new(S,JAM_IMAGE,sizeof(*image));
-// 	image->size.x = x;
-// 	image->size.y = y;
-// 	image->pixels = pixels;
-// 	return 1;
-// }
-
-// static int L_LoadTexture(elf_State *S) {
-// 	jam_State *J = (jam_State *) S;
-
-// 	int i = 0;
-// 	char *name = elf_get_text(S,i++);
-
-// 	b32 do_replace = false;
-// 	Color replace_src = {};
-// 	Color replace_dst = {};
-// 	if (elf_get_num_args(S) - i >= 4) {
-// 		i = _get_color(S,i,&replace_src);
-// 		if (elf_get_num_args(S) - i >= 4) {
-// 			i = _get_color(S,i,&replace_dst);
-// 		}
-// 		do_replace = true;
-// 	}
-
-// 	Color *pixels = 0;
-// 	int n = 0,w = 0,h = 0;
-// 	if(name){
-// 		pixels = (Color *) stbi_load(name,&w,&h,&n,4);
-// 	}
-
-// 	if(pixels){
-// 		if(do_replace){
-// 			for(i64 i = 0; i < w * h; i ++) {
-// 				if(pixels[i].x_i32 == replace_src.x_i32) {
-// 					pixels[i] = replace_dst;
-// 				}
-// 			}
-// 		}
-
-// 		rTextureStruct *texture_o = j_new(S,JAM_TEXTURE,sizeof(*texture_o));
-// 		rInstallTexture(J, texture_o, (vec2i){w, h}, pixels);
-
-// 		free(pixels);
-
-// 		elf_add_object(S, (elf_Object *) texture_o);
-// 	}else{
-// 		elf_add_nil(S);
-// 	}
-// 	return 1;
-// }
-
-//	static int L_Vertex(elf_State *S) {
-//		jam_State *J = (jam_State *) S;
-//
-//		f32 x = elf_get_num(S, i ++);
-//		f32 y = elf_get_num(S, i ++);
-//	}
-//
-// audio
-//
-
-static int l_audio(elf_State *S) {
-	ma_result error = ma_engine_init(NULL,&J->audio.engine);
-	elf_add_int(S,error==MA_SUCCESS);
-	return 1;
-}
-
-static int l_audio_load(elf_State *S) {
-
-	char *name = elf_get_text(S,0);
-
-	jam_Sound *obj = j_new(S,JAM_SOUND,sizeof(*obj));
-
-	char *name_stable = malloc(strlen(name) + 1);
-	strcpy(name_stable,name);
-
-	ma_result result = ma_sound_init_from_file(&J->audio.engine, name_stable, 0, NULL, NULL, &obj->sound);
-
-	if (result != MA_SUCCESS) {
-		elf_error(S,0,"failed to load sound");
-	}
-	return 1;
-}
-
-static int l_audio_play(elf_State *S) {
-	jam_Audio *audio = &J->audio;
-	if (elf_get_tag(S,0) == elf_tag_userobj) {
-		jam_Sound *obj = j_get(S,0,JAM_SOUND);
-		f32 pitch = 1.0;
-		if (elf_get_num_args(S) > 1) {
-			pitch = elf_get_num(S,1);
-		}
-
-		jam_Sound *to_play = 0;
-		i32 open_voice_slot = -1;
-		for (i32 i = 0; i < _countof(audio->voices); i ++) {
-			jam_Sound *voice = audio->voices[i];
-			if (voice) {
-				if (ma_sound_at_end(&voice->sound)) {
-					to_play = voice;
-					break;
-				}
-			} else {
-				open_voice_slot = i;
-				break;
-			}
-		}
-		if (to_play) {
-			// todo: only uninit if the sound that we found isn't
-			// the same one we're trying to play
-			ma_sound_uninit(&to_play->sound);
-			ma_result result = ma_sound_init_copy(&audio->engine,&obj->sound,0,0,&to_play->sound);
-		} else if (open_voice_slot != -1) {
-			to_play = j_new(S,JAM_SOUND,sizeof(*to_play));
-			ma_result result = ma_sound_init_copy(&audio->engine,&obj->sound,0,0,&to_play->sound);
-			audio->voices[open_voice_slot] = to_play;
-		} else {
-			elf_debug_log("too many sounds playing simultaneously");
-		}
-		if (to_play) {
-			ma_sound_set_pitch(&to_play->sound,pitch);
-			ma_sound_start(&to_play->sound);
-		}
-	} else {
-		char *name = elf_get_text(S,0);
-		ma_engine_play_sound(&J->audio.engine,name, NULL);
-	}
-	return 0;
-}
-
-static int l_audio_stop(elf_State *S) {
-	jam_Sound *obj = j_get(S,0,JAM_SOUND);
-	ma_sound_stop(&obj->sound);
-	return 0;
-}
-#endif

@@ -1,0 +1,72 @@
+InitWindow("Physics", 256, 256, 2)
+particles := {}
+particles:add({
+	x = 32, y = 32, r = 8,
+	vx = 1, vy = 0,
+})
+
+while PollWindow() ? {
+	Clear()
+
+	mx := GetCursorX() * 256
+	my := GetCursorY() * 256
+
+	if Button(' ') & 4 ? {
+		particles:add({
+			x = mx, y = my, r = 8,
+			vx = 0, vy = 0,
+		})
+	}
+
+	for p = particles[...] ? {
+		p.vy -= 0.1
+		p.x += p.vx
+		p.y += p.vy
+
+		nx := 0
+		ny := 0
+
+		SetColor(255, 255, 255, 255)
+		for o = particles[...] ? {
+			if p == o ? {
+				continue
+			}
+			dx := o.x - p.x
+			dy := o.y - p.y
+			ls := dx * dx + dy * dy
+			rs := p.r + o.r
+			if ls < rs * rs ? {
+				SetColor(255, 0, 0, 255)
+
+				l := sqrt(ls)
+				nx := dx / l
+				ny := dy / l
+			}
+		}
+
+		if p.x < p.r ? {
+			p.x = p.r
+			nx = 1
+		}
+		if p.y < p.r ? {
+			p.y = p.r
+			ny = 1
+		}
+		if p.x > 256 - p.r ? {
+			p.x = 256 - p.r
+			nx = -1
+		}
+		if p.y > 256 - p.r ? {
+			p.y = 256 - p.r
+			ny = -1
+		}
+		if nx != 0 ? {
+			p.vx = p.vx * - 0.75
+		}
+		if ny != 0 ? {
+			p.vy = p.vy * - 0.75
+		}
+
+		DrawCircle(p.x, p.y, p.r, 2)
+	}
+}

@@ -318,7 +318,7 @@ enum {
 };
 
 enum {
-	VOICES_CAPACITY = 16,
+	VOICES_CAPACITY = 32,
 	SOUNDS_CAPACITY = 256,
 };
 

@@ -12,7 +12,8 @@ Color         r_color;
 static void rDrawVertices(jam_State *J, SubmissionQueueToken offset, i32 num_vertices);
 static void rFlushVertices(jam_State *J);
 
-static void rInstallShader(jam_State *J, ShaderId id, char *entry, char *contents) {
+JAPI
+void rInstallShader(jam_State *J, ShaderId id, char *entry, char *contents) {
 
 	enum {
 		SHADER_COMPILE_FLAGS = D3DCOMPILE_PACK_MATRIX_ROW_MAJOR|D3DCOMPILE_DEBUG|D3DCOMPILE_SKIP_OPTIMIZATION|D3DCOMPILE_WARNINGS_ARE_ERRORS,
@@ -46,7 +47,8 @@ static void rInstallShader(jam_State *J, ShaderId id, char *entry, char *content
 // in the renderer... So we give the renderer the entire draw state,
 // and the vertexoffsetinsubmission buffer.
 //
-JAPI void rDrawVertices(jam_State *J, SubmissionQueueToken offset, i32 number) {
+JAPI
+void rDrawVertices(jam_State *J, SubmissionQueueToken offset, i32 number) {
 
 	JDrawState prev = J->draw_prev;
 	JDrawState prox = J->draw_prox;
@@ -86,28 +88,32 @@ JAPI void rDrawVertices(jam_State *J, SubmissionQueueToken offset, i32 number) {
 }
 
 
-JAPI void rSetShader(jam_State *J, ShaderId shader) {
+JAPI
+void rSetShader(jam_State *J, ShaderId shader) {
 	if (J->draw_prox.shader.index != shader.index) {
 		rFlushVertices(J);
 		J->draw_prox.shader = shader;
 	}
 }
 
-JAPI void rSetTopology(jam_State *J, i32 topology) {
+JAPI
+void rSetTopology(jam_State *J, i32 topology) {
 	if (J->draw_prox.topology != topology) {
 		rFlushVertices(J);
 		J->draw_prox.topology = topology;
 	}
 }
 
-JAPI void rSetTexture(jam_State *J, TextureId id) {
+JAPI
+void rSetTexture(jam_State *J, TextureId id) {
 	if (J->draw_prox.texture != id) {
 		rFlushVertices(J);
 		J->draw_prox.texture = id;
 	}
 }
 
-JAPI void rFlushVertices(jam_State *J) {
+JAPI
+void rFlushVertices(jam_State *J) {
 	if (r_num_vertices != 0) {
 		SubmissionQueueToken offset;
 		offset = rSubmitVertices(J, r_mem_vertices, r_num_vertices);
@@ -117,7 +123,8 @@ JAPI void rFlushVertices(jam_State *J) {
 	}
 }
 
-static inline Vertex2D *rQueueVertices(jam_State *J, i32 number) {
+JAPI
+Vertex2D *rQueueVertices(jam_State *J, i32 number) {
 	if (r_num_vertices + number > r_max_vertices) {
 		rFlushVertices(J);
 	}
@@ -126,10 +133,12 @@ static inline Vertex2D *rQueueVertices(jam_State *J, i32 number) {
 	return vertices;
 }
 
+JAPI
 void SolidFill(jam_State *J) {
 	rSetTexture(J, TEXTURE_DEFAULT);
 }
 
+JAPI
 void jClear(jam_State *J, Color color) {
 	f32 inv = 1.0 / 255.0;
 	ID3D11RenderTargetView *render_target_view = J->base_render_target_view;
@@ -137,6 +146,7 @@ void jClear(jam_State *J, Color color) {
 	ID3D11DeviceContext_ClearRenderTargetView(J->context, render_target_view, fcolor);
 }
 
+JAPI
 void jDrawRectangle(jam_State *J, f32 x, f32 y, f32 w, f32 h) {
 
 	rSetTopology(J, MODE_TRIANGLES);
@@ -306,7 +316,7 @@ void PlaySound(jam_State *J, SoundId id) {
 
 		ma_sound *voice = & J->audio.voices[i];
 
-		if (voice) {
+		if (voice->pDataSource) {
 			if (ma_sound_at_end(voice)) {
 				to_play = voice;
 				break;
