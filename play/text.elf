@@ -6,6 +6,82 @@ LoadFont("C:\\Windows\\Fonts\\times.ttf")
 notenames := { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }
 cmajor = { 'C', 'D', 'E', 'F', 'G', 'A', 'B' }
 
+notename_to_base_note_index := {}
+{
+	i := 0
+	for name = notenames[...] ? {
+		notename_to_base_note_index[name] = i
+		i += 1
+	}
+}
+
+
+//
+// These are my learning notes:
+//
+//
+// Based on the 12-ET (equal temperament) music system,
+// where tones are divided into 12 equal parts, each
+// part is called a semitone, and every 12 semitones,
+// the frequency doubles.
+// For instance, from A4 to A5, the frequency goes
+// from 440hz to 880hz.
+//	The input here is a MIDI note number, MIDI is a
+// protocol for musical devices, and each MIDI note
+// number encodes a note, A4 is number 69.
+// So all this function is doing is using the
+// frequency of A4 to determine what the frequency of
+// of the given MIDI note number is.
+// For instance, if MIDI is 69, then the function returns
+// 440, if MIDI is 69 + 12, then the function returns
+// 880. When MIDI is 69, the exponent evaluates to 0,
+// and the output of pow is 1. When MIDI is 69 + 12,
+// the exponent is one, and pow outputs 2, so the
+// frequency doubles every 12 semitones.
+//
+get_note_frequency_from_midi_number = fun(midi) ? {
+	--> 440.0 * pow(2.0, (midi - 69) / 12.0);
+}
+
+get_note_name_from_midi_number = fun(midi) ? {
+	octave := midi / 12 - 1
+	--> notenames:idx(midi % 12) + octave
+}
+
+//
+// the name of the note is a string formatted
+// in this manner:
+//
+//	OCTAVE_NUMBER ::= '-'(optional) POSITIVE_INTEGER
+//
+//	NOTE_NAME ::= CAPITAL_LETTER OCTAVE_NUMBER
+//
+// C0 -> 0
+// C1 -> 12
+// C2 -> 13
+// C3 -> 3
+// A4 -> 69
+//
+//
+
+get_midi_number_from_base_note_and_octave = fun(base, octave) ? {
+	--> base + (octave + 1) * 12
+}
+
+get_midi_number_from_note_name = fun(name) ? {
+	digit := "":append_char(name[0])
+	base := notename_to_base_note_index[digit]
+	octave := name[1]
+	if octave == '-' ? {
+		octave = - (name[2] - '0')
+	} else{
+		octave -= '0'
+	}
+	--> get_midi_number_from_base_note_and_octave(base, octave)
+}
+
+elf.pf(get_midi_number_from_note_name("A4"))
+elf.pf(get_midi_number_from_note_name("C0"))
 note_name_to_degree_map = {}
 degree_to_note_name_map = {}
 {
@@ -16,6 +92,8 @@ degree_to_note_name_map = {}
 		degree_to_note_name_map[i] = name
 	}
 }
+
+
 
 load_music_sheet = fun(name) ? {
 	file := elf.open_file(name, "rb")
@@ -42,16 +120,24 @@ load_music_sheet = fun(name) ? {
 
 			i += 1
 			if c0 >= '0' && c0 <= '9' ? {
-				octave := 0
+				octave := 4
 				if c1 == '\'' || c1 == '`' ? {
 					i += 1
-					octave = 1
+					octave = 5
 				} else if c1 == '"' ? {
 					i += 1
-					octave = 2
+					octave = 6
 				}
-				note := "":append_char(c0) + octave
-				notes:add(note)
+
+				name := degree_to_note_name_map[c0 - '0']
+				note := "":append_char(name)
+
+				base := notename_to_base_note_index[note]
+				midi := get_midi_number_from_base_note_and_octave(base, octave)
+
+				// note := "":append_char(c0) + octave
+				notes:add(midi)
+
 				is_note = true
 			} else if c0 == '-' ? {
 				is_note = true
@@ -85,7 +171,7 @@ load_music_sheet = fun(name) ? {
 			if contents[i] == ')' ? {
 				i += 1
 			} else {
-				elf.pf("expected ')'")
+				// elf.pf("expected ')'")
 			}
 		}
 		if is_note ? {
@@ -95,20 +181,6 @@ load_music_sheet = fun(name) ? {
 	--> music
 }
 
-
-
-//
-// every 12 semitones the frequency doubles, midi
-// 0 is C-1 (C minus one).
-//
-get_note_frequency_from_midi_number = fun(midi) ? {
-	--> 8.1758 * pow(2.0, midi / 12.0);
-}
-
-get_note_name_from_midi_number = fun(midi) ? {
-	octave := midi / 12 - 1
-	--> notenames:idx(midi % 12) + octave
-}
 
 get_note_index_from_note_name = fun(note) ? {
 	name := note[0]
@@ -120,23 +192,79 @@ get_note_index_from_note_name = fun(note) ? {
 	--> degree
 }
 
-get_file_name_info = fun(name) ? {
-	trash := "Kalimba - Kalimba "
-	note := name[trash:length() + 0]
-	octave := name[trash:length() + 1] - '0'
-	// elf.pf(": ", note, ", ", octave)
-	--> { note = note, octave = octave }
-}
+//
+// load the sound library, sounds are indexed
+// by MIDI number
+//
 sounds := {}
-elf.change_work_dir("kalimba\\sounds")
-files := elf.list_folder(".")
-for file = files[...] ? {
-	info := get_file_name_info(file.name)
-	sound := LoadSound(file.name)
-	key := "":append_char(info.note):append(info.octave)
-	sounds[key] = sound
+{
+	elf.change_work_dir("kalimba\\sounds")
+	defer elf.change_work_dir("..\\..")
+
+	get_file_name_info = fun(name) ? {
+		trash := "Kalimba - Kalimba "
+		note := name[trash:length() + 0]
+		octave := name[trash:length() + 1] - '0'
+
+		base := notename_to_base_note_index["":append_char(note)]
+		midi := get_midi_number_from_base_note_and_octave(base, octave)
+		// elf.pf("note: ", "":append_char(note), ", ", octave, ", midi: ", midi)
+		--> { note = note, octave = octave, midi = midi }
+	}
+
+	files := elf.list_folder(".")
+	for file = files[...] ? {
+		info := get_file_name_info(file.name)
+		sound := LoadSound(file.name)
+		//	key := "":append_char(info.note):append(info.octave)
+		sounds[info.midi] = sound
+	}
 }
-elf.change_work_dir("..\\..")
+
+load_sound_library_folder = fun(name) {
+	elf.pf("loading sound library folder: ", name)
+	extract_midi_number_from_file_name := fun(name) ? {
+		trash := "UR1_"
+		note := "":append_char(name[trash:length() + 0], name[trash:length() + 1])
+		elf.pf("name: ", name, ", note: ", note)
+		midi := get_midi_number_from_note_name(note)
+		--> midi
+		//	trash := "Player_dyn1_rr1_"
+		//	index := 0
+		//	index = index * 10 + (name[trash:length() + 0] - '0')
+		//	index = index * 10 + (name[trash:length() + 1] - '0')
+		//	index = index * 10 + (name[trash:length() + 2] - '0')
+		//	--> index + 21
+	}
+
+	library := {}
+
+	files := elf.list_folder(name)
+	for file = files[...] ? {
+		midi := extract_midi_number_from_file_name(file.name)
+		elf.pf("loading sound: ", file.name, ", midi: ", midi)
+		sound := LoadSound(file.path)
+		library[midi] = sound
+	}
+
+	--> library
+}
+
+// sounds = load_sound_library_folder("kalimba\\piano")
+// sounds = load_sound_library_folder("G:\\E Drive\\Downloads\\VSCO-2-CE-1.1.0\\VSCO-2-CE-1.1.0\\Keys\\Upright Nr1")
+
+PlayNote = fun(midi) ? {
+	// midi -= 12 * 3
+	// midi += 1 - midi % 2
+	sound := sounds[midi]
+	if sound ? {
+		PlaySound(sound)
+	} else {
+		elf.pf("MIDI Note: '", midi, "' Not Found")
+	}
+}
+
+
 
 random_note_name := nil
 
@@ -181,12 +309,7 @@ while PollWindow() ? {
 		if play_note ? {
 			notes := music:idx(note_index)
 			for note = notes[...] ? {
-				degree := note[0] - '0'
-				octave := note[1] - '0' + 4
-				note_name := degree_to_note_name_map[degree]
-				note := "":append_char(note_name) + octave
-				sound := sounds[note]
-				PlaySound(sound)
+				PlayNote(note)
 			}
 			note_index += 1
 		}

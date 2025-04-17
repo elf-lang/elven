@@ -360,7 +360,7 @@ typedef struct {
 	JDrawState state;
 	SubmissionQueueToken vertices;
 	i32 num_vertices;
-} DrawCall;
+} JDrawCall;
 
 
 enum {
