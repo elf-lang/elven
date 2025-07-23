@@ -9,7 +9,7 @@ while PollWindow() ? {
 
 	SetColor(255, 0, 0, 255)
 	for i = 0...16 ? {
-		jDrawRectangle((8 + 2) * i, 256 - 8, 8, 8)
+		DrawRectangle((8 + 2) * i, 256 - 8, 8, 8)
 	}
 
 	cr := 32
@@ -42,6 +42,6 @@ while PollWindow() ? {
 
 	SetColor(0, 0, 255, 255)
 	for i = 0...16 ? {
-		jDrawRectangle((8 + 2) * i, 0, 8, 8)
+		DrawRectangle((8 + 2) * i, 0, 8, 8)
 	}
 }

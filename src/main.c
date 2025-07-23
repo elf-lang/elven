@@ -26,13 +26,21 @@
 //
 // Sound Bindings
 //
-static int L_InitAudio(elf_State *S) {
+ELF_FUNCTION(L_InitAudio) {
 	jam_State *J = (jam_State *) S;
-	InitAudioAPI(J);
+	// InitAudioAPI(J);
 	return 0;
 }
 
-static int L_LoadSound(elf_State *S) {
+ELF_FUNCTION(L_WriteSamples) {
+	jam_State *J = (jam_State *) S;
+	f32 sample = elf_get_num(S, 0);
+	J->audio.sample_buffer[J->audio.sample_buffer_write] = sample;
+	J->audio.sample_buffer_write += 1;
+	return 0;
+}
+
+ELF_FUNCTION(L_LoadSound) {
 	jam_State *J = (jam_State *) S;
 
 	char *name = elf_get_text(S, 0);
@@ -54,7 +62,7 @@ static int L_PlaySound(elf_State *S) {
 	return 0;
 }
 
-static int L_InitWindow(elf_State *S) {
+ELF_FUNCTION(L_InitWindow) {
 	jam_State *J = (jam_State *) S;
 
 	int i = 0;
@@ -91,9 +99,35 @@ static int L_InitWindow(elf_State *S) {
 	return 0;
 }
 
+ELF_FUNCTION(L_LoadTexture) {
+	jam_State *J = (jam_State *) S;
+
+	char *name = elf_get_text(S, 0);
+
+	i32 c;
+
+	vec2i resolution = {};
+	Color *colors = (Color *) stbi_load(name, &resolution.x, &resolution.y, &c, 4);
+
+	TextureId id = NewTextureId(J);
+
+	rInstallTexture(J, id, FORMAT_RGBA_U8, resolution, colors);
+
+	free(colors);
+
+	elf_add_int(S, id);
+	return 1;
+}
+
 static int L_Button(elf_State *S) {
 	i32 key = elf_get_int(S,0);
 	elf_add_int(S, os.keyboard[key].u);
+	return 1;
+}
+
+static int L_MouseButton(elf_State *S) {
+	i32 index = elf_get_int(S,0);
+	elf_add_int(S, os.keyboard[VK_LBUTTON + index].u);
 	return 1;
 }
 
@@ -175,6 +209,23 @@ int L_SetColor(elf_State *S) {
 			r_color.a = elf_get_int(S, 3);
 		}
 	}
+	return 0;
+}
+
+ELF_FUNCTION(L_SetTexture) {
+	jam_State *J = (jam_State *) S;
+
+	TextureId id = elf_get_int(S, 0);
+	rSetTexture(J, id);
+	return 0;
+}
+
+ELF_FUNCTION(L_SetRegion) {
+	jam_State *J = (jam_State *) S;
+	r_region.x0 = elf_get_num(S, 0);
+	r_region.y0 = elf_get_num(S, 1);
+	r_region.x1 = r_region.x0 + elf_get_num(S, 2);
+	r_region.y1 = r_region.y0 + elf_get_num(S, 3);
 	return 0;
 }
 
@@ -283,7 +334,7 @@ static int L_DrawRectangle(elf_State *S) {
 	f32 w = elf_get_num(S, 2);
 	f32 h = elf_get_num(S, 3);
 
-	jDrawRectangle(J, x, y, w, h);
+	DrawRectangle(J, x, y, w, h);
 	return 0;
 }
 
@@ -317,20 +368,23 @@ int main() {
 	NameFunctionPair lib[] = {
 		{ "InitWindow"    , L_InitWindow },
 		{ "PollWindow"    , L_PollWindow },
-		// { "LoadTexture", L_LoadTexture },
+		{ "LoadTexture"   , L_LoadTexture },
 		{ "LoadFont"      , L_LoadFont },
 		{ "Button"        , L_Button },
+		{ "MouseButton"   , L_MouseButton },
 		{ "Clear"         , L_Clear },
 		{ "GetCursorX"    , L_GetCursorX },
 		{ "GetCursorY"    , L_GetCursorY },
 		{ "SetScale"      , L_SetScale },
 		{ "SetOffset"     , L_SetOffset },
 		{ "SetRotation"   , L_SetRotation },
+		{ "SetTexture"    , L_SetTexture },
+		{ "SetRegion"     , L_SetRegion },
 		{ "SetCenter"     , L_SetCenter },
 		{ "SetColor"      , L_SetColor },
 		{ "DrawText"      , L_DrawText },
 		{ "SolidFill"     , L_SolidFill },
-		{ "jDrawRectangle", L_DrawRectangle },
+		{ "DrawRectangle", L_DrawRectangle },
 		{ "DrawTriangle"  , L_DrawTriangle },
 		{ "DrawLine"      , L_DrawLine },
 		{ "DrawCircle"    , L_DrawCircle },

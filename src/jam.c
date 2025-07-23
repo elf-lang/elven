@@ -1,8 +1,9 @@
 
-
 Vertex2D     *r_mem_vertices;
 i32           r_num_vertices;
 i32           r_max_vertices;
+
+struct { f32 x0, y0, x1, y1; } r_region;
 vec2      	  r_scale;
 vec2      	  r_offset;
 f32       	  r_rotation;
@@ -87,6 +88,16 @@ void rDrawVertices(jam_State *J, SubmissionQueueToken offset, i32 number) {
 	ID3D11DeviceContext_Draw(J->context, number, offset.offset);
 }
 
+JAPI
+void rFlushVertices(jam_State *J) {
+	if (r_num_vertices != 0) {
+		SubmissionQueueToken offset;
+		offset = rSubmitVertices(J, r_mem_vertices, r_num_vertices);
+
+		rDrawVertices(J, offset, r_num_vertices);
+		r_num_vertices = 0;
+	}
+}
 
 JAPI
 void rSetShader(jam_State *J, ShaderId shader) {
@@ -109,17 +120,11 @@ void rSetTexture(jam_State *J, TextureId id) {
 	if (J->draw_prox.texture != id) {
 		rFlushVertices(J);
 		J->draw_prox.texture = id;
-	}
-}
 
-JAPI
-void rFlushVertices(jam_State *J) {
-	if (r_num_vertices != 0) {
-		SubmissionQueueToken offset;
-		offset = rSubmitVertices(J, r_mem_vertices, r_num_vertices);
-
-		rDrawVertices(J, offset, r_num_vertices);
-		r_num_vertices = 0;
+		r_region.x0 = 0;
+		r_region.y0 = 0;
+		r_region.x1 = J->textures[id].resolution.x;
+		r_region.y1 = J->textures[id].resolution.y;
 	}
 }
 
@@ -147,9 +152,12 @@ void jClear(jam_State *J, Color color) {
 }
 
 JAPI
-void jDrawRectangle(jam_State *J, f32 x, f32 y, f32 w, f32 h) {
+void DrawRectangle(jam_State *J, f32 x, f32 y, f32 w, f32 h) {
 
 	rSetTopology(J, MODE_TRIANGLES);
+
+	x += r_offset.x;
+	y += r_offset.y;
 
 	Color color = r_color;
 	vec2 r_p0 = { x + 0, y + 0 };
@@ -167,10 +175,10 @@ void jDrawRectangle(jam_State *J, f32 x, f32 y, f32 w, f32 h) {
 	f32 inv_resolution_y = 1.0 / texture->resolution.y;
 
 	r_i32 src_r = {0, 0, 1, 1};
-	f32 u0 = src_r.x * inv_resolution_x;
-	f32 v0 = src_r.y * inv_resolution_y;
-	f32 u1 = (src_r.x + src_r.w) * inv_resolution_x;
-	f32 v1 = (src_r.y + src_r.h) * inv_resolution_y;
+	f32 u0 = r_region.x0 * inv_resolution_x;
+	f32 v0 = r_region.y0 * inv_resolution_y;
+	f32 u1 = r_region.x1 * inv_resolution_x;
+	f32 v1 = r_region.y1 * inv_resolution_y;
 
 	Vertex2D *vertices = rQueueVertices(J, 6);
 	vertices[0]=(Vertex2D){r_p0,{u0,v1},color};
@@ -278,13 +286,39 @@ void jDrawText(jam_State *J, f32 x, f32 y, char *text) {
 	}
 }
 
+#if 0
+static void AudioDeviceDataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
+	//
+   // todo: please remove engine crap
+	//
+	ma_engine* pEngine = (ma_engine*) pDevice->pUserData;
+	ma_engine_read_pcm_frames(pEngine, pOutput, frameCount, NULL);
+
+
+	jam_State *J = pEngine->pProcessUserData;
+	f32 *sample_buffer = J->audio.sample_buffer;
+
+	f32 *pFramesOut = pOutput;
+
+	for (i32 i = 0; i < frameCount; i ++) {
+		f32 sample = sample_buffer[J->audio.sample_buffer_read ++];
+		pFramesOut[]
+	}
+}
+
 //
 // AUDIO STUFF
 //
 void InitAudioAPI(jam_State *J) {
+
+	ma_engine_config config = ma_engine_config_init();
+	config.dataCallback = AudioDeviceDataCallback;
+	config.pProcessUserData = J;
+
 	ma_result error = ma_engine_init(NULL, &J->audio.engine);
 	ASSERT(error == MA_SUCCESS);
 }
+#endif
 
 
 inline ma_sound *GetSoundFromId(jam_State *J, SoundId id) {
@@ -299,6 +333,11 @@ void LoadSoundFile(jam_State *J, SoundId id, char *name) {
 	if (result != MA_SUCCESS) {
 		TRACELOG("Failed To Load Sound");
 	}
+}
+
+TextureId NewTextureId(jam_State *J) {
+	i32 index = J->textures_index ++;
+	return (TextureId) { index };
 }
 
 SoundId NewSoundId(jam_State *J) {

@@ -19,6 +19,7 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
+#include <stdlib.h>
 
 #if !defined(TAU)
 #define TAU 6.283185307179586
@@ -383,6 +384,16 @@ struct jam_State {
 	elf_Module M;
 
 	struct {
+		//
+		// todo: this is probably too much!
+		//
+		f32 sample_buffer[KILOBYTES(64)];
+		_Atomic volatile i32 sample_buffer_read;
+		_Atomic volatile i32 sample_buffer_write;
+
+		//
+		// todo: remove all this, none cares
+		//
 		ma_engine engine;
 		ma_sound voices[VOICES_CAPACITY];
 		ma_sound sounds[SOUNDS_CAPACITY];
@@ -403,6 +414,7 @@ struct jam_State {
 	f64 pending_seconds_to_sleep;
 
 	rTextureStruct textures[TEXTURE_CAPACITY];
+	i32 textures_index;
 
 	ID3D11InfoQueue     *info_queue;
 	ID3D11Device        *device;

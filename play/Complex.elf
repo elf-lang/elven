@@ -1,0 +1,211 @@
+TAU ::= 6.283185307179586
+InitWindow("Complex", 512, 256, 2)
+
+PointWithinRect = fun(x0, y0, xz, yz, x, y) ? {
+	x1 := x0 + xz
+	y1 := y0 + yz
+	--> x >= x0 && x < x1 && y >= y0 && y < y1
+}
+
+mix = fun(mid, min, max) ? {
+	--> min + (max - min) * mid
+}
+
+unmix = fun(mid, min, max) ? {
+	--> (mid - min) / (max - min)
+}
+
+remix = fun(mid_0, min_0, max_0, min_1, max_1) ? {
+	--> mix(unmix(mid_0, min_0, max_0), min_1, max_1)
+}
+
+UI_State_Table = {}
+
+UI_Slider = fun(hash, x, y, w, h) ? {
+	UI_State_Table[hash] ?= {}
+	state := UI_State_Table[hash]
+	state.value ?= 0
+
+	cx := GetCursorX() * 256
+	cy := GetCursorY() * 128
+
+	hovering := false
+
+	if PointWithinRect(x, y, w, h, cx, cy) ? {
+		SetColor(32, 32, 32, 255)
+		DrawRectangle(x, y, w, h)
+
+		hovering = true
+	} else {
+		SetColor(32 + 8, 32 + 8, 32 + 8, 255)
+		DrawRectangle(x, y, w, h)
+	}
+
+	if hovering ? {
+		if MouseButton(0) & 1 ? {
+			state.value = unmix(cx, x, x + w)
+		}
+	}
+
+	thumb_x := state.value * w
+
+	SetColor(32 + 24, 32 + 24, 32 + 8, 255)
+	DrawRectangle(x + thumb_x, y, 4, h)
+
+	--> state.value
+}
+
+Window = {
+	__new = fun(config) ? {
+		this.x = config.x
+		this.y = config.y
+		this.w = config.w
+		this.h = config.h
+	}
+
+	draw = fun() ? {
+		SetColor(64, 64, 64, 255)
+		DrawRectangle(this.x, this.y, this.w, this.h)
+		SetColor(32, 32, 32, 255)
+		DrawRectangle(this.x, this.y + this.h - 8, this.w, 8)
+	}
+}
+
+
+window := new Window {
+	x = 8, y = 8, w = 64, h = 64,
+}
+
+while PollWindow() ? {
+	Clear(16, 16, 16, 255)
+	SetColor(255, 255, 255, 255)
+	UI_Slider("A", 32, 32, 128, 8)
+
+	// window:draw()
+}
+
+
+
+//
+//
+// Math Prerequisites:
+// - Complex Numbers
+// 	real / imaginary parts, polar form, multiplication and conjugates.
+//
+//	- Euler's Formula
+//		pow(e, i * x) = cos(x) + i * sin(x)
+//
+// - Exponential Functions & Identities
+//		Understand pow(e, x), especially how they behave with complex exponents
+//
+//	- Radians and Angles
+//		Needed for interpreting frequency and phase correctly.
+//
+//
+//
+//
+//
+// Series:
+// A 'series' is a summation of a series
+// of numbers.
+//
+// There are different types of series:
+//
+// - Finite series:
+//
+//
+// - Infinite series (go on forever).
+//
+// 	An infinite series "converges" when
+// 	it approaches a finite value.
+// 	Otherwise it is said to "diverge".
+//
+// summation n = 1 ... infinity = 1 / pow(2, n)
+//
+//	This series converges to 1.
+//
+//
+// Geometric Series:
+//		Each term is a constant multiple of
+// 	the previous term.
+//
+//	summation n = 0 ... infinity = pow(a * r, n)
+//
+//
+//	Power Series:
+//		A series where each term is a power of x:
+//
+//	summation n = 0 ... infinity = a_n * pow(x, n)
+//
+//
+//
+//
+//
+//
+// ln: is the natural logarithm
+//
+// ln(pow(e, x)) = x
+// pow(e, ln(x)) = x
+//
+// Exponential functions are of the form:
+// pow(a, x)
+//
+// The most popular exponetial function is:
+// pow(e, x)
+//
+//	'e' being Euler's constant.
+// This number is special because it arises
+// naturally in many contexts.
+// And its exponetial function has some key
+// properties as well.
+//
+//
+//
+
+// A complex number is of the form:
+// a + bi
+// Where "a" is referred to as the real part,
+// and "b" the imaginary part.
+// "i" is the imaginary unit, where pow(i, 2) = -1
+//
+
+// algebraic properties:
+//
+//	Commutative:
+//	 z1 + z2 = z2 + z1
+//	 z1 * z2 = z2 * z1
+//	Associative:
+//	 (z1 + z2) + z3 = z1 + (z2 + z3)
+//	 (z1 * z2) * z3 = z1 * (z2 * z3)
+//
+Complex = {
+	//
+	// Where x is the real part and y the imaginary,
+	// this is common notation used in textbooks.
+	//
+	__new = fun(x, y) ? {
+		this.x = x
+		this.y = y
+	}
+	__mul = fun(other) ? {
+		x := this.x * other.x - this.y * other.y
+		y := this.y * other.x + this.x * other.y
+		--> new Complex(x, y)
+	}
+
+	// pow(z, -1)
+	//
+	// can be derived from the formula
+	// of a complex number
+	//
+	//	not defined when z = 0
+	//
+	multiplicative_inverse = fun() ? {
+
+		q := this.x * this.x + this.y * this.y
+		x := this.x / q
+		y := - this.y / q
+		--> new Complex(x, y)
+	}
+}
+#eof

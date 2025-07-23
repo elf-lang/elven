@@ -184,8 +184,10 @@ b32 rInitRenderer(Init_Renderer params) {
 		ID3D11Device_CreateBuffer(jam->device, &config, NULL, &jam->vertices_submission_buffer);
 	}
 
+	jam->textures_index = TEXTURE_DEFAULT + 1;
 	u8x4 color = {255, 255, 255, 255};
 	rInstallTexture(jam, TEXTURE_DEFAULT, FORMAT_RGBA_U8, (vec2i){1,1}, &color);
+
 
 	{
 		D3D11_BUFFER_DESC config = {};

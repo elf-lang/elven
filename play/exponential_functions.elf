@@ -1,0 +1,74 @@
+//
+//
+// Factorials:
+// The factorial of a non-negative
+// integer n, written n! is the
+// product of all positive integers
+// from 1 up to n.
+//
+//	n! = (n - 0) * (n - 1) * (n - 2) * ...
+//
+// Special Case:
+//	0! = 1
+//
+// Examples:
+//	3! = 3 * 2 * 1 = 6
+//
+//	5! = 5 * 4 * 3 * 2 * 1 = 120
+//
+//	Why Factorials Matter:
+//
+// - They count permutations - how many ways
+// to order 'n' items.
+//
+//
+//
+//
+//
+//
+//
+//
+// What does it mean when we write
+// a ^ x?
+//
+//	It represents the exponential function,
+// when x is real it extends like so:
+//
+//	POWER      RESULT
+//  0       = '1'
+//  1 / 'x' = nth_root('a', 'x')
+// - 'x'    = 1 / pow('a', 'x')
+//
+//
+//	What is the value of of the derivative
+// of the exponential function e ^ x and
+// why is it special?
+//
+//	The value is itself, and this is why
+// it is special.
+//
+//	History:
+//	John Naper invents logarithms to help
+// with calculations.
+// 'e' comes later, from trying to define
+// continuous compunding interests.
+// Euler, in the 1700s formally defines
+// the number 'e', and discovers that it's
+// the unique function whose derivative
+// equal itself.
+//
+//
+//	What does Euler's formula state, and how
+// does it relate exponential functions to
+// trigonometric functions?
+//
+//	pow(e, i*) = cos(*) + i sin(*)
+//
+// where * is theta.
+//
+//	This formula relates the complex
+// exponential function of e to
+// trigonometric rations, which can
+// be interpreted as rotations.
+//
+//

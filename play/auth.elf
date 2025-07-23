@@ -1,0 +1,88 @@
+
+Bank_Server = {
+	__new = fun() ? {
+		this.accounts = {}
+		this.sessions = {}
+	}
+
+	createSessionToken = fun() ? {
+		HEX := "0123456789ABCDEF"
+		token := ""
+		for i = 0...16 ? {
+			index := ntoi(elf.random() * 16)
+			token = token:append_char(HEX[index])
+		}
+		--> token
+	}
+
+	createAccount = fun(name, password) ? {
+		account := this.accounts[name]
+		if account == nil ? {
+			this.accounts[name] = {
+				name = name,
+				password = password,
+				money = 0,
+			}
+		} else {
+			elf.pf("there's already an account with that name")
+		}
+	}
+
+	createSession = fun(name, password) ? {
+		account := this.accounts[name]
+		if account ? {
+			if account.password == password ? {
+				token := this:createSessionToken()
+				this.sessions[token] = { name = name }
+				--> token
+			} else {
+				elf.pf("passwords do not match")
+			}
+		}
+		--> -1
+	}
+
+	getSessionAccount = fun(sessionId) ? {
+		session := this.sessions[sessionId]
+		if session ? {
+			account := this.accounts[session.name]
+			--> account
+		} else {
+			--> nil
+		}
+	}
+
+	deposit = fun(sessionId, amount) ? {
+		account := this:getSessionAccount(sessionId)
+		if account ? {
+			account.money ?= 0
+			account.money += amount
+			--> true
+		}
+		--> false
+	}
+
+	withdraw = fun(sessionId, amount) ? {
+		account := this:getSessionAccount(sessionId)
+		if account ? {
+			account.money -= amount
+			--> true
+		}
+		--> false
+	}
+}
+
+bank := new Bank_Server()
+
+bank.accounts["Dayan Rodriguez"] = {
+	name = "Dayan Rodriguez",
+	password = "62361957",
+}
+
+session := bank:createSession("Dayan Rodriguez", "62361957")
+bank:deposit(session, 999999)
+
+elf.pf(bank)
+
+#eof
+

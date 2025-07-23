@@ -1,6 +1,182 @@
+TAU ::= 6.283185307179586
 
+InitWindow("Gait", 128, 128, 3)
+
+random_color = fun() ? {
+	--> { r = elf.random() * 255, g = elf.random() * 255, b = elf.random() * 255, a = 255 }
+}
+
+DrawThickLine = fun(x0, y0, x1, y1, thick, color) ? {
+	sx := x1 - x0
+	sy := y1 - y0
+	l := sqrt(sx*sx + sy*sy)
+	dx := sx / l
+	dy := sy / l
+
+	for i = 0...l ? {
+		x := x0 + dx * i
+		y := y0 + dy * i
+		DrawCircle(x, y, thick, 1)
+	}
+}
+
+
+Bird = {
+	__new = fun() ? {
+
+		head_r := 8 + elf.random() * 4
+		body_r := 8 + elf.random() * 32
+
+		feet_r := 1 + elf.random() * 4
+
+		head_angle := TAU * 0.25 + elf.random() * TAU * 0.25
+		neck_l := body_r + 10 + elf.random() * 20
+		head_x := cos(head_angle) * neck_l
+		head_y := sin(head_angle) * neck_l
+
+		this.x = 64
+		this.y = 64
+		this.beak = { x = 0, y = 0, c = random_color() }
+		this.head = { x = head_x, y = head_y, r = head_r, c = random_color() }
+		this.body = { x = 0, y = 0, r = body_r, c = random_color() }
+		this.lfoot = { x = 0, y = 0, r = feet_r, c = random_color() }
+		this.rfoot = { x = 0, y = 0, r = feet_r, c = random_color() }
+	}
+	draw = fun() ? {
+		SetColor(this.body.c.r, this.body.c.g, this.body.c.b, this.body.c.a)
+		DrawCircle(this.x + this.body.x, this.y + this.body.y, this.body.r, 1)
+
+		// BEAK
+		SetColor(this.beak.c.r, this.beak.c.g, this.beak.c.b, this.beak.c.a)
+		DrawTriangle(
+		, this.x + this.head.x - this.head.r
+		, this.y + this.head.y + 2
+
+		, this.x + this.head.x - this.head.r - 10
+		, this.y + this.head.y - 2
+
+		, this.x + this.head.x - this.head.r
+		, this.y + this.head.y - 4)
+
+		// HEAD
+		SetColor(this.head.c.r, this.head.c.g, this.head.c.b, this.head.c.a)
+		DrawCircle(this.x + this.head.x, this.y + this.head.y, this.head.r, 1)
+
+		// NECK
+		DrawThickLine(
+		,	this.x + this.head.x
+		, 	this.y + this.head.y
+		, 	this.x + this.body.x
+		, 	this.y + this.body.y, this.head.r * 0.80)
+
+
+		// EYE
+		SetColor(255, 255, 255, 255)
+		DrawCircle(this.x + this.head.x, this.y + this.head.y, this.head.r * 0.5, 1)
+		SetColor(0, 0, 0, 255)
+		DrawLine(this.x + this.head.x - 1, this.y + this.head.y + 0, this.x + this.head.x + 2, this.y + this.head.y + 0, 1)
+		DrawLine(this.x + this.head.x + 0, this.y + this.head.y - 1, this.x + this.head.x + 0, this.y + this.head.y + 2, 1)
+
+
+		SetColor(this.lfoot.c.r, this.lfoot.c.g, this.lfoot.c.b, this.lfoot.c.a)
+		DrawCircle(this.x + this.lfoot.x, this.y + this.lfoot.y, this.lfoot.r, 1)
+
+		DrawCircle(this.x + this.rfoot.x, this.y + this.rfoot.y, this.rfoot.r, 1)
+	}
+}
+
+bird = nil
+while PollWindow() ? {
+	Clear()
+	if Button('X') & 4 ? {
+		bird = nil
+	}
+	bird ?= new Bird()
+	bird:draw()
+}
+
+
+
+#eof
 elf.change_work_dir("play")
-load "text.elf"
+load "Complex.elf"
+#eof
+
+
+InitWindow("Gait", 320, 180, 3)
+
+mix = fun (t, a, b) ? {
+	--> a + t * (b - a)
+}
+
+osc = fun (t) ? {
+	--> sin(t * TAU) * 0.5 + 0.5
+}
+
+rot = fun (r, l) ? {
+	--> {
+		x = cos(r * TAU) * l,
+		y = sin(r * TAU) * l
+	}
+}
+
+t := 0
+while PollWindow() ? {
+	Clear()
+	SetColor(255, 255, 255, 255)
+	r  := 32
+	e  := { x = 320 * 0.5, y = 180 * 0.5 }
+
+	t = -0.25
+	{
+		SetColor(255, 255, 255, 128)
+		DrawCircle(e.x, e.y, r, 4)
+
+		k := mix(osc(t), 0, -0.25)
+		p := rot(k, 32)
+		px := e.x + p.x
+		py := e.y + p.y
+
+		SetColor(0, 0, 255, 255)
+		DrawLine(e.x, e.y, px, py)
+
+		SetColor(255, 0, 0, 255)
+		DrawCircle(px, py, 4, 1)
+
+		e.x = px
+		e.y = py
+	}
+
+	{
+		SetColor(255, 255, 255, 128)
+		DrawCircle(e.x, e.y, r, 4)
+
+		k := mix(osc(t), -0.25, 0)
+		p := rot(k, 32)
+		px := e.x + p.x
+		py := e.y + p.y
+
+		SetColor(0, 0, 255, 255)
+		DrawLine(e.x, e.y, px, py)
+
+		SetColor(255, 0, 0, 255)
+		DrawCircle(px, py, 4, 1)
+
+		e.x = px
+		e.y = py
+	}
+	t += 0.01
+}
+
+
+
+
+
+
+#eof
+
+elf.change_work_dir("play\\collision")
+load "main.elf"
 #eof
 
 
@@ -45,9 +221,9 @@ while PollWindow() ? {
 		SetColor(255, 0, 0, 255)
 	}
 	// SetColor(0, 0, 255, 255)
-	jDrawRectangle(r0.x, r0.y, r0.w, r0.h)
+	DrawRectangle(r0.x, r0.y, r0.w, r0.h)
 	// SetColor(255, 0, 0, 255)
-	jDrawRectangle(r1.x, r1.y, r1.w, r1.h)
+	DrawRectangle(r1.x, r1.y, r1.w, r1.h)
 
 	SetColor(255, 255, 255, 255)
 	DrawText(32, 512, "What Is Love")
@@ -87,7 +263,7 @@ while PollWindow() ? {
 		w := 32 // * (0.4 + 0.6 * trim(1 - i / 4.0))
 		h := 64 // * (0.4 + 0.6 * trim(1 - i / 4.0))
 		y := 32 // 32 + 64 * 0.5 - h * 0.5
-		jDrawRectangle(x, y, w, h)
+		DrawRectangle(x, y, w, h)
 	}
 }
 

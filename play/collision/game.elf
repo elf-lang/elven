@@ -21,8 +21,8 @@ get_input=fun()?{
 spr=fun(tile,x,y,fx,fy)?{
 	src_x::=ntoi(tile)%16*8
 	src_y::=ntoi(tile)/16*8
-	VIEW:set_src_rect(src_x,src_y,8,8)
-	VIEW:draw_image(x,y,8,8,fx??0,fy??0)
+	SetRegion(src_x,src_y,8,8)
+	DrawRectangle(x,y,8,8,fx??0,fy??0)
 }
 
 game={}
@@ -70,15 +70,15 @@ draw_game=fun(){
 	tiles_image::=game.assets.images.tiles
 
 	// draw screen effects
-	view:set_offset(0,0)
-	view:set_scale(1,1)
+	SetOffset(0,0)
+	SetScale(1,1)
 
 
-	// view:set_color(121,37,45,255)
-	view:set_color(235,150,158,255)
-	view:draw_rect(0,0,view.res_x,view.res_y)
+	// SetColor(121,37,45,255)
+	SetColor(235,150,158,255)
+	DrawRectangle(0,0,view.res_x,view.res_y)
 
-	view:set_color(179,70,80,255)
+	SetColor(179,70,80,255)
 	for bub = bubbles[...] ? {
 		bub.x += 0.01 + sin(total_time * 0.1 * PI + bub.random) * 0.1
 		bub.y -= 0.02
@@ -87,10 +87,10 @@ draw_game=fun(){
 		draw_x := bub.x % (view.res_x + rad*2) - rad*2
 		draw_y := bub.y % (view.res_y + rad*2) - rad*2
 
-		view:draw_circle(draw_x,draw_y,rad)
+		DrawCircle(draw_x,draw_y,rad, 2)
 	}
 
-	view:set_color(235,204,207,255)
+	SetColor(235,204,207,255)
 	for par = wind_particles[...] ? {
 		par.x += 0.01 + sin(total_time * 0.1 * PI + par.random) * 0.1
 		par.y += 0.01
@@ -99,17 +99,17 @@ draw_game=fun(){
 		draw_x := par.x % (view.res_x + rad*2) - rad*2
 		draw_y := par.y % (view.res_y + rad*2) - rad*2
 
-		view:draw_rect(draw_x,draw_y,1,1)
+		DrawRectangle(draw_x,draw_y,1,1)
 	}
 
-	view:set_color(255,255,255,255)
+	SetColor(255,255,255,255)
 
 	// draw world things
-	view:set_offset(offset.x,offset.y)
-	view:set_scale(camera.scale.x,camera.scale.y)
+	SetOffset(offset.x,offset.y)
+	SetScale(camera.scale.x,camera.scale.y)
 
-	view:set_src_image(tiles_image)
-	view:set_color(255,255,255,255)
+	SetTexture(tiles_image)
+	SetColor(255,255,255,255)
 	new_dead_particles := {}
 	for par = dead_particles[...]?{
 		if par.t > 0 ? {
@@ -117,7 +117,7 @@ draw_game=fun(){
 			par.y += par.spd.y
 			par.t -= 1
 			size:=par.t/5.0
-			view:draw_rect(par.x,par.y,size,size)
+			DrawRectangle(par.x,par.y,size,size)
 			new_dead_particles:add(par)
 		}
 	}
