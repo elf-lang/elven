@@ -4,7 +4,7 @@ assets={}
 init_assets=fun()?{
 	assets.scenes={}
 	assets.images={
-		tiles=elf.gfx.load_image("tiles.png")
+		tiles = LoadTexture("tiles.png")
 	}
 	assets.tilesets={
 		tiles={

@@ -319,7 +319,7 @@ while PollWindow() ? {
 	x := 32
 	SetColor(255, 255, 255, 255)
 	for i = 0...21 ? {
-		jDrawRectangle(x + i * (32 + 2), 0, 32, 128)
+		DrawRectangle(x + i * (32 + 2), 0, 32, 128)
 	}
 
 	// midi := 1
