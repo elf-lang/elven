@@ -4,7 +4,36 @@ LoadFont("C:\\Windows\\Fonts\\times.ttf")
 
 
 notenames := { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }
+
+//
+// the c major scale orders notes in this fashion,
+//	the kalimba orders things in this scale
+//
 cmajor = { 'C', 'D', 'E', 'F', 'G', 'A', 'B' }
+
+keynotes = {
+	"D6",
+	"B5",
+	"G5",
+	"E5",
+	"C5",
+	"A4",
+	"F4",
+	"D4",
+	"B3",
+	"G3",
+	"F3",
+	"A3",
+	"C4",
+	"E4",
+	"G4",
+	"B4",
+	"D5",
+	"F5",
+	"A5",
+	"C6",
+	"E6",
+}
 
 notename_to_base_note_index := {}
 {
@@ -80,8 +109,6 @@ get_midi_number_from_note_name = fun(name) ? {
 	--> get_midi_number_from_base_note_and_octave(base, octave)
 }
 
-elf.pf(get_midi_number_from_note_name("A4"))
-elf.pf(get_midi_number_from_note_name("C0"))
 note_name_to_degree_map = {}
 degree_to_note_name_map = {}
 {
@@ -275,6 +302,20 @@ note_timer := 0
 
 music := load_music_sheet("kalimba\\ballade_pour_adeline.txt")
 
+draw_notes = {}
+add_draw_note = fun(midi) ? {
+	x := 320 * 1.5 + (elf.random() * 2 - 1) * 100
+	y := 180 * 1.5 + (elf.random() * 2 - 1) * 100
+	draw_note := {
+		x = x,
+		y = y,
+		midi = midi,
+		animation_timer = 60,
+	}
+	draw_notes:add(draw_note)
+}
+
+
 while PollWindow() ? {
 	Clear()
 	SetColor(255, 255, 255, 255)
@@ -309,17 +350,11 @@ while PollWindow() ? {
 		if play_note ? {
 			notes := music:idx(note_index)
 			for note = notes[...] ? {
+				add_draw_note(note)
 				PlayNote(note)
 			}
 			note_index += 1
 		}
-	}
-
-	SolidFill()
-	x := 32
-	SetColor(255, 255, 255, 255)
-	for i = 0...21 ? {
-		jDrawRectangle(x + i * (32 + 2), 0, 32, 128)
 	}
 
 	// midi := 1
@@ -332,5 +367,43 @@ while PollWindow() ? {
 		DrawText(320, 180, "" + random_note_name + ", " + note_degree)
 		// }
 	}
+
+	SolidFill()
+	x0 := 32
+	SetColor(255, 255, 255, 255)
+	for i = 0...21 ? {
+		x := x0 + i * (32 + 2)
+		y := 0
+
+		midi := get_midi_number_from_note_name(keynotes:idx(i))
+		for draw_note = draw_notes[...] ? {
+			if draw_note.midi == midi ? {
+				alpha := 0.5 + 0.5 * (1.0 - draw_note.animation_timer / 60.0)
+				SetColor(255 * alpha, 255 * alpha, 255 * alpha, 255)
+				break
+			} else {
+				SetColor(255, 255, 255, 255)
+			}
+		}
+		jDrawRectangle(x, y, 32, 128)
+	}
+	for i = 0...21 ? {
+		x := x0 + i * (32 + 2)
+		y := 0
+		DrawText(x, y, keynotes:idx(i))
+	}
+
+	new_draw_notes := {}
+	for draw_note = draw_notes[...] ? {
+		alpha := draw_note.animation_timer / 60.0
+		SetColor(255, 255, 255, 255 * alpha)
+		name := get_note_name_from_midi_number(draw_note.midi)
+		DrawText(draw_note.x, draw_note.y, name)
+		draw_note.animation_timer -= 1
+		if draw_note.animation_timer > 0 ? {
+			new_draw_notes:add(draw_note)
+		}
+	}
+	draw_notes = new_draw_notes
 
 }
