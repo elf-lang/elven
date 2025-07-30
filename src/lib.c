@@ -43,20 +43,25 @@ ELF_FUNCTION(L_SetColor) {
 
 ELF_FUNCTION(L_SolidFill) {
 	jam_State *J = (jam_State *) S;
-	D_SolidFill(J);
+
+	R_Renderer *rend = J->rend;
+	D_SolidFill(rend);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetTexture) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
 	TextureId id = elf_get_int(S, 0);
-	D_SetTexture(J, id);
+	D_SetTexture(rend, id);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetRegion) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
+
 	i32 x0 = elf_get_num(S, 0);
 	i32 y0 = elf_get_num(S, 1);
 	i32 x1 = x0 + elf_get_num(S, 2);
@@ -91,16 +96,25 @@ ELF_FUNCTION(L_SetOffset) {
 	return 0;
 }
 
+ELF_FUNCTION(L_SetFlipOnce) {
+	int x = elf_get_int(S,0);
+	int y = elf_get_int(S,1);
+	D_SetFlipOnce(x, y);
+	return 0;
+}
+
 ELF_FUNCTION(L_Clear) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
 	Color color = _get_color_arg(S);
-	D_Clear(J, color);
+	D_Clear(rend, color);
 	return 0;
 }
 
 ELF_FUNCTION(L_DrawTriangle) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
 	f32 x0 = elf_get_num(S, 0);
 	f32 y0 = elf_get_num(S, 1);
@@ -111,7 +125,7 @@ ELF_FUNCTION(L_DrawTriangle) {
 	f32 x2 = elf_get_num(S, 4);
 	f32 y2 = elf_get_num(S, 5);
 
-	D_DrawTriangle(J, x0, y0, x1, y1, x2, y2);
+	D_DrawTriangle(rend, x0, y0, x1, y1, x2, y2);
 	return 0;
 }
 
@@ -119,61 +133,61 @@ ELF_FUNCTION(L_DrawTriangle) {
 
 ELF_FUNCTION(L_DrawLine) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
 	f32 x0 = elf_get_num(S, 0);
 	f32 y0 = elf_get_num(S, 1);
 	f32 x1 = elf_get_num(S, 2);
 	f32 y1 = elf_get_num(S, 3);
 
-	D_DrawLine(J, x0, y0, x1, y1);
+	D_DrawLine(rend, x0, y0, x1, y1);
 	return 0;
 }
 
 ELF_FUNCTION(L_DrawCircle) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
 	f32 x = elf_get_num(S, 0);
 	f32 y = elf_get_num(S, 1);
 	f32 r = elf_get_num(S, 2);
 	f32 v = elf_get_num(S, 3);
 
-	D_DrawCircle(J, x, y, r, v);
+	D_DrawCircle(rend, x, y, r, v);
 	return 0;
 }
 
 ELF_FUNCTION(L_DrawRectangle) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
 	f32 x = elf_get_num(S, 0);
 	f32 y = elf_get_num(S, 1);
 	f32 w = elf_get_num(S, 2);
 	f32 h = elf_get_num(S, 3);
 
-	D_DrawRectangle(J, x, y, w, h);
+	D_DrawRectangle(rend, x, y, w, h);
 	return 0;
 }
 
-
-ELF_FUNCTION(L_LoadFont) {
+ELF_FUNCTION(L_GetTextureResolution) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
-	char *name = elf_get_text(S, 0);
-	D_FONT *font = LoadFont(J, name);
-	J->font = font;
-	return 0;
+	int id = elf_get_int(S, 0);
+	vec2i res = R_GetTextureInfo(rend, id);
+
+	elf_push_table(S);
+
+	elf_push_string(S, "x");
+	elf_push_int(S, res.x);
+	elf_table_set(S);
+
+	elf_push_string(S, "y");
+	elf_push_int(S, res.y);
+	elf_table_set(S);
+	return 1;
 }
-
-ELF_FUNCTION(L_DrawText) {
-	jam_State *J = (jam_State *) S;
-
-	f32 x = elf_get_num(S, 0);
-	f32 y = elf_get_num(S, 1);
-	char *text = elf_get_text(S, 2);
-
-	jDrawText(J, x, y, text);
-	return 0;
-}
-
 
 ELF_FUNCTION(L_LoadTexture) {
 	jam_State *J = (jam_State *) S;
@@ -186,7 +200,7 @@ ELF_FUNCTION(L_LoadTexture) {
 	vec2i resolution = {};
 	Color *colors = (Color *) stbi_load(name, &resolution.x, &resolution.y, &c, 4);
 
-	TextureId id = R_InstallTexture(rend, 0, FORMAT_RGBA_U8, resolution, colors);
+	TextureId id = R_InstallTexture(rend, 0, FORMAT_R8G8B8_UNORM, resolution, colors);
 
 	free(colors);
 
@@ -196,6 +210,7 @@ ELF_FUNCTION(L_LoadTexture) {
 
 ELF_FUNCTION(L_Button) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 	OS_Window *window = J->window;
 
 	i32 key = elf_get_int(S,0);
@@ -205,15 +220,17 @@ ELF_FUNCTION(L_Button) {
 
 ELF_FUNCTION(L_MouseButton) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 	OS_Window *window = J->window;
 
 	i32 index = elf_get_int(S,0);
-	elf_push_int(S, window->buttons[VK_LBUTTON + index].u);
+	elf_push_int(S, window->buttons[KEY_MOUSE_LEFT + index].u);
 	return 1;
 }
 
 ELF_FUNCTION(L_GetCursorX) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 	OS_Window *window = J->window;
 
 	elf_push_num(S, window->mouse.x / (f32) window->window_resolution.x);
@@ -222,6 +239,7 @@ ELF_FUNCTION(L_GetCursorX) {
 
 ELF_FUNCTION(L_GetCursorY) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 	OS_Window *window = J->window;
 
 	elf_push_num(S, 1 - window->mouse.y / (f32) window->window_resolution.y);
@@ -248,27 +266,24 @@ ELF_FUNCTION(L_InitWindow) {
 	J->rend = rend;
 	J->window = window;
 
-	R_InstallSurface(rend, TEXTURE_RT_BASE, FORMAT_RGBA_U8, (vec2i){ resolution_x, resolution_y });
+	R_InstallSurface(rend, TEXTURE_RT_BASE, FORMAT_R8G8B8_UNORM, (vec2i){ resolution_x, resolution_y });
 
 	J->target_seconds_to_sleep = 1.0 / 60.0;
 	J->begin_cycle_clock = OS_GetClock();
 
-	D_BeginDrawing(J);
+	D_BeginDrawing(rend);
 	return 0;
 }
 
 ELF_FUNCTION(L_PollWindow) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 	OS_Window *window = J->window;
 
 	OS_PollWindow(window);
 
-	D_EndDrawing(J);
-	D_BeginDrawing(J);
-
-	elf_gc_state(S, ELF_GC_PAUSED);
-	elf_gc_check(S);
-	elf_gc_state(S, ELF_GC_ACTIVE);
+	D_EndDrawing(rend);
+	D_BeginDrawing(rend);
 
 	i64 end_cycle_clock = OS_GetClock();
 	i64 elapsed_clocks = end_cycle_clock - J->begin_cycle_clock;
@@ -281,7 +296,7 @@ ELF_FUNCTION(L_PollWindow) {
 	f64 clock_accuracy = 1.0 / 1000.0;
 	J->begin_cycle_clock = OS_GetClock();
 	while (J->pending_seconds_to_sleep > clock_accuracy) {
-		Sleep(J->pending_seconds_to_sleep * 1000);
+		OS_Sleep(J->pending_seconds_to_sleep * 1000);
 		J->begin_cycle_clock = OS_GetClock();
 		J->pending_seconds_to_sleep -= (J->begin_cycle_clock - end_cycle_clock) * g_os.clocks_to_seconds;
 	}
@@ -290,83 +305,63 @@ ELF_FUNCTION(L_PollWindow) {
 	return 1;
 }
 
-
-
-static const NameFunctionPair g_lib[] = {
-	{ "InitWindow"    , L_InitWindow     },
-	{ "PollWindow"    , L_PollWindow     },
-	{ "LoadTexture"   , L_LoadTexture    },
-	{ "LoadFont"      , L_LoadFont       },
-	{ "Button"        , L_Button         },
-	{ "MouseButton"   , L_MouseButton    },
-	{ "Clear"         , L_Clear          },
-	{ "GetCursorX"    , L_GetCursorX     },
-	{ "GetCursorY"    , L_GetCursorY     },
-	{ "SetScale"      , L_SetScale       },
-	{ "SetOffset"     , L_SetOffset      },
-	{ "SetRotation"   , L_SetRotation    },
-	{ "SetTexture"    , L_SetTexture     },
-	{ "SetRegion"     , L_SetRegion      },
-	{ "SetCenter"     , L_SetCenter      },
-
-	{ "SetColor"      , L_SetColor       },
-	{ "SetColor0"     , L_SetColor0      },
-	{ "SetColor1"     , L_SetColor1      },
-	{ "SetColor2"     , L_SetColor2      },
-	{ "SetColor3"     , L_SetColor3      },
-
-	{ "DrawText"      , L_DrawText       },
-	{ "SolidFill"     , L_SolidFill      },
-	{ "DrawRectangle" , L_DrawRectangle  },
-	{ "DrawTriangle"  , L_DrawTriangle   },
-	{ "DrawLine"      , L_DrawLine       },
-	{ "DrawCircle"    , L_DrawCircle     },
-
-	// { "InitAudio"     , L_InitAudio },
-	// { "LoadSound"     , L_LoadSound },
-	// { "PlaySound"     , L_PlaySound },
-};
-
-
-
-
-#if 0
-//
-// Sound Bindings
-//
-ELF_FUNCTION(L_InitAudio) {
+ELF_FUNCTION(L_LoadFont) {
 	jam_State *J = (jam_State *) S;
-	// InitAudioAPI(J);
-	return 0;
-}
+	R_Renderer *rend = J->rend;
 
-ELF_FUNCTION(L_WriteSamples) {
-	jam_State *J = (jam_State *) S;
-	f32 sample = elf_get_num(S, 0);
-	J->audio.sample_buffer[J->audio.sample_buffer_write] = sample;
-	J->audio.sample_buffer_write += 1;
-	return 0;
-}
+	int slot = elf_get_int(S, 0);
+	char *name = elf_get_text(S, 1);
+	int size = elf_get_int(S, 2);
 
-ELF_FUNCTION(L_LoadSound) {
-	jam_State *J = (jam_State *) S;
-
-	char *name = elf_get_text(S, 0);
-	SoundId id = NewSoundId(J);
-	LoadSoundFile(J, id, name);
-
-	// if only there was a way to tag this
-	// value as a special value
-	elf_push_int(S, id.index);
-
+	int id = InstallFont(rend, slot, name, size);
+	elf_push_int(S, id);
 	return 1;
 }
 
-static int L_PlaySound(elf_State *S) {
+ELF_FUNCTION(L_DrawText) {
 	jam_State *J = (jam_State *) S;
+	R_Renderer *rend = J->rend;
 
-	i32 id = elf_get_int(S, 0);
-	PlaySound(J, (SoundId){ id });
+	f32 x = elf_get_num(S, 0);
+	f32 y = elf_get_num(S, 1);
+	char *text = elf_get_text(S, 2);
+
+	D_DrawText(rend, x, y, text);
 	return 0;
 }
-#endif
+
+
+static const elf_Binding g_lib[] = {
+	{ "InitWindow"                       , L_InitWindow                           },
+	{ "PollWindow"                       , L_PollWindow                           },
+	{ "LoadTexture"                      , L_LoadTexture                          },
+	{ "GetTextureResolution"             , L_GetTextureResolution                 },
+	{ "Button"                           , L_Button                               },
+	{ "MouseButton"                      , L_MouseButton                          },
+	{ "Clear"                            , L_Clear                                },
+	{ "GetCursorX"                       , L_GetCursorX                           },
+	{ "GetCursorY"                       , L_GetCursorY                           },
+	{ "SetScale"                         , L_SetScale                             },
+	{ "SetOffset"                        , L_SetOffset                            },
+	{ "SetRotation"                      , L_SetRotation                          },
+	{ "SetTexture"                       , L_SetTexture                           },
+	{ "SetRegion"                        , L_SetRegion                            },
+	{ "SetCenter"                        , L_SetCenter                            },
+	{ "SetColor"                         , L_SetColor                             },
+	{ "SetColor0"                        , L_SetColor0                            },
+	{ "SetColor1"                        , L_SetColor1                            },
+	{ "SetColor2"                        , L_SetColor2                            },
+	{ "SetColor3"                        , L_SetColor3                            },
+	{ "SolidFill"                        , L_SolidFill                            },
+	{ "DrawRectangle"                    , L_DrawRectangle                        },
+	{ "DrawTriangle"                     , L_DrawTriangle                         },
+	{ "DrawLine"                         , L_DrawLine                             },
+	{ "DrawCircle"                       , L_DrawCircle                           },
+	{ "DrawText"                         , L_DrawText                             },
+	{ "LoadFont"                         , L_LoadFont                             },
+	{ "SetFlipOnce"                      , L_SetFlipOnce                          },
+
+	{ "InitAudio"                        , L_InitAudio                            },
+	{ "LoadSound"                        , L_LoadSound                            },
+	{ "PlaySound"                        , L_PlaySound                            },
+};

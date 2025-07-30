@@ -16,7 +16,6 @@
 
 
 #include "elements.h"
-#include "draw.h"
 #include "platform.h"
 #include "renderer.h"
 
@@ -24,10 +23,41 @@
 #define DX_RELEASE_MAYBE(I) ((I) ? DX_RELEASE(I) : 0)
 
 
+
+enum {
+	STATE_OUTPUT,
+	STATE_INPUT,
+	STATE_SAMPLER,
+	STATE_TOPOLOGY,
+	STATE_SHADER,
+	STATE_BLENDER,
+	STATE_INT_COUNT,
+};
+
+typedef struct R_Draw_State {
+	vec2i            viewport;
+	union {
+		// todo: these don't even have to be 32-bit integers
+		i32           states[STATE_INT_COUNT];
+		struct {
+			TextureId  output;
+			TextureId  texture;
+			SamplerId  sampler;
+			Topology   topology;
+			ShaderId   shader;
+			BlenderId  blender;
+		};
+	};
+} R_Draw_State;
+
+
+
+
 typedef struct R_TEXTURE R_TEXTURE;
 struct R_TEXTURE {
 	b32                       inuse;
 	vec2i                     resolution;
+	TextureFormat             format;
 	ID3D11SamplerState       *sampler;
 	union {
 		ID3D11Texture2D       *texture;
@@ -41,7 +71,7 @@ struct R_TEXTURE {
 typedef struct R_CONSTANTS R_CONSTANTS;
 struct R_CONSTANTS {
 	vec4 transform[4];
-	vec4 storage[12];
+	vec4 texture_color_transform[4];
 };
 STATIC_ASSERT(!(sizeof(R_CONSTANTS) & 15) && sizeof(R_CONSTANTS) >= 64 && sizeof(R_CONSTANTS) <= D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT);
 
@@ -60,7 +90,6 @@ struct R_Renderer {
 	IDXGISwapChain2          *window_present_mechanism;
 
 	ID3D11RasterizerState    *default_rasterizer;
-	ID3D11BlendState         *default_blender;
 	ID3D11DepthStencilState  *default_depth_stencil;
 	ID3D11Buffer             *constant_buffer;
 	ID3D11VertexShader       *vertex_shader;
@@ -75,6 +104,7 @@ struct R_Renderer {
 	R_CONSTANTS   draw_constants;
 	b32           draw_constants_changed;
 
+	ID3D11BlendState   *blenders[BLENDER_CAPACITY];
 	ID3D11SamplerState *samplers[SAMPLER_CAPACITY];
 	ID3D11PixelShader   *shaders[SHADER_CAPACITY];
 	R_TEXTURE           textures[TEXTURE_CAPACITY];
@@ -82,10 +112,9 @@ struct R_Renderer {
 
 
 // todo: structure this better!
-R_VERTEX_2D  *r_mem_vertices;
-i32           r_num_vertices;
-i32           r_max_vertices;
-
+R_Vertex3  *r_mem_vertices;
+i32         r_num_vertices;
+i32         r_max_vertices;
 
 static R_TEXTURE *get_texture_by_id(R_Renderer *rend, TextureId id) {
 	return & rend->textures[id];
@@ -223,7 +252,7 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 				.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL,
 			}
 		};
-		ID3D11Device_CreateBlendState(rend->device,&config,&rend->default_blender);
+		ID3D11Device_CreateBlendState(rend->device,&config,&rend->blenders[BLENDER_ALPHA_BLEND]);
 	}
 
 	{
@@ -258,7 +287,7 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 	}
 
 	Color color = {255, 255, 255, 255};
-	R_InstallTexture(rend, TEXTURE_DEFAULT, FORMAT_RGBA_U8, (vec2i){1,1}, &color);
+	R_InstallTexture(rend, TEXTURE_DEFAULT, FORMAT_R8G8B8_UNORM, (vec2i){1,1}, &color);
 
 
 	{
@@ -276,9 +305,10 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 		char shader_source[] =
 		"cbuffer Constants : register(b0) {\n"
 		"	float4x4	transform;\n"
+		"	float4x4	texture_color_transform;\n"
 		"}\n"
 		"struct Vertex_In {\n"
-		"	float2 position   : POSITION;\n"
+		"	float3 position   : POSITION;\n"
 		"	float2 texcoords  : TEXCOORD;\n"
 		"	float4 color      : COLOR;\n"
 		"};\n"
@@ -291,7 +321,7 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 		"SamplerState main_sampler : register(s0);\n"
 		"Vertex_Out main_vs(Vertex_In input, uint vertex_id: SV_VertexID) {\n"
 		"	Vertex_Out output;\n"
-		"	output.position = mul(transform,float4(input.position,0,1));\n"
+		"	output.position = mul(transform, float4(input.position, 1));\n"
 		"	output.texcoords = input.texcoords;\n"
 		"	output.color = input.color;\n"
 		"	return output;\n"
@@ -299,7 +329,7 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 		"float4 main_ps(Vertex_Out input) : SV_TARGET {\n"
 		"	float4 color = input.color;\n"
 		"	float4 sample = main_t2d.Sample(main_sampler, input.texcoords);\n"
-		"	float4 final_color = sample * color;\n"
+		"	float4 final_color = mul(texture_color_transform, sample) * color;\n"
 		"	return final_color;\n"
 		"}\n";
 
@@ -333,9 +363,9 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 			,    NULL, &rend->vertex_shader)))
 			{
 				D3D11_INPUT_ELEMENT_DESC input_layout_config[] = {
-					{ "POSITION",  0, DXGI_FORMAT_R32G32_FLOAT  , 0,                            0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-					{ "TEXCOORD",  0, DXGI_FORMAT_R32G32_FLOAT  , 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-					{ "COLOR"   ,  0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+					{ "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT  , 0,                            0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+					{ "TEXCOORD",  0, DXGI_FORMAT_R32G32_FLOAT     , 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+					{ "COLOR"   ,  0, DXGI_FORMAT_R8G8B8A8_UNORM   , 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 				};
 				ID3D11Device_CreateInputLayout(rend->device
 				,  input_layout_config
@@ -358,7 +388,6 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 	ID3D11Buffer *vertex_buffer = rend->vertices_submission_buffer;
 
 	ID3D11DeviceContext_OMSetDepthStencilState(rend->context, 0, 0);
-	ID3D11DeviceContext_OMSetBlendState(rend->context, rend->default_blender, 0, 0xffffffff);
 
 	ID3D11DeviceContext_RSSetState(rend->context, rend->default_rasterizer);
 
@@ -367,7 +396,7 @@ R_Renderer *R_InitRenderer(Init_Renderer params) {
 	ID3D11DeviceContext_VSSetConstantBuffers(rend->context, 0, 1, &constant_buffer);
 	ID3D11DeviceContext_PSSetConstantBuffers(rend->context, 0, 1, &constant_buffer);
 
-	u32 stride = sizeof(R_VERTEX_2D);
+	u32 stride = sizeof(R_Vertex3);
 	u32 offset = 0;
 	ID3D11DeviceContext_IASetInputLayout(rend->context, input_layout);
 	ID3D11DeviceContext_IASetVertexBuffers(rend->context, 0, 1, &vertex_buffer, &stride, &offset);
@@ -383,16 +412,16 @@ static const i32 g_topology_conversion_table[] = {
 
 static const DXGI_FORMAT g_format_conversion_table[] = {
 	[FORMAT_NONE]    = DXGI_FORMAT_UNKNOWN,
-	[FORMAT_R_U8]    = DXGI_FORMAT_R8_UNORM,
-	[FORMAT_RGBA_U8] = DXGI_FORMAT_R8G8B8A8_UNORM,
-	[FORMAT_RGBA_F32]= DXGI_FORMAT_R32G32B32A32_FLOAT,
+	[FORMAT_R8_UNORM]    = DXGI_FORMAT_R8_UNORM,
+	[FORMAT_R8G8B8_UNORM] = DXGI_FORMAT_R8G8B8A8_UNORM,
+	[FORMAT_R32G32B32_FLOAT]= DXGI_FORMAT_R32G32B32A32_FLOAT,
 };
 
 static const i32 g_format_to_size[] = {
 	[FORMAT_NONE]    =  0,
-	[FORMAT_R_U8]    =  1,
-	[FORMAT_RGBA_U8] =  4,
-	[FORMAT_RGBA_F32]= 16,
+	[FORMAT_R8_UNORM]    =  1,
+	[FORMAT_R8G8B8_UNORM] =  4,
+	[FORMAT_R32G32B32_FLOAT]= 16,
 };
 
 TextureId R_InstallTextureEx(R_Renderer *rend, R_TEXTURE_PARAMS args) {
@@ -411,6 +440,7 @@ TextureId R_InstallTextureEx(R_Renderer *rend, R_TEXTURE_PARAMS args) {
 
 	texture->sampler = rend->samplers[SAMPLER_POINT];
 	texture->resolution = args.resolution;
+	texture->format = args.format;
 
 	i32 bytes_per_pixel = g_format_to_size[args.format];
 	DXGI_FORMAT format = g_format_conversion_table[args.format];
@@ -466,7 +496,7 @@ TextureId R_InstallTextureEx(R_Renderer *rend, R_TEXTURE_PARAMS args) {
 	return id;
 }
 
-TextureId R_InstallSurface(R_Renderer *rend, TextureId id, R_FORMAT format, vec2i resolution) {
+TextureId R_InstallSurface(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution) {
 	return R_InstallTextureEx(rend, (R_TEXTURE_PARAMS) {
 		.id         = id,
 		.resolution = resolution,
@@ -477,7 +507,7 @@ TextureId R_InstallSurface(R_Renderer *rend, TextureId id, R_FORMAT format, vec2
 }
 
 
-TextureId R_InstallTexture(R_Renderer *rend, TextureId id, R_FORMAT format, vec2i resolution, void *contents) {
+TextureId R_InstallTexture(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution, void *contents) {
 	return R_InstallTextureEx(rend, (R_TEXTURE_PARAMS) {
 		.id         = id,
 		.resolution = resolution,
@@ -540,7 +570,7 @@ static void R_EndFrame(R_Renderer *rend) {
 }
 
 
-R_Ticket R_SubmitVertices(R_Renderer *renderer, R_VERTEX_2D *vertices, i32 number) {
+R_SubmissionTicket R_SubmitVertices(R_Renderer *renderer, R_Vertex3 *vertices, i32 number) {
 
 	i32 vertices_in_buffer = renderer->vertices_submission_buffer_offset + number;
 	if (vertices_in_buffer * sizeof(*vertices) > renderer->vertices_submission_buffer_capacity) {
@@ -551,15 +581,15 @@ R_Ticket R_SubmitVertices(R_Renderer *renderer, R_VERTEX_2D *vertices, i32 numbe
 
 	D3D11_MAPPED_SUBRESOURCE subresource;
 	ID3D11DeviceContext_Map(renderer->context, (ID3D11Resource *) renderer->vertices_submission_buffer, 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &subresource);
-	R_VERTEX_2D *vertex_memory = subresource.pData;
+	R_Vertex3 *vertex_memory = subresource.pData;
 
-	R_VERTEX_2D *write_pointer = vertex_memory + renderer->vertices_submission_buffer_offset;
+	R_Vertex3 *write_pointer = vertex_memory + renderer->vertices_submission_buffer_offset;
 	CopyMemory(write_pointer, vertices, number * sizeof(*vertices));
 	renderer->vertices_submission_buffer_offset += number;
 
 	ID3D11DeviceContext_Unmap(renderer->context, (ID3D11Resource *) renderer->vertices_submission_buffer, 0);
 
-	return (R_Ticket){ offset };
+	return (R_SubmissionTicket){ offset };
 }
 
 void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
@@ -574,17 +604,15 @@ void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
 		OS_ShowErrorMessage("Invalid Draw State: Output Is The Same As Input");
 	}
 
+	b32 draw_constants_changed = rend->draw_constants_changed;
+	rend->draw_constants_changed = false;
 
-	if (rend->draw_constants_changed) {
-		rend->draw_constants_changed = false;
-
-		ID3D11Buffer *constant_buffer = rend->constant_buffer;
-		rCopyMemory(rend, (ID3D11Resource *) constant_buffer, &rend->draw_constants, sizeof(rend->draw_constants));
+	if (prev.blender != prox.blender) {
+		ID3D11BlendState *blender = rend->blenders[prox.blender];
+		ID3D11DeviceContext_OMSetBlendState(rend->context, blender, 0, 0xffffffff);
 	}
 
-
 	if (prev.output != prox.output) {
-
 		// is the thing that we want to set as output bound as input?
 		if (prox.output == prev.texture) {
 			ID3D11ShaderResourceView *nullptr_shader_resource_view = NULL;
@@ -603,6 +631,21 @@ void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
 
 	if (prev.texture != prox.texture) {
 		R_TEXTURE *texture = get_texture_by_id(rend, prox.texture);
+		R_TEXTURE *texture_prev = get_texture_by_id(rend, prev.texture);
+		if (texture->format != texture_prev->format) {
+			if (texture->format == FORMAT_R8_UNORM) {
+				rend->draw_constants.texture_color_transform[0] = (vec4){ 1, 0, 0, 0 };
+				rend->draw_constants.texture_color_transform[1] = (vec4){ 1, 0, 0, 0 };
+				rend->draw_constants.texture_color_transform[2] = (vec4){ 1, 0, 0, 0 };
+				rend->draw_constants.texture_color_transform[3] = (vec4){ 1, 0, 0, 0 };
+			} else {
+				rend->draw_constants.texture_color_transform[0] = (vec4){ 1, 0, 0, 0 };
+				rend->draw_constants.texture_color_transform[1] = (vec4){ 0, 1, 0, 0 };
+				rend->draw_constants.texture_color_transform[2] = (vec4){ 0, 0, 1, 0 };
+				rend->draw_constants.texture_color_transform[3] = (vec4){ 0, 0, 0, 1 };
+			}
+			draw_constants_changed = true;
+		}
 		ID3D11DeviceContext_PSSetShaderResources(rend->context, 0, 1, &texture->shader_resource_view);
 	}
 
@@ -620,16 +663,22 @@ void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
 		ID3D11PixelShader *shader = rend->shaders[prox.shader];
 		ID3D11DeviceContext_PSSetShader(rend->context, shader, 0, 0);
 	}
+
+
+	if (draw_constants_changed) {
+		ID3D11Buffer *constant_buffer = rend->constant_buffer;
+		rCopyMemory(rend, (ID3D11Resource *) constant_buffer, &rend->draw_constants, sizeof(rend->draw_constants));
+	}
 }
 
-void R_DrawVertices(R_Renderer *rend, R_Ticket offset, i32 number) {
+void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 	ASSERT(number != 0);
 
 	// check number of vertices matches what we want to draw
 	switch (rend->draw_prox.topology) {
-	case TOPO_TRIANGLES: { ASSERT(number % 3 == 0); } break;
-	case MODE_LINES:     { ASSERT(number % 2 == 0); } break;
-	default: { ASSERT(!"SHMUCK"); } break;
+		case TOPO_TRIANGLES: { ASSERT(number % 3 == 0); } break;
+		case MODE_LINES:     { ASSERT(number % 2 == 0); } break;
+		default: { ASSERT(!"SHMUCK"); } break;
 	}
 
 	rSubmitDrawState(rend, rend->draw_prox);
@@ -668,18 +717,18 @@ void rInstallShader(R_Renderer *rend, ShaderId id, char *entry, char *contents) 
 }
 
 
-R_VERTEX_2D *R_QueueVertices(R_Renderer *rend, i32 number) {
+R_Vertex3 *R_QueueVertices(R_Renderer *rend, i32 number) {
 	if (r_num_vertices + number > r_max_vertices) {
 		R_FlushVertices(rend);
 	}
-	R_VERTEX_2D *vertices = r_mem_vertices + r_num_vertices;
+	R_Vertex3 *vertices = r_mem_vertices + r_num_vertices;
 	r_num_vertices += number;
 	return vertices;
 }
 
 void R_FlushVertices(R_Renderer *rend) {
 	if (r_num_vertices != 0) {
-		R_Ticket token = R_SubmitVertices(rend, r_mem_vertices, r_num_vertices);
+		R_SubmissionTicket token = R_SubmitVertices(rend, r_mem_vertices, r_num_vertices);
 
 		R_DrawVertices(rend, token, r_num_vertices);
 
@@ -721,6 +770,10 @@ void R_SetShader(R_Renderer *rend, ShaderId value) {
 
 void R_SetSampler(R_Renderer *rend, SamplerId value) {
 	draw_state(rend, STATE_SAMPLER, value);
+}
+
+void R_SetBlender(R_Renderer *rend, BlenderId value) {
+	draw_state(rend, STATE_BLENDER, value);
 }
 
 void R_SetTopology(R_Renderer *rend, Topology value) {
@@ -803,25 +856,25 @@ static void rDrawQuad(R_Renderer *rend, vec2i xy, vec2i wh) {
 
 	R_SetTopology(rend, TOPO_TRIANGLES);
 
-	vec2 p0 = { xy.x + wh.x * 0, xy.y + wh.y * 0 };
-	vec2 p1 = { xy.x + wh.x * 0, xy.y + wh.y * 1 };
-	vec2 p2 = { xy.x + wh.x * 1, xy.y + wh.y * 0 };
-	vec2 p3 = { xy.x + wh.x * 1, xy.y + wh.y * 1 };
-	R_VERTEX_2D *vertices = R_QueueVertices(rend, 6);
-	vertices[0] = (R_VERTEX_2D) {p0, {0,1}, WHITE};
-	vertices[1] = (R_VERTEX_2D) {p1, {0,0}, WHITE};
-	vertices[2] = (R_VERTEX_2D) {p3, {1,0}, WHITE};
-	vertices[3] = (R_VERTEX_2D) {p0, {0,1}, WHITE};
-	vertices[4] = (R_VERTEX_2D) {p3, {1,0}, WHITE};
-	vertices[5] = (R_VERTEX_2D) {p2, {1,1}, WHITE};
+	vec3 p0 = { xy.x + wh.x * 0, xy.y + wh.y * 0, 0 };
+	vec3 p1 = { xy.x + wh.x * 0, xy.y + wh.y * 1, 0 };
+	vec3 p2 = { xy.x + wh.x * 1, xy.y + wh.y * 0, 0 };
+	vec3 p3 = { xy.x + wh.x * 1, xy.y + wh.y * 1, 0 };
+	R_Vertex3 *vertices = R_QueueVertices(rend, 6);
+	vertices[0] = (R_Vertex3) {p0, {0,1}, WHITE};
+	vertices[1] = (R_Vertex3) {p1, {0,0}, WHITE};
+	vertices[2] = (R_Vertex3) {p3, {1,0}, WHITE};
+	vertices[3] = (R_Vertex3) {p0, {0,1}, WHITE};
+	vertices[4] = (R_Vertex3) {p3, {1,0}, WHITE};
+	vertices[5] = (R_Vertex3) {p2, {1,1}, WHITE};
 }
 
-void R_Blit(R_Renderer *rend, TextureId dest, TextureId src) {
-	R_SetSurface(rend, dest);
-	R_SetTexture(rend, src);
+void R_Blit(R_Renderer *rend, TextureId output, TextureId input) {
+	R_SetSurface(rend, output);
+	R_SetTexture(rend, input);
 	R_SetViewportFullScreen(rend);
-	R_ClearSurface(rend, BLACK);
-
+	// R_ClearSurface(rend, BLACK);
+	R_SetBlender(rend, BLEND_DISABLE);
 	vec2i output_resolution = R_GetTextureInfo(rend, R_GetSurface(rend));
 	vec2i input_resolution = R_GetTextureInfo(rend, R_GetTexture(rend));
 	f32 max_scale = MIN(output_resolution.x / (f32) input_resolution.x, output_resolution.y / (f32) input_resolution.y);

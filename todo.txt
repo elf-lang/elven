@@ -1,3 +1,5 @@
+-- elven.c: make so that we can actually pass in
+the file name in the command line!
 
 -- table.c, lib_table.c: a good compressed binary
 exporter

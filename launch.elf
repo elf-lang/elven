@@ -1,4 +1,14 @@
+a = fun(a, b, c) ? {
+	elf.pf("a: ", a)
+	elf.pf("b: ", b)
+	elf.pf("c: ", c)
+}
+a("Something String", 2, 3)
+a("Something String", 2, 3)
 elf.change_work_dir("W:\\MicroRJ\\game2")
+load "main.elf"
+#eof
+
 load "main.elf"
 #eof
 

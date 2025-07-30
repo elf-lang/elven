@@ -131,42 +131,27 @@ typedef struct {
 
 
 enum {
-	DOWN_BIT       = 1,
-	PRESSED_BIT    = 2,
-	RELEASED_BIT   = 4,
+	BUTTON_DOWN     = 1,
+	BUTTON_PRESSED  = 2,
+	BUTTON_RELEASED = 4,
+	BUTTON_REPEAT   = 8,
 };
 
-enum {
-	BUTTON_NONE = 0,
-
-	BUTTON_MOUSE_LEFT,
-	BUTTON_MOUSE_MIDDLE,
-	BUTTON_MOUSE_RIGHT,
-	BUTTON_MOUSE_COUNT,
-
-	BUTTON_MENU,
-	BUTTON_BACK,
-	BUTTON_DEBUG,
-
-	BUTTON_LEFT,
-	BUTTON_UP,
-	BUTTON_RIGHT,
-	BUTTON_DOWN,
-
-	BUTTON_DPAD_LEFT,
-	BUTTON_DPAD_UP,
-	BUTTON_DPAD_RIGHT,
-	BUTTON_DPAD_DOWN,
-
-	BUTTON_0, BUTTON_1, BUTTON_2, BUTTON_3, BUTTON_4,
-	BUTTON_5, BUTTON_6, BUTTON_7, BUTTON_8, BUTTON_9,
-
-	BUTTON_COUNT = 256,
-};
 
 typedef struct {
 	u8 u;
 } Button;
+
+
+static inline void update_button(Button *btn, i32 state) {
+	if (state) {
+		btn->u = (~btn->u & 1) << 1 | 1 | 8;
+	} else {
+		btn->u = (btn->u & 1) << 2;
+	}
+}
+
+
 
 
 #if !defined(ASSERT_ALWAYS)

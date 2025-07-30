@@ -56,10 +56,6 @@ struct Controller_State {
 // 	"texture",
 // };
 
-enum {
-	VOICES_CAPACITY = 32,
-	SOUNDS_CAPACITY = 256,
-};
 
 // ----------------
 // DRAW
@@ -67,20 +63,6 @@ enum {
 
 
 
-enum {
-	FONT_NAME_CAPACITY = 128,
-	FONT_GLYPHS_CAPACITY = 256,
-};
-
-
-
-typedef struct D_FONT D_FONT;
-struct D_FONT {
-	D_FONT *prox;
-	TextureId texture;
-	char name[FONT_NAME_CAPACITY];
-	stbtt_bakedchar glyphs[FONT_GLYPHS_CAPACITY];
-};
 
 
 typedef struct jam_State jam_State;
@@ -90,18 +72,6 @@ struct jam_State {
 
 	R_Renderer *rend;
 	OS_Window  *window;
-
-	struct {
-		//
-		// todo: remove all this, none cares
-		//
-		ma_engine engine;
-		ma_sound voices[VOICES_CAPACITY];
-		ma_sound sounds[SOUNDS_CAPACITY];
-		i32 sounds_index;
-	} audio;
-
-	D_FONT *font;
 
 	i64 begin_cycle_clock;
 	f64 clocks_to_seconds;

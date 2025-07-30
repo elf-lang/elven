@@ -6,6 +6,7 @@ src/main.c     ^
 src/renderer.c ^
 src/platform.c ^
 src/draw_2d.c  ^
+src/fonts.c    ^
 elf/elf.lib
 
 

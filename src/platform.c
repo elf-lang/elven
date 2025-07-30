@@ -1,4 +1,3 @@
-
 #include "elements.h"
 #include "platform.h"
 
@@ -15,7 +14,29 @@ typedef UINT win32_GetDPIForWindow(HWND hwnd);
 #define WIN32_WINDOW_CLASS_NAME L"graphical-window"
 
 
+global u8 g_kremap[256];
+
+#define KEYMAPDEF(_)                          \
+_(VK_NUMPAD0        , '0'              ,  10) \
+_(VK_F1             , KEY_F1           ,  24) \
+_('A'               , 'A'              ,  26) \
+_('0'               , '0'              ,  10) \
+_(VK_SPACE          , ' '              ,   1) \
+_(VK_RETURN         , '\t'             ,   1) \
+_(VK_UP             , KEY_UP           ,   1) \
+_(VK_DOWN           , KEY_DOWN         ,   1) \
+_(VK_LEFT           , KEY_LEFT         ,   1) \
+_(VK_RIGHT          , KEY_RIGHT        ,   1) \
+_(VK_ESCAPE         , KEY_ESCAPE       ,   1) \
+/* end */
+
 void OS_InitPlatform(OS_State *os) {
+
+#define MAPPER(VKEY, MYKEY, RANGE) for (i32 i = 0; i < RANGE; i += 1) { g_kremap[VKEY + i] = MYKEY + i; }
+	KEYMAPDEF(MAPPER)
+#undef MAPPER
+
+
 	timeBeginPeriod(1);
 
 	LARGE_INTEGER i = {};
@@ -39,6 +60,10 @@ void OS_InitPlatform(OS_State *os) {
 
 void OS_EndPlatform(OS_State *os) {
 	timeEndPeriod(1);
+}
+
+void OS_Sleep(int ms) {
+	Sleep(ms);
 }
 
 i32 OS_ReadEntireFile(char *name, void *memory, i32 max_bytes_to_read) {
@@ -70,15 +95,6 @@ i32 OS_ReadEntireFile(char *name, void *memory, i32 max_bytes_to_read) {
 }
 
 
-static inline void onoff(Button *btn, i32 state) {
-	if (state) {
-		btn->u = (~btn->u & 1) << 1 | 1;
-	} else {
-		btn->u = (btn->u & 1) << 2;
-	}
-}
-
-
 static LRESULT Win32_WindowProcedure(HWND window, UINT msg, WPARAM w, LPARAM l);
 
 
@@ -87,7 +103,7 @@ b32 OS_PollWindow(OS_Window *window) {
 	HWND wnd = (HWND) window->window;
 
 	for (i32 i = 0; i < COUNTOF(window->buttons); i ++) {
-		window->buttons[i].u &= DOWN_BIT;
+		window->buttons[i].u &= BUTTON_DOWN;
 	}
 
 	MSG msg = {};
@@ -205,29 +221,22 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 		case WM_EXITSIZEMOVE: {
          // app->resizing = msg == WM_ENTERSIZEMOVE;
 		} break;
-		case WM_LBUTTONUP: {
-			onoff(&window->buttons[VK_LBUTTON], FALSE);
+
+		case WM_LBUTTONUP: case WM_LBUTTONDOWN: {
+			update_button(&window->buttons[KEY_MOUSE_LEFT], msg == WM_LBUTTONDOWN);
 		} break;
-		case WM_MBUTTONUP: {
-			onoff(&window->buttons[VK_MBUTTON], FALSE);
+		case WM_MBUTTONUP: case WM_MBUTTONDOWN: {
+			update_button(&window->buttons[KEY_MOUSE_MIDDLE], msg == WM_MBUTTONDOWN);
 		} break;
-		case WM_RBUTTONUP: {
-			onoff(&window->buttons[VK_RBUTTON], FALSE);
+		case WM_RBUTTONUP: case WM_RBUTTONDOWN: {
+			update_button(&window->buttons[KEY_MOUSE_RIGHT], msg == WM_RBUTTONDOWN);
 		} break;
+
 		case WM_SYSKEYUP: case WM_KEYUP: {
-			onoff(&window->buttons[w], FALSE);
-		} break;
-		case WM_LBUTTONDOWN: {
-			onoff(&window->buttons[VK_LBUTTON], TRUE);
-		} break;
-		case WM_MBUTTONDOWN: {
-			onoff(&window->buttons[VK_MBUTTON], TRUE);
-		} break;
-		case WM_RBUTTONDOWN: {
-			onoff(&window->buttons[VK_RBUTTON], TRUE);
+			update_button(&window->buttons[g_kremap[w]], FALSE);
 		} break;
 		case WM_SYSKEYDOWN: case WM_KEYDOWN: {
-			onoff(&window->buttons[w], TRUE);
+			update_button(&window->buttons[g_kremap[w]], TRUE);
 		} break;
 		case WM_MOUSEMOVE: {
 			window->mouse.x = LOWORD(l);
@@ -303,19 +312,6 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 // _(IDC_NO       ,OS_Cursor_Disabled)        \
 // /* end */
 
-// #define WIN32_KEY_XMAP(_)                       \
-// _(VK_NUMPAD0        , '0'                ,  10) \
-// _(VK_F1             , INPUT_F1           ,  24) \
-// _('A'               , 'A'                ,  26) \
-// _('0'               , '0'                ,  10) \
-// _(VK_SPACE          , ' '                ,   1) \
-// _(VK_RETURN         , '\t'               ,   1) \
-// _(VK_UP             , INPUT_UP           ,   1) \
-// _(VK_DOWN           , INPUT_DOWN         ,   1) \
-// _(VK_LEFT           , INPUT_LEFT         ,   1) \
-// _(VK_RIGHT          , INPUT_RIGHT        ,   1) \
-// _(VK_ESCAPE         , INPUT_ESCAPE       ,   1) \
-// /* end */
 
 
 // static f32 i16_normalize(i32 x) { return x >= 0 ? x / 32767.f : x / 32768.f; }
@@ -383,13 +379,7 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 
 // #undef win32_cursor_mapper
 
-// #define win32_key_mapper(w32_key, app_key, range_size) \
-// 	for (i32 i = 0; i < range_size; i += 1) { \
-// 		platform.w32_to_app_key[w32_key + i] = app_key + i; \
-// 		platform.app_to_w32_key[app_key + i] = w32_key + i; \
-// 	}
 
-// 	WIN32_KEY_XMAP(win32_key_mapper)
 
 // #undef win32_key_mapper
 
