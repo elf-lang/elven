@@ -1,9 +1,5 @@
 InitWindow("Physics", 256, 256, 2)
 particles := {}
-particles:add({
-	x = 32, y = 32, r = 8,
-	vx = 1, vy = 0,
-})
 
 while PollWindow() ? {
 	Clear()

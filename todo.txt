@@ -1,5 +1,15 @@
 
---	core.c freaking break is broken?
+-- table.c, lib_table.c: a good compressed binary
+exporter
+
+-- strings: hashes for strings are generated
+once the string is created, but what if we
+generated them once the hash for a string was
+requested instead?
+
+
+--	core.c freaking break is broken? (this might have been fixed or had
+something to do with not understing how for loops work)
 
 -- core.c should the signature of the function elf
 knows how to call be (elf_State *S), this means that

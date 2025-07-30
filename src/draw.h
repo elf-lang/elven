@@ -1,0 +1,49 @@
+
+typedef enum {
+	FORMAT_NONE = 0,
+	FORMAT_R_U8    ,
+	FORMAT_RGBA_U8 ,
+	FORMAT_RGBA_F32,
+} R_FORMAT;
+
+typedef enum {
+	MODE_NONE     ,
+	TOPO_TRIANGLES,
+	MODE_LINES    ,
+} Topology;
+
+typedef enum {
+	SAMPLER_NONE = 0,
+	SAMPLER_POINT,
+	SAMPLER_LINEAR,
+	SAMPLER_CAPACITY,
+} SamplerId;
+
+typedef enum {
+	BLENDER_NONE = 0,
+	BLENDER_CAPACITY,
+} BlenderId;
+
+typedef enum {
+	TEXTURE_NONE = 0,
+
+	TEXTURE_DEFAULT,
+
+	// todo: remove
+	TEXTURE_FONT,
+
+	TEXTURE_RT_WINDOW,
+	TEXTURE_RT_BASE,
+
+	TEXTURE_FIRST_UNRESERVED_ID,
+
+	TEXTURE_CAPACITY = 128,
+} TextureId;
+
+typedef enum {
+	SHADER_NONE      =  0,
+	SHADER_DEFAULT       ,
+
+	SHADER_FIRST_UNRESERVED_ID,
+	SHADER_CAPACITY  = 32,
+} ShaderId;

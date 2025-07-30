@@ -1,0 +1,584 @@
+// pf = elf.pf
+// abs  ?= fun(x)   ? { if x < 0 ? --> -x else --> x }
+// min  ?= fun(x,y) ? { if x < y ? -->  x else --> y }
+// max  ?= fun(x,y) ? { if x > y ? -->  x else --> y }
+// trim ?= fun(x,min,max) ? {
+// 	if x < min ? --> min
+// 	if x > max ? --> max
+// 	--> x
+// }
+
+PATH ?= "."
+
+
+FileNode = {
+	__new = fun(path) ? {
+		this.path = path
+		this.size = 0
+		this.children = {}
+		this.explored = false
+	}
+
+
+	Explore = fun() ? {
+		this.explored = true
+		this.size     = 0
+
+		folder := elf.list_folder(this.path)
+		for it = folder[...] ? {
+
+			child := new FileNode(it.path)
+
+			if it.type == "file" ? {
+				this.size += it.size
+			}
+
+			this.children:add(child)
+		}
+	}
+
+	Layout = fun(x,y,width,height) ? {
+
+		this.layout   ?= {}
+
+		// instead just have an axis, "x" or "y"
+		vertical       := height > width
+		layout         := this.layout
+
+		layout.x 		 = x
+		layout.y 		 = y
+		layout.width    = width
+		layout.height   = height
+		layout.vertical = vertical
+
+		free_width   := width
+		free_height  := height
+		free_x       := x
+		free_y       := y
+
+		if height < 4 ? {
+			--> ()
+		}
+		if width  < 4 ? {
+			--> ()
+		}
+		if this.size == 0 ? {
+			--> ()
+		}
+
+		for child = this.children[...] ? {
+			/* todo: this should be relative to the number of
+			visible children, not the actual number of children? */
+			child_width := free_width
+			child_height := free_height
+
+			child_weight := iton(child.size) / this.size
+
+			if vertical ? {
+				child_height = height * child_weight
+
+				child:Layout(free_x,free_y,child_width,child_height)
+
+				free_height -= child_height
+				free_y 		+= child_height
+			} else {
+				child_width = width * child_weight
+
+				child:Layout(free_x,free_y,child_width,child_height)
+
+				free_width -= child_width
+				free_x 	  += child_width
+			}
+		}
+	}
+
+	Draw = fun(max_render_level) ? {
+		max_render_level ?= 128
+
+		layout := this.layout
+		x := layout.x
+		y := layout.y
+		width := layout.width
+		height := layout.height
+		// color := this.color
+		// color ?= .ColorFromHSV((x + y) % 360, .5, .6)
+
+		SetColor0(0, 0,   0, 128)
+		SetColor1(255, 0,   0, 128)
+		SetColor2(0, 0,   0, 128)
+		SetColor3(0, 0, 0, 128)
+		DrawRectangle(x,y,width,height)
+
+		// .DrawRectangleOutline(x,y,width,height,1,.WHITE)
+		// if height > 40 && width > 100 ? {
+		// 	if this.is_directory is false ? {
+		// 		.DrawText(this.name,x,y,20,.WHITE)
+		// 	}
+		// }
+		visible_children := 0
+
+		for child = this.children[...] ? {
+
+			child_layout := child.layout
+
+			if child_layout == nil ? {
+				continue
+			}
+
+			if child_layout.height < 10 || child_layout.width  < 10 ? {
+				continue
+			}
+
+
+			//	if visible_children != 0 ? {
+			//		if layout.vertical == true ? {
+			//			SetColor(255, 255, 255, 255)
+			//			DrawLine(child_layout.x,child_layout.y,child_layout.x+child_layout.width,child_layout.y,1.0)
+			//		} else {
+			//			SetColor(255, 255, 255, 255)
+			//			DrawLine(child_layout.x,child_layout.y,child_layout.x,child_layout.y+child_layout.height,1.0)
+			//		}
+			//	}
+
+			if max_render_level > 0 ? {
+				child:Draw(max_render_level - 1)
+			}
+
+			visible_children += 1
+		}
+	}
+}
+
+root_file := new FileNode("W:\\")
+root_file:Explore()
+
+for it = root_file.children[...] ? {
+	it:Explore()
+
+	for other_it = it.children[...] ? {
+		other_it:Explore()
+	}
+}
+
+root_file:Layout(0, 0, 320, 180)
+
+elf.pf("size: ", root_file.size >> 10, "KB")
+
+
+InitWindow("Files", 320, 180, 4)
+while PollWindow() ? {
+	Clear()
+	SetColor(255, 255, 255, 255)
+	// DrawRectangle(0, 0, 32, 32)
+
+	root_file:Draw()
+}
+
+
+// // WindowBottomLeft = {x=.GetScreenWidth()*-.5,y=.GetScreenWidth()*-.5}
+// WindowBottomLeft = {x=0,y=0}
+
+// // let file = elf.fopen("W:\\MicroRJ\\elf-ray\\code\\files\\main.elf","r")
+// // let size = elf.fsize(file)
+// // elf.pf(size)
+
+
+
+
+// rectangle_overlaps = fun(rect,point) ? {
+// 	--> (point.x > rect.x && point.x < rect.x + rect.width)
+// 	&&	 (point.y > rect.y && point.y < rect.y + rect.height)
+// }
+
+
+// FileTree = {
+// 	__new = fun(config) ? {
+// 		this.dirty             = true
+// 		this.folder            = config.folder
+// 		this.name              = config.name
+// 		this.path              = config.path
+// 		this.size              = config.size
+// 		this.level             = config.level
+// 		this.is_directory      = config.is_directory
+// 		this.is_fully_explored = false
+// 		this.children          = {}
+// 	}
+
+// 	update_contents = fun() ? {
+// 		if this.is_fully_explored ? {
+// 			--> this.size
+// 		}
+// 		this.is_fully_explored = true
+// 		if this.is_directory == true ? {
+// 			let size = 0
+// 			for child = this.children[...] ? {
+// 				size += child:update_contents()
+// 				if child.is_fully_explored == false ? {
+// 					this.is_fully_explored = false
+// 				}
+// 			}
+// 			this.size = size
+// 		}
+// 		--> this.size
+// 	}
+
+
+// 	update_layout = fun(x,y,width,height) ? {
+// 		this.layout   ?= {}
+// 		let vertical    = height > width
+// 		let layout      = this.layout
+// 		layout.x 		 = x
+// 		layout.y 		 = y
+// 		layout.width    = width
+// 		layout.height   = height
+// 		layout.vertical = vertical
+
+// 		let free_width   = width
+// 		let free_height  = height
+// 		let free_x       = x
+// 		let free_y       = y
+
+// 		if height < 4 ? {
+// 			--> ()
+// 		}
+// 		if width  < 4 ? {
+// 			--> ()
+// 		}
+// 		if this.size == 0 ? {
+// 			--> ()
+// 		}
+
+// 		for child = this.children[...] ? {
+// 			/* todo: this should be relative to the number of
+// 			visible children, not the actual number of children? */
+// 			let child_width = free_width
+// 			let child_height = free_height
+// 			let child_proportional_size = iton(child.size) / this.size
+// 			if vertical ? {
+// 				child_height = height * child_proportional_size
+// 				// if child_height < 5 ? {
+// 				// 	continue
+// 				// }
+// 				child:update_layout(free_x,free_y,child_width,child_height)
+// 				free_height -= child_height
+// 				free_y 		+= child_height
+// 			} else {
+// 				child_width = width * child_proportional_size
+// 				// if child_width < 5 ? {
+// 				// 	continue
+// 				// }
+// 				child:update_layout(free_x,free_y,child_width,child_height)
+// 				free_width -= child_width
+// 				free_x 	  += child_width
+// 			}
+// 		}
+// 	}
+
+// 	get_file_at_position = fun(xy) ? {
+// 		let layout = this.layout
+// 		if layout == nil ? {
+// 			--> (nil)
+// 		}
+// 		if layout.height < 4 ? --> (nil)
+// 		if layout.width  < 4 ? --> (nil)
+// 		if rectangle_overlaps(layout,xy) == false ? {
+// 			--> (nil)
+// 		}
+// 		for child = this.children[...] ? {
+// 			let child_file = child:get_file_at_position(xy)
+// 			if child_file != nil ? {
+// 				--> (child_file)
+// 			}
+// 		}
+// 		--> this
+// 	}
+
+
+// 	display = fun(max_render_level) ? {
+// 		max_render_level ?= 1000
+
+// 		let layout = this.layout
+// 		let x = layout.x
+// 		let y = layout.y
+// 		let width = layout.width
+// 		let height = layout.height
+// 		let color = this.color
+// 		color ?= .ColorFromHSV((x + y) % 360, .5, .6)
+// 		.DrawRectangle(x,y,width,height,color)
+// 		// .DrawRectangleOutline(x,y,width,height,1,.WHITE)
+// 		// if height > 40 && width > 100 ? {
+// 		// 	if this.is_directory is false ? {
+// 		// 		.DrawText(this.name,x,y,20,.WHITE)
+// 		// 	}
+// 		// }
+// 		if max_render_level > 0 ? {
+// 			let visible_children = 0
+// 			for child = this.children[...] ? {
+// 				let child_layout = child.layout
+// 				if child_layout == nil ? {
+// 					continue
+// 				}
+// 				if child_layout.height < 10
+// 				or child_layout.width  < 10 ? {
+// 					continue
+// 				}
+// 				if visible_children != 0 ? {
+// 					if layout.vertical == true ? {
+// 						.DrawLine(child_layout.x,child_layout.y,child_layout.x+child_layout.width,child_layout.y,1.,.WHITE)
+// 					} else {
+// 						.DrawLine(child_layout.x,child_layout.y,child_layout.x,child_layout.y+child_layout.height,1.,.WHITE)
+// 					}
+// 				}
+// 				child:display(max_render_level - 1)
+// 				visible_children += 1
+// 			}
+// 		}
+// 	}
+// }
+
+// VisualFileExplorer = {
+// 	__new = fun(path) ? {
+// 		elf.pf("new file explorer: ", path)
+// 		this.pending  = {}
+// 		this.dirty    = true
+// 		// this.render_level   = 10
+// 		// this.explored_level = 10
+// 		this.root  = new FileTree {
+// 			level          = 0
+// 			is_directory   = true
+// 			path           = path
+// 			name           = path
+// 			size           = 0
+// 		}
+// 		this.pending:add(this.root)
+// 		this.last_explored_folder = nil
+// 	}
+
+// 	explore = fun() ? {
+// 		if this.pending:length() == 0 ? {
+// 			elf.pf("exploration is complete!")
+// 			--> (true)
+// 		}
+
+// 		let folder = this.pending:xrem(-1)
+// 		let parent = folder
+// 		/* todo: can we do this better */
+// 		while parent ? {
+// 			parent.is_fully_explored = false
+// 			parent = parent.folder
+// 		}
+// 		this.last_explored_folder = folder
+
+// 		// elf.pf("exploring: ", folder.name)
+// 		// lastly elf.pf("completed...")
+
+// 		let children = elf.list_folder(folder.path)
+
+// 		for it = children[...] ? {
+// 			if it.name == ".git" ? continue
+// 			if it.name == ".vs"  ? continue
+// 			let child = new FileTree {
+// 				folder 		   = folder
+// 				level          = folder.level + 1
+// 				is_directory   = it.is_directory
+// 				name           = it.name
+// 				path           = it.path
+// 				size           = it.size
+// 			}
+// 			if it.is_directory == true ? {
+// 				this.pending:add(child)
+// 			} else {
+// 				if it.name:match("*.c|*.h") ? {
+// 					child.color = .RED // .ColorFromHSV(195,.35,.70)
+// 				}
+// 			}
+// 			folder.children[it.name] = child
+// 		}
+// 		this.dirty = true
+// 		--> false
+// 	}
+// 	display = fun(x,y,width,height,max_render_level) ? {
+// 		if this.dirty ? { this.dirty = false
+// 			this.root:update_contents()
+// 			this.root:update_layout(x,y,width,height)
+// 		}
+// 		this.root:display(max_render_level)
+// 	}
+// }
+
+
+// levenshtein_distance = fun(word1, word2) ? {
+// 	let m = word1:length()
+// 	let n = word2:length()
+// 	let dp = {}
+// 	dp[0...m+1] = {}
+// 	dp[0...m+1][0] = #index
+// 	dp[0][0...n+1] = #index
+// 	//     	 W  O  R  D
+// 	//   	[0][1][2][3][4]
+// 	// W  [1][0][.][.][.]
+// 	// O  [2][.][0][.][.]
+// 	// R  [3][.][.][0][.]
+// 	// D  [4][.][.][.][0]
+// 	//
+// 	for i = 1...m + 1 ? {
+// 		for j = 1...n + 1 ? {
+// 			if word1[i - 1] == word2[j - 1] ? {
+// 				dp[i,j] = dp[i-1,j-1]
+// 			} else {
+// 				let min = fun(x,y) ? { if x < y ? --> x else --> y }
+// 				let min3 = fun(x,y,z) ? min(min(x,y),z)
+// 				dp[i][j] = min3(dp[i-1,j]+1, dp[i,j-1]+1, dp[i-1,j-1]+1)
+// 			}
+// 		}
+// 	}
+// 	--> dp[m,n]
+// }
+
+// all_files = elf.list_folder("W:\\MicroRJ\\elf-ray\\code")
+// let volumes = elf.list_volumes()
+// get_free_space = fun(volume) ? {
+// 	let info = elf.get_disk_info(volume.name)
+// 	--> (info.BytesPerSector*info.SectorsPerCluster*info.NumberOfFreeClusters)
+// }
+// let sorted_volumes = merge_sort(volumes, fun(a,b) ? {
+// 	let aa = get_free_space(a)
+// 	let bb = get_free_space(b)
+// 	--> aa > bb
+// })
+// for it = sorted_volumes[...] ? {
+// 	elf.pf(it, ", free space: ", get_free_space(it) / 1024 / 1024 / 1024., "GB")
+// }
+// // let info = elf.get_disk_info("W:\\")
+// // elf.pf(free / 1024 / 1024 / 1024.)
+// // all_files = elf.list_folder("C:\\work\\MicroRJ\\elf-ray\\code")
+// // let name  = "delan"
+// // let c = nil
+// // let l = 1000000
+// // elf.pf("looking for file: ", name)
+// // for f = all_files[...] ? {
+// // 	let d = levenshtein_distance(f.name,name)
+// // 	if d < l ? {
+// // 		c = f
+// // 		l = d
+// // 	}
+// // }
+// // if c ? {
+// // 	elf.pf("found: ", c)
+// // } else {
+// // 	elf.pf("not found")
+// // }
+
+// // elf.pf("leven: ", levenshtein_distance("word","lone"))
+
+
+// // let file_explorer = new VisualFileExplorer("C:\\work\\MicroRJ")
+// let file_explorer = new VisualFileExplorer("D:")
+// // let file_explorer = new VisualFileExplorer("W:\\MicroRJ\\elf-ray\\code\\files\\test_tree")
+
+// Exploring = false
+
+// CURRENT_STATE = nil
+
+// _FIND_FILE_NAME = ""
+// FIND_STATE = fun() ? {
+// 	.BeginDrawing()
+// 	.ClearBackground(.BLACK);
+// 	.ResetSamplingTexture()
+// 	let x = 32
+// 	let y = 32
+// 	let key = .GetKeyPressed()
+// 	if key != 0 ? {
+// 		if key == .KeyboardKey.BACKSPACE ? {
+// 			_FIND_FILE_NAME = _FIND_FILE_NAME:pop()
+// 		} else {
+// 			_FIND_FILE_NAME = _FIND_FILE_NAME:append_char(key)
+// 		}
+// 		all_files = merge_sort(all_files,fun(a,b) ? {
+// 			for _ = a,b ? {
+// 				if elf.get_object_color(_) == "red" ? {
+// 					let traces = elf.trace_object(_)
+// 					elf.err("################# this is an error!, .1, traces: ", traces)
+// 				}
+// 				if elf.get_object_color(_.name) == "red" ? {
+// 					elf.err("################# this is an error!, .2")
+// 				}
+// 			}
+// 			let aa = levenshtein_distance(a.name:uppercase(),_FIND_FILE_NAME)
+// 			let bb = levenshtein_distance(b.name:uppercase(),_FIND_FILE_NAME)
+// 			--> aa < bb
+// 		})
+// 	}
+// 	if _FIND_FILE_NAME ? {
+// 		.DrawText(_FIND_FILE_NAME,x,y,20,.GREEN)
+// 		y +=  28
+// 	}
+
+// 	let visible_files = min(.GetScreenHeight() / 20,all_files:length())
+// 	for file = all_files[0..visible_files] ? {
+// 		.DrawText(file.name,x,y,20,.WHITE)
+// 		y += 24
+// 	}
+// 	.EndDrawing()
+// }
+
+// while .WindowShouldClose() != true ? {
+// 	if CURRENT_STATE ? {
+// 		CURRENT_STATE()
+// 	} else {
+// 		let cursor = {x=.GetMouseX(),y=.GetMouseY()}
+// 		if .IsKeyPressed('F') ? {
+// 			CURRENT_STATE = FIND_STATE
+// 		}
+// 		if .IsKeyPressed('E') ? {
+// 			file_explorer:explore()
+// 		}
+// 		if .IsKeyDown('W') ? {
+// 			file_explorer:explore()
+// 		}
+// 		if .IsKeyPressed('Q') ? {
+// 			Exploring = Exploring == false
+// 			elf.pf("toggled exploring: ", Exploring)
+// 		}
+// 		if Exploring ? {
+// 			elf.pf("auto exploring...")
+// 			for i = 0..50 ? {
+// 				let completed = file_explorer:explore()
+// 				if completed ? {
+// 					Exploring = false
+// 					elf.pf("auto exploring completed...")
+// 					break
+// 				}
+// 			}
+// 		}
+// 		.BeginDrawing()
+// 		.ClearBackground(.BLACK);
+// 		.ResetSamplingTexture()
+
+// 		if .IsKeyPressed(' ') == false ? {
+// 			file_explorer:display(0,0,.GetScreenWidth(),.GetScreenHeight())
+// 		}
+
+// 		let file = file_explorer.root:get_file_at_position(cursor)
+// 		if .IsMouseButtonPressed(0) ? {
+// 			if file.is_directory == false ? {
+// 				file = file.folder ?? file
+// 			}
+// 			elf.shell("open","explorer.exe","explorer.exe /select,\"" + file.path + "\"")
+// 		}
+// 		if file != nil ? {
+// 			.DrawText(file.path,1,1,20,.BLACK)
+// 			.DrawText(file.path,0,0,20,.WHITE)
+
+// 			.DrawText(file.name,1,20 + 1,20,.BLACK)
+// 			.DrawText(file.name,0,20 + 0,20,.WHITE)
+// 			if file_explorer.last_explored_folder != nil ? {
+// 				.DrawText(file_explorer.last_explored_folder.name,1,20*2 + 1,20,.BLACK)
+// 				.DrawText(file_explorer.last_explored_folder.name,0,20*2 + 0,20,.WHITE)
+// 			}
+// 		}
+// 		.DrawCircle(cursor,4.,.WHITE)
+// 		.DrawFPS(0,.GetScreenHeight()-20)
+// 		.EndDrawing()
+// 	}
+// }

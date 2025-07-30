@@ -108,7 +108,7 @@ draw_game=fun(){
 	SetOffset(offset.x,offset.y)
 	SetScale(camera.scale.x,camera.scale.y)
 
-	SetTexture(tiles_image)
+	D_SetTexture(tiles_image)
 	SetColor(255,255,255,255)
 	new_dead_particles := {}
 	for par = dead_particles[...]?{

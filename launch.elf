@@ -1,3 +1,13 @@
+elf.change_work_dir("W:\\MicroRJ\\game2")
+load "main.elf"
+#eof
+
+
+elf.change_work_dir("play")
+load "physics.elf"
+#eof
+
+
 TAU ::= 6.283185307179586
 
 InitWindow("Gait", 128, 128, 3)
