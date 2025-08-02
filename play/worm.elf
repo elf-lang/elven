@@ -67,8 +67,8 @@ while PollWindow() ? {
 
 	p := circles:idx(0)
 
-	mouse_x := GetCursorX() * 256
-	mouse_y := GetCursorY() * 256
+	mouse_x := GetMouseX() * 256
+	mouse_y := GetMouseY() * 256
 
 	// d := random_steer(normalize({x = p.vx, y = p.vy}), TAU * 0.125)
 	d := get_dir({x=mouse_x,y=mouse_y},p)

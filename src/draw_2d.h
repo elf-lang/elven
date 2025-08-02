@@ -1,23 +1,59 @@
+// todo: rename this file
 
-// this is kind of silly,
-// the idea is that it stores parameters that we don't necessarily
-// want to pass in every time you call a draw function.
-// So we keep this globally and you modify it thru functions.
+typedef struct R_Renderer R_Renderer;
+
+// todo: remove from here
 typedef struct {
-	f32   rotation;
-	vec2    center;
-	vec2     scale;
-	vec2    offset;
-	Color  color_0;
-	Color  color_1;
-	Color  color_2;
-	Color  color_3;
-	struct { f32 x0, y0, x1, y1; } region;
-	int    font;
-	int    font_size;
-	vec2i  fliponce;
-	vec2   texture_inv_resolution;
-} D_DrawBrush;
+	vec4 rows[4];
+} Matrix;
+
+typedef enum {
+	FORMAT_NONE = 0,
+	FORMAT_R8_UNORM,
+	FORMAT_R8G8B8_UNORM,
+	FORMAT_R32G32B32_FLOAT,
+} TextureFormat;
+
+typedef enum {
+	SAMPLER_NONE = 0,
+	SAMPLER_POINT,
+	SAMPLER_LINEAR,
+	SAMPLER_CAPACITY,
+} SamplerId;
+
+#define BLEND_DISABLE BLENDER_NONE
+
+typedef enum {
+	BLENDER_NONE = 0,
+	BLENDER_ALPHA_BLEND,
+	BLENDER_CAPACITY,
+} BlenderId;
+
+typedef enum {
+	// todo: should none be the default texture?
+	TEXTURE_NONE = 0,
+
+	TEXTURE_DEFAULT,
+
+	TEXTURE_RT_WINDOW,
+	TEXTURE_RT_BASE,
+
+	TEXTURE_FIRST_UNRESERVED_ID,
+
+	TEXTURE_CAPACITY = 128,
+} TextureId;
+
+typedef enum {
+	SHADER_NONE      =  0,
+	SHADER_DEFAULT       ,
+
+	SHADER_FIRST_UNRESERVED_ID,
+	SHADER_CAPACITY  = 32,
+} ShaderId;
+
+
+void D_PushMatrix();
+void D_PopMatrix();
 
 void D_BeginDrawing(R_Renderer *rend);
 void D_EndDrawing(R_Renderer *rend);
@@ -35,13 +71,27 @@ void D_SetColor2(Color color);
 void D_SetColor3(Color color);
 void D_SetColor(Color color);
 void D_SetRegion(i32 x0, i32 y0, i32 x1, i32 y1);
-void D_SetCenter(f32, f32);
-void D_SetOffset(f32, f32);
-void D_SetScale(f32, f32);
-void D_SetRotation(f32);
+
+
 void D_SetFlipOnce(int flipx, int flipy);
 
+
+void D_SetCenter(f32, f32);
+void D_Translate(f32, f32);
+void D_SetOffset(f32, f32);
+void D_SetScale(f32, f32);
+vec3 D_GetScale();
+void D_SetRotation(f32);
+
+
 Color D_GetColor0();
+Color D_GetColor1();
+Color D_GetColor2();
+Color D_GetColor3();
+
+void D_BeginQuads(R_Renderer *rend);
+void D_PushQuad(R_Renderer *rend, Rect dst, iRect src);
+void D_EndQuads(R_Renderer *rend);
 
 int D_GetFont();
 void D_SetFont(int font);

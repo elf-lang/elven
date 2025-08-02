@@ -6,6 +6,36 @@
 #define WIN32_LEAN_AND_MEAN
 #include     <windows.h>
 #include     <timeapi.h>
+#include     <shellapi.h>
+#include     <commdlg.h>
+
+enum {
+	MAX_WINDOWS   = 8,
+	MAX_FILEDROPS = 8,
+};
+typedef struct {
+	HWND             window;
+	vec2i            resolution;
+	b32              closed;
+	vec2i            mouse_wheel;
+	vec2i            mouse;
+	Button           buttons[256];
+	int              nextdropindex;
+} MWINDOW;
+
+typedef struct {
+	OS_WindowId window;
+	char        name[256];
+} MFILEDROP;
+
+struct {
+	MWINDOW windows[MAX_WINDOWS];
+	f64     clocks_to_seconds;
+	u8      key_remapper[256];
+	// todo:
+	MFILEDROP filedrops[MAX_FILEDROPS];
+	int       dropindex;
+} global g;
 
 
 typedef BOOL win32_SetProcessDPIAwarenessContext(void* value);
@@ -13,8 +43,6 @@ typedef UINT win32_GetDPIForWindow(HWND hwnd);
 #define WIN32_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((void*)-4)
 #define WIN32_WINDOW_CLASS_NAME L"graphical-window"
 
-
-global u8 g_kremap[256];
 
 #define KEYMAPDEF(_)                          \
 _(VK_NUMPAD0        , '0'              ,  10) \
@@ -30,9 +58,63 @@ _(VK_RIGHT          , KEY_RIGHT        ,   1) \
 _(VK_ESCAPE         , KEY_ESCAPE       ,   1) \
 /* end */
 
-void OS_InitPlatform(OS_State *os) {
+int OS_GetWindowKey(OS_WindowId id, int index) {
+	return g.windows[id].buttons[index].u;
+}
 
-#define MAPPER(VKEY, MYKEY, RANGE) for (i32 i = 0; i < RANGE; i += 1) { g_kremap[VKEY + i] = MYKEY + i; }
+vec2i OS_GetWindowMouseWheel(OS_WindowId id) {
+	return g.windows[id].mouse_wheel;
+}
+
+vec2i OS_GetWindowMouse(OS_WindowId id) {
+	return g.windows[id].mouse;
+}
+
+vec2i OS_GetWindowResolution(OS_WindowId id) {
+	return g.windows[id].resolution;
+}
+
+HWND OS_GetWindowHandle(OS_WindowId id) {
+	return g.windows[id].window;
+}
+
+f64 OS_GetClocksToSeconds() {
+	return g.clocks_to_seconds;
+}
+
+void OS_Sleep(int ms) {
+	Sleep(ms);
+}
+
+char *OS_GetFileDrop(int index) {
+	return g.filedrops[index].name;
+}
+
+int OS_GetNumFileDrops() {
+	return g.dropindex;
+}
+
+void OS_ForgetFileDrops() {
+	g.dropindex = 0;
+}
+
+int OS_GetNextFileDrop(OS_WindowId id) {
+	MWINDOW *window = & g.windows[id];
+	int index = -1;
+	for (int i = index; i < g.dropindex; i ++) {
+		if (g.filedrops[i].window == id) {
+			index = i;
+			break;
+		}
+	}
+	window->nextdropindex = index;
+	return index;
+}
+
+
+void OS_InitPlatform() {
+
+#define MAPPER(VKEY, MYKEY, RANGE) for (i32 i = 0; i < RANGE; i += 1) { g.key_remapper[VKEY + i] = MYKEY + i; }
 	KEYMAPDEF(MAPPER)
 #undef MAPPER
 
@@ -43,7 +125,7 @@ void OS_InitPlatform(OS_State *os) {
 	QueryPerformanceFrequency(&i);
 
 	f64 frequency = i.QuadPart;
-	os->clocks_to_seconds = (f64) 1.0 / frequency;
+	g.clocks_to_seconds = (f64) 1.0 / frequency;
 
 	// prevent windows from using DPI scaling
 	{
@@ -58,13 +140,10 @@ void OS_InitPlatform(OS_State *os) {
 	}
 }
 
-void OS_EndPlatform(OS_State *os) {
+void OS_EndPlatform() {
 	timeEndPeriod(1);
 }
 
-void OS_Sleep(int ms) {
-	Sleep(ms);
-}
 
 i32 OS_ReadEntireFile(char *name, void *memory, i32 max_bytes_to_read) {
 
@@ -98,32 +177,41 @@ i32 OS_ReadEntireFile(char *name, void *memory, i32 max_bytes_to_read) {
 static LRESULT Win32_WindowProcedure(HWND window, UINT msg, WPARAM w, LPARAM l);
 
 
-b32 OS_PollWindow(OS_Window *window) {
+b32 OS_PollWindow(OS_WindowId id) {
+	MWINDOW *window = & g.windows[id];
+	HWND hwnd = window->window;
 
-	HWND wnd = (HWND) window->window;
+
+	window->nextdropindex = 0;
+
+
+	window->mouse_wheel.x = 0;
+	window->mouse_wheel.y = 0;
 
 	for (i32 i = 0; i < COUNTOF(window->buttons); i ++) {
 		window->buttons[i].u &= BUTTON_DOWN;
 	}
 
 	MSG msg = {};
-	while (PeekMessage(&msg, wnd, 0, 0, PM_REMOVE)) {
+	while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
 
 	RECT window_r;
-	GetClientRect(wnd, &window_r);
+	GetClientRect(hwnd, &window_r);
 
-	window->window_resolution.x = window_r.right - window_r.left;
-	window->window_resolution.y = window_r.bottom - window_r.top;
+	window->resolution.x = window_r.right - window_r.left;
+	window->resolution.y = window_r.bottom - window_r.top;
 
 	return ! window->closed;
 }
 
-OS_Window *OS_CreateWindow(OS_State *os, char *name, vec2i resolution) {
-	OS_Window *window = calloc(1, sizeof(*window));
+void OS_InstallWindow(OS_WindowId id, char *name, vec2i resolution) {
+	MWINDOW *window = &g.windows[id];
+	window->resolution = resolution;
 
+	// todo: this only has to be done once
 	{
 		WNDCLASSEXW window_class = {
 			.cbSize = sizeof(window_class),
@@ -169,20 +257,19 @@ OS_Window *OS_CreateWindow(OS_State *os, char *name, vec2i resolution) {
 		, WS_OVERLAPPEDWINDOW, window_x, window_y, size_x, size_y
 		, NULL, NULL, GetModuleHandle(0), NULL);
 
-		SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)window);
+		SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR) window);
 	}
 
 	if (IsWindow(hwnd)) {
-
+		// todo: only show the window once we've got something to render!?
 		ShowWindow(hwnd, SW_SHOW);
 
-		window->window = (OS_Window_Handle) hwnd;
+		window->window = hwnd;
 
+		DragAcceptFiles(hwnd, TRUE);
 	} else {
 		OS_ShowErrorMessage(0);
 	}
-
-	return window;
 }
 
 
@@ -205,13 +292,57 @@ void OS_ShowErrorMessage(char *msg) {
 }
 
 
-static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
+b32 OS_OpenFileDialog(char *path, char *buffer, int bufsize) {
+	b32 result = false;
 
-	OS_Window *window = (OS_Window *) GetWindowLongPtr(hwnd, GWLP_USERDATA);
+	// todo:
+	// why would it do this?
+	char temp[MAX_PATH];
+	GetCurrentDirectory(sizeof(temp),temp);
+
+	{
+		OPENFILENAMEA config = {
+			.lStructSize = sizeof(OPENFILENAMEA),
+			.hwndOwner = NULL,
+			.lpstrFile = buffer,
+			.nMaxFile = bufsize,
+			.lpstrFilter = "All\0*.*\0Text\0*.TXT\0",
+			.nFilterIndex = 1,
+			.lpstrFileTitle = NULL,
+			.nMaxFileTitle = 0,
+			.lpstrInitialDir = path,
+			.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST,
+		};
+		result = GetOpenFileNameA(&config);
+	}
+	SetCurrentDirectory(temp);
+
+	return result;
+}
+
+
+static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
+	MWINDOW *window = (MWINDOW *) GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 	LRESULT yield = FALSE;
 
 	switch(msg) {
+		case WM_DROPFILES: {
+			HDROP hDrop = (HDROP) w;
+
+			int nFiles = DragQueryFileA(hDrop, 0xFFFFFFFF, NULL, 0);
+
+			for (int i = g.dropindex; i < nFiles; i ++) {
+				// todo: should have just taken the id instead?
+				g.filedrops[i].window = window - g.windows;
+				DragQueryFileA(hDrop, i, g.filedrops[i].name, sizeof(g.filedrops[i].name));
+				printf("Droppped File: %s\n", g.filedrops[i].name);
+			}
+
+			g.dropindex += nFiles;
+
+			DragFinish(hDrop);
+		} break;
 		case WM_CLOSE: {
 			TRACELOG("Close Window");
 
@@ -233,18 +364,18 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 		} break;
 
 		case WM_SYSKEYUP: case WM_KEYUP: {
-			update_button(&window->buttons[g_kremap[w]], FALSE);
+			update_button(&window->buttons[g.key_remapper[w]], FALSE);
 		} break;
 		case WM_SYSKEYDOWN: case WM_KEYDOWN: {
-			update_button(&window->buttons[g_kremap[w]], TRUE);
+			update_button(&window->buttons[g.key_remapper[w]], TRUE);
 		} break;
 		case WM_MOUSEMOVE: {
 			window->mouse.x = LOWORD(l);
 			window->mouse.y = HIWORD(l);
 		} break;
 		case WM_MOUSEWHEEL: {
-			// window->mouse_wheel.y = GET_WHEEL_DELTA_WPARAM(w);
-			// window->mouse_wheel.y = window->mouse_wheel.y < 0 ? -1 : 1;
+			window->mouse_wheel.y = GET_WHEEL_DELTA_WPARAM(w);
+			window->mouse_wheel.y = window->mouse_wheel.y < 0 ? -1 : 1;
 		} break;
 		case WM_MOUSEHWHEEL: {
 			// window->mouse_wheel.x = HIWORD(w);

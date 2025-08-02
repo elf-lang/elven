@@ -1,0 +1,575 @@
+name := "Dayan"
+a := "I"
+b := "hate"
+c := "You"
+formatted := f"I, %{name}, Want To Tell You, That %{a} %{b} %{c}"
+elf.pf(formatted)
+#eof
+elf.change_work_dir("W:\\MicroRJ\\beatliner")
+load "main.elf"
+#eof
+
+load "main.elf"
+#eof
+
+
+elf.change_work_dir("play")
+load "physics.elf"
+#eof
+
+
+TAU ::= 6.283185307179586
+
+InitWindow("Gait", 128, 128, 3)
+
+random_color = fun() ? {
+	--> { r = elf.random() * 255, g = elf.random() * 255, b = elf.random() * 255, a = 255 }
+}
+
+DrawThickLine = fun(x0, y0, x1, y1, thick, color) ? {
+	sx := x1 - x0
+	sy := y1 - y0
+	l := sqrt(sx*sx + sy*sy)
+	dx := sx / l
+	dy := sy / l
+
+	for i = 0...l ? {
+		x := x0 + dx * i
+		y := y0 + dy * i
+		DrawCircle(x, y, thick, 1)
+	}
+}
+
+
+Bird = {
+	__new = fun() ? {
+
+		head_r := 8 + elf.random() * 4
+		body_r := 8 + elf.random() * 32
+
+		feet_r := 1 + elf.random() * 4
+
+		head_angle := TAU * 0.25 + elf.random() * TAU * 0.25
+		neck_l := body_r + 10 + elf.random() * 20
+		head_x := cos(head_angle) * neck_l
+		head_y := sin(head_angle) * neck_l
+
+		this.x = 64
+		this.y = 64
+		this.beak = { x = 0, y = 0, c = random_color() }
+		this.head = { x = head_x, y = head_y, r = head_r, c = random_color() }
+		this.body = { x = 0, y = 0, r = body_r, c = random_color() }
+		this.lfoot = { x = 0, y = 0, r = feet_r, c = random_color() }
+		this.rfoot = { x = 0, y = 0, r = feet_r, c = random_color() }
+	}
+	draw = fun() ? {
+		SetColor(this.body.c.r, this.body.c.g, this.body.c.b, this.body.c.a)
+		DrawCircle(this.x + this.body.x, this.y + this.body.y, this.body.r, 1)
+
+		// BEAK
+		SetColor(this.beak.c.r, this.beak.c.g, this.beak.c.b, this.beak.c.a)
+		DrawTriangle(
+		, this.x + this.head.x - this.head.r
+		, this.y + this.head.y + 2
+
+		, this.x + this.head.x - this.head.r - 10
+		, this.y + this.head.y - 2
+
+		, this.x + this.head.x - this.head.r
+		, this.y + this.head.y - 4)
+
+		// HEAD
+		SetColor(this.head.c.r, this.head.c.g, this.head.c.b, this.head.c.a)
+		DrawCircle(this.x + this.head.x, this.y + this.head.y, this.head.r, 1)
+
+		// NECK
+		DrawThickLine(
+		,	this.x + this.head.x
+		, 	this.y + this.head.y
+		, 	this.x + this.body.x
+		, 	this.y + this.body.y, this.head.r * 0.80)
+
+
+		// EYE
+		SetColor(255, 255, 255, 255)
+		DrawCircle(this.x + this.head.x, this.y + this.head.y, this.head.r * 0.5, 1)
+		SetColor(0, 0, 0, 255)
+		DrawLine(this.x + this.head.x - 1, this.y + this.head.y + 0, this.x + this.head.x + 2, this.y + this.head.y + 0, 1)
+		DrawLine(this.x + this.head.x + 0, this.y + this.head.y - 1, this.x + this.head.x + 0, this.y + this.head.y + 2, 1)
+
+
+		SetColor(this.lfoot.c.r, this.lfoot.c.g, this.lfoot.c.b, this.lfoot.c.a)
+		DrawCircle(this.x + this.lfoot.x, this.y + this.lfoot.y, this.lfoot.r, 1)
+
+		DrawCircle(this.x + this.rfoot.x, this.y + this.rfoot.y, this.rfoot.r, 1)
+	}
+}
+
+bird = nil
+while PollWindow() ? {
+	Clear()
+	if Button('X') & 4 ? {
+		bird = nil
+	}
+	bird ?= new Bird()
+	bird:draw()
+}
+
+
+
+#eof
+elf.change_work_dir("play")
+load "Complex.elf"
+#eof
+
+
+InitWindow("Gait", 320, 180, 3)
+
+mix = fun (t, a, b) ? {
+	--> a + t * (b - a)
+}
+
+osc = fun (t) ? {
+	--> sin(t * TAU) * 0.5 + 0.5
+}
+
+rot = fun (r, l) ? {
+	--> {
+		x = cos(r * TAU) * l,
+		y = sin(r * TAU) * l
+	}
+}
+
+t := 0
+while PollWindow() ? {
+	Clear()
+	SetColor(255, 255, 255, 255)
+	r  := 32
+	e  := { x = 320 * 0.5, y = 180 * 0.5 }
+
+	t = -0.25
+	{
+		SetColor(255, 255, 255, 128)
+		DrawCircle(e.x, e.y, r, 4)
+
+		k := mix(osc(t), 0, -0.25)
+		p := rot(k, 32)
+		px := e.x + p.x
+		py := e.y + p.y
+
+		SetColor(0, 0, 255, 255)
+		DrawLine(e.x, e.y, px, py)
+
+		SetColor(255, 0, 0, 255)
+		DrawCircle(px, py, 4, 1)
+
+		e.x = px
+		e.y = py
+	}
+
+	{
+		SetColor(255, 255, 255, 128)
+		DrawCircle(e.x, e.y, r, 4)
+
+		k := mix(osc(t), -0.25, 0)
+		p := rot(k, 32)
+		px := e.x + p.x
+		py := e.y + p.y
+
+		SetColor(0, 0, 255, 255)
+		DrawLine(e.x, e.y, px, py)
+
+		SetColor(255, 0, 0, 255)
+		DrawCircle(px, py, 4, 1)
+
+		e.x = px
+		e.y = py
+	}
+	t += 0.01
+}
+
+
+
+
+
+
+#eof
+
+elf.change_work_dir("play\\collision")
+load "main.elf"
+#eof
+
+
+InitWindow("Square", 320 * 4, 180 * 4, 1)
+LoadFont("C:\\Windows\\Fonts\\times.ttf")
+
+abs = fun(x) ? {
+	if x < 0 ? {
+		--> - x
+	}
+	--> x
+}
+
+r0 = { x = 32, y = 32, w = 16, h = 16 }
+r1 = { x = 64, y = 32, w = 32, h = 32 }
+
+
+while PollWindow() ? {
+	Clear()
+
+	mx := (Button('D') & 1) - (Button('A') & 1)
+	my := (Button('W') & 1) - (Button('S') & 1)
+
+	r0.x += mx
+	r0.y += my
+
+	overlapping := false
+
+	xd := r1.x - r0.x + (r1.w - r0.w) * 0.5
+	yd := r1.y - r0.y + (r1.h - r0.h) * 0.5
+
+	xp := abs(xd) - (r0.w + r1.w) * 0.5
+	yp := abs(yd) - (r0.h + r1.h) * 0.5
+
+	if xp < 0 && yp < 0 ? {
+		overlapping = true
+	}
+
+	SolidFill()
+	SetColor(255, 255, 255, 255)
+	if overlapping ? {
+		SetColor(255, 0, 0, 255)
+	}
+	// SetColor(0, 0, 255, 255)
+	DrawRectangle(r0.x, r0.y, r0.w, r0.h)
+	// SetColor(255, 0, 0, 255)
+	DrawRectangle(r1.x, r1.y, r1.w, r1.h)
+
+	SetColor(255, 255, 255, 255)
+	DrawText(32, 512, "What Is Love")
+}
+
+#eof
+
+
+
+#eof
+
+InitWindow("Test!", 128, 128, 4)
+
+time_start := elf.get_clock_time()
+
+trim := fun(v) ? {
+	if v < 0 ? v = 0
+	else if v > 1 ? v = 1
+	--> v
+}
+
+p := 32
+
+while PollWindow() ? {
+	Clear(0, 0, 0, 0)
+	SetColor(32, 32, 32, 255)
+
+	if Button('A') & 1 ? {
+		p -= 1
+	}
+	if Button('D') & 1 ? {
+		p += 1
+	}
+
+	for i = 0...1 ? {
+		x := p + i * (32 + 8) + i
+		w := 32 // * (0.4 + 0.6 * trim(1 - i / 4.0))
+		h := 64 // * (0.4 + 0.6 * trim(1 - i / 4.0))
+		y := 32 // 32 + 64 * 0.5 - h * 0.5
+		DrawRectangle(x, y, w, h)
+	}
+}
+
+
+
+// elf.change_work_dir("play\\graph")
+// load "main.elf"
+
+#eof
+
+
+
+// file := elf.open_file("tests\\test.json", "rb")
+// contents := elf.read_file(file)
+expr := elf.load_expr("tests\\test.json")
+
+// for name = expr:keys()[...] ? {
+	// elf.pf(name)
+// }
+
+file := elf.open_file("tests\\generated_bindings.c", "wb")
+defer elf.close_file(file)
+
+// for i = expr.defines[...] ? {
+// 	elf.fpf(file, "#define ", i.name, " ", i.value, "\n")
+// }
+
+// todo: #index
+// i := 0
+// if proto.params ? {
+// 	for param = proto.params[...] ? {
+// 		if i != 0 ? {
+// 			elf.fpf(file, ", ")
+// 		}
+// 		elf.fpf(file, param.type, " ", param.name)
+// 		i += 1
+// 	}
+// }
+
+types_and_getter_functions := {
+	{ type = "int"                 , getter = "GetInteger"  },
+	{ type = "unsigned int"        , getter = "GetInteger"  },
+	{ type = "bool"                , getter = "GetInteger"  },
+	{ type = "const char *"        , getter = "GetText"     },
+	{ type = "const unsigned char" , getter = "GetText"     },
+	{ type = "char *"              , getter = "GetText"     },
+	{ type = "float"               , getter = "GetNumber"   },
+	{ type = "double"              , getter = "GetNumber"   },
+}
+
+types_to_getter := {}
+for pair = types_and_getter_functions[...] ? {
+	types_to_getter[pair.type] = pair.getter
+}
+
+for proto = expr.functions[...] ? {
+	elf.fpf(file, "int L_", proto.name, "(elf_State *S) {\n")
+
+	elf.fpf(file, "\tint result = 0;\n")
+
+	if proto.params ? {
+		i := 0
+		for param = proto.params[...] ? {
+			elf.fpf(file, "\t", param.type, " ", param.name, " = ")
+			getter := types_to_getter[param.type] ?? "undefined"
+			elf.fpf(file, getter, "(S, ", i, ");\n")
+			i += 1
+		}
+	}
+
+	elf.fpf(file, "\t")
+	elf.fpf(file, proto.name, "(")
+	{
+		// todo: elf, use #index
+		i := 0
+		if proto.params ? {
+			for param = proto.params[...] ? {
+				if i != 0 ? {
+					elf.fpf(file, ", ")
+				}
+				elf.fpf(file, param.name)
+				i += 1
+			}
+		}
+	}
+	elf.fpf(file, ");\n")
+
+	elf.fpf(file, "\treturn result;\n")
+
+	elf.fpf(file, "}\n")
+}
+
+
+
+
+#eof
+elf.change_work_dir("play")
+load "rnd.elf"
+elf.change_work_dir("grass")
+load "main.elf"
+#eof
+
+
+N := 225
+elf.pf(6 * (N - 1) * N / 2)
+{
+	a = 0
+	for i = 0...225 ? {
+		a += 4 + 6 * i
+	}
+	elf.pf("1: ", a)
+}
+#eof
+{
+	N ::= 225
+	a = 0
+	for i = 0...N ? {
+		a += 6 * i
+	}
+	// a += 4 * N
+	k = 6 * (N - 1) * N / 2
+	elf.pf("2: ", a, ", ", k)
+}
+#eof
+
+
+
+
+
+
+
+
+
+
+#eof
+
+
+// this is the file elf looks for by default
+elf.change_work_dir("play\\graph")
+load "main.elf"
+#eof
+
+
+dot = fun(a, b) ? {
+	--> a.x * b.x + a.y * b.y
+}
+length = fun(a) {
+	--> sqrt(dot(a, a))
+}
+normalize = fun(a) ? {
+	l := length(a)
+	--> { x = a.x / l, y = a.y / l }
+}
+
+//
+// 2x + -y = 0
+// -x + 2y = 3
+//
+// x [ 2 ]  y [ -1 ] = [0]
+// x [-1 ]  y [  2 ] = [3]
+//
+a = { x =  2, y = -1 }
+b = { x = -1, y =  2 }
+s = { x =  0, y =  3 }
+
+d0 = dot(a, s)
+d1 = dot(b, s)
+
+elf.pf("dot: ", d0)
+elf.pf("dot: ", d1)
+
+#eof
+
+elf.change_work_dir("C:\\work\\MicroRJ\\leap")
+load "main.elf"
+#eof
+
+a := 0
+b := a
+c := a
+elf.pf(#getmem(a))
+elf.pf(#getmem(b))
+elf.pf(#getmem(c))
+#eof
+
+elf.pf(elf.const_expr("{0={0=1,1=2,2=3}}"))
+elf.pf(elf.const_expr("7"))
+elf.pf(elf.const_expr("7.0"))
+elf.pf(elf.const_expr("{}"))
+elf.pf(elf.const_expr("{1,2,3}"))
+elf.pf(elf.const_expr("{0=1,1=2,2=3}"))
+#eof
+b := 0 || 1
+elf.flags(1<<3)
+elf.pf("0 && b: ", 7 && b)
+#eof
+
+a := 0
+b := 0
+c := 0
+elf.pf("#getmem(a): ", #getmem(a))
+elf.pf("#getmem(b): ", #getmem(b))
+elf.pf("#getmem(c): ", #getmem(c))
+elf.pf("#getmem(1): ", #getmem(1))
+elf.pf("#getmem(0 || 1): ", #getmem(0 || 1))
+
+d := 0 || 1
+elf.pf("#getmem(d): ", #getmem(d))
+elf.pf("#getexpr(d): ", #getexpr(d))
+
+
+elf.flags(1<<3)
+or01 := 0 || 1
+
+elf.pf("#getmem(or01): ", #getmem(or01))
+elf.pf("false && or01: ", false && or01)
+if false && or01 ? {
+	elf.pf("ERROR!")
+}
+
+#eof
+
+test_and = fun(a,b) ? {
+	if a ? { if b ? { --> true } }
+	--> false
+}
+test_or = fun(a,b) ? {
+	if a ? { --> true }
+	if b ? { --> true }
+	--> false
+}
+operators = {{"&&",test_and},{"||",test_or}}
+
+generate_test_expr = fun(a,b,level) ? {
+	if level > 3 ? {
+		--> a
+	}
+	text := "(" + generate_test_expr(a,0,level+1) + " " + operators:idx(0,0) + " " + generate_test_expr(b,1,level+1) + ")"
+
+	--> text
+}
+
+text := generate_test_expr(1,0,0)
+elf.pf(text)
+
+#eof
+
+
+table = {}
+for i = 0...10 ? {
+	table[i] = i
+}
+elf.pf(table)
+for i = 0...10 ? {
+	elf.pf("deleting: ", i)
+	elf.pf("before: ")
+	elf.pf(table:keys())
+	table:delete(i)
+	elf.pf("after: ")
+	elf.pf(table:keys())
+}
+#eof
+
+test_table := {
+	__new = fun() ? {}
+}
+xxx := test_table.__new
+elf.flags(1<<3)
+xxx("HERE")
+
+#eof
+elf.change_work_dir("play")
+load "collision.elf"
+#eof
+elf.flags(1<<3)
+expr ::= elf.load_expr("test_expr.elf")
+elf.pf(expr)
+#eof
+load "worm.elf"
+#eof
+
+
+load "tests\\overload.elf"
+#eof
+load "tests\\if.elf"
+load "tests\\fun.elf"
+load "tests\\loops.elf"
+load "tests\\prec.elf"
+

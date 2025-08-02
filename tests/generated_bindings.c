@@ -1214,7 +1214,7 @@ int L_UpdateCameraPro(elf_State *S) {
 int L_SetShapesTexture(elf_State *S) {
 	int result = 0;
 	Texture2D texture = undefined(S, 0);
-	Rectangle source = undefined(S, 1);
+	Rect source = undefined(S, 1);
 	SetShapesTexture(texture, source);
 	return result;
 }
@@ -1417,14 +1417,14 @@ int L_DrawRectangleV(elf_State *S) {
 }
 int L_DrawRectangleRec(elf_State *S) {
 	int result = 0;
-	Rectangle rec = undefined(S, 0);
+	Rect rec = undefined(S, 0);
 	Color color = undefined(S, 1);
 	DrawRectangleRec(rec, color);
 	return result;
 }
 int L_DrawRectanglePro(elf_State *S) {
 	int result = 0;
-	Rectangle rec = undefined(S, 0);
+	Rect rec = undefined(S, 0);
 	Vector2 origin = undefined(S, 1);
 	float rotation = GetNumber(S, 2);
 	Color color = undefined(S, 3);
@@ -1455,7 +1455,7 @@ int L_DrawRectangleGradientH(elf_State *S) {
 }
 int L_DrawRectangleGradientEx(elf_State *S) {
 	int result = 0;
-	Rectangle rec = undefined(S, 0);
+	Rect rec = undefined(S, 0);
 	Color col1 = undefined(S, 1);
 	Color col2 = undefined(S, 2);
 	Color col3 = undefined(S, 3);
@@ -1475,7 +1475,7 @@ int L_DrawRectangleLines(elf_State *S) {
 }
 int L_DrawRectangleLinesEx(elf_State *S) {
 	int result = 0;
-	Rectangle rec = undefined(S, 0);
+	Rect rec = undefined(S, 0);
 	float lineThick = GetNumber(S, 1);
 	Color color = undefined(S, 2);
 	DrawRectangleLinesEx(rec, lineThick, color);
@@ -1483,7 +1483,7 @@ int L_DrawRectangleLinesEx(elf_State *S) {
 }
 int L_DrawRectangleRounded(elf_State *S) {
 	int result = 0;
-	Rectangle rec = undefined(S, 0);
+	Rect rec = undefined(S, 0);
 	float roundness = GetNumber(S, 1);
 	int segments = GetInteger(S, 2);
 	Color color = undefined(S, 3);
@@ -1492,7 +1492,7 @@ int L_DrawRectangleRounded(elf_State *S) {
 }
 int L_DrawRectangleRoundedLines(elf_State *S) {
 	int result = 0;
-	Rectangle rec = undefined(S, 0);
+	Rect rec = undefined(S, 0);
 	float roundness = GetNumber(S, 1);
 	int segments = GetInteger(S, 2);
 	Color color = undefined(S, 3);
@@ -1501,7 +1501,7 @@ int L_DrawRectangleRoundedLines(elf_State *S) {
 }
 int L_DrawRectangleRoundedLinesEx(elf_State *S) {
 	int result = 0;
-	Rectangle rec = undefined(S, 0);
+	Rect rec = undefined(S, 0);
 	float roundness = GetNumber(S, 1);
 	int segments = GetInteger(S, 2);
 	float lineThick = GetNumber(S, 3);
@@ -1720,8 +1720,8 @@ int L_GetSplinePointBezierCubic(elf_State *S) {
 }
 int L_CheckCollisionRecs(elf_State *S) {
 	int result = 0;
-	Rectangle rec1 = undefined(S, 0);
-	Rectangle rec2 = undefined(S, 1);
+	Rect rec1 = undefined(S, 0);
+	Rect rec2 = undefined(S, 1);
 	CheckCollisionRecs(rec1, rec2);
 	return result;
 }
@@ -1738,14 +1738,14 @@ int L_CheckCollisionCircleRec(elf_State *S) {
 	int result = 0;
 	Vector2 center = undefined(S, 0);
 	float radius = GetNumber(S, 1);
-	Rectangle rec = undefined(S, 2);
+	Rect rec = undefined(S, 2);
 	CheckCollisionCircleRec(center, radius, rec);
 	return result;
 }
 int L_CheckCollisionPointRec(elf_State *S) {
 	int result = 0;
 	Vector2 point = undefined(S, 0);
-	Rectangle rec = undefined(S, 1);
+	Rect rec = undefined(S, 1);
 	CheckCollisionPointRec(point, rec);
 	return result;
 }
@@ -1795,8 +1795,8 @@ int L_CheckCollisionPointLine(elf_State *S) {
 }
 int L_GetCollisionRec(elf_State *S) {
 	int result = 0;
-	Rectangle rec1 = undefined(S, 0);
-	Rectangle rec2 = undefined(S, 1);
+	Rect rec1 = undefined(S, 0);
+	Rect rec2 = undefined(S, 1);
 	GetCollisionRec(rec1, rec2);
 	return result;
 }
@@ -1985,7 +1985,7 @@ int L_ImageCopy(elf_State *S) {
 int L_ImageFromImage(elf_State *S) {
 	int result = 0;
 	Image image = undefined(S, 0);
-	Rectangle rec = undefined(S, 1);
+	Rect rec = undefined(S, 1);
 	ImageFromImage(image, rec);
 	return result;
 }
@@ -2024,7 +2024,7 @@ int L_ImageToPOT(elf_State *S) {
 int L_ImageCrop(elf_State *S) {
 	int result = 0;
 	Image * image = undefined(S, 0);
-	Rectangle crop = undefined(S, 1);
+	Rect crop = undefined(S, 1);
 	ImageCrop(image, crop);
 	return result;
 }
@@ -2332,7 +2332,7 @@ int L_ImageDrawRectangleV(elf_State *S) {
 int L_ImageDrawRectangleRec(elf_State *S) {
 	int result = 0;
 	Image * dst = undefined(S, 0);
-	Rectangle rec = undefined(S, 1);
+	Rect rec = undefined(S, 1);
 	Color color = undefined(S, 2);
 	ImageDrawRectangleRec(dst, rec, color);
 	return result;
@@ -2340,7 +2340,7 @@ int L_ImageDrawRectangleRec(elf_State *S) {
 int L_ImageDrawRectangleLines(elf_State *S) {
 	int result = 0;
 	Image * dst = undefined(S, 0);
-	Rectangle rec = undefined(S, 1);
+	Rect rec = undefined(S, 1);
 	int thick = GetInteger(S, 2);
 	Color color = undefined(S, 3);
 	ImageDrawRectangleLines(dst, rec, thick, color);
@@ -2350,8 +2350,8 @@ int L_ImageDraw(elf_State *S) {
 	int result = 0;
 	Image * dst = undefined(S, 0);
 	Image src = undefined(S, 1);
-	Rectangle srcRec = undefined(S, 2);
-	Rectangle dstRec = undefined(S, 3);
+	Rect srcRec = undefined(S, 2);
+	Rect dstRec = undefined(S, 3);
 	Color tint = undefined(S, 4);
 	ImageDraw(dst, src, srcRec, dstRec, tint);
 	return result;
@@ -2439,7 +2439,7 @@ int L_UpdateTexture(elf_State *S) {
 int L_UpdateTextureRec(elf_State *S) {
 	int result = 0;
 	Texture2D texture = undefined(S, 0);
-	Rectangle rec = undefined(S, 1);
+	Rect rec = undefined(S, 1);
 	const void * pixels = undefined(S, 2);
 	UpdateTextureRec(texture, rec, pixels);
 	return result;
@@ -2494,7 +2494,7 @@ int L_DrawTextureEx(elf_State *S) {
 int L_DrawTextureRec(elf_State *S) {
 	int result = 0;
 	Texture2D texture = undefined(S, 0);
-	Rectangle source = undefined(S, 1);
+	Rect source = undefined(S, 1);
 	Vector2 position = undefined(S, 2);
 	Color tint = undefined(S, 3);
 	DrawTextureRec(texture, source, position, tint);
@@ -2503,8 +2503,8 @@ int L_DrawTextureRec(elf_State *S) {
 int L_DrawTexturePro(elf_State *S) {
 	int result = 0;
 	Texture2D texture = undefined(S, 0);
-	Rectangle source = undefined(S, 1);
-	Rectangle dest = undefined(S, 2);
+	Rect source = undefined(S, 1);
+	Rect dest = undefined(S, 2);
 	Vector2 origin = undefined(S, 3);
 	float rotation = GetNumber(S, 4);
 	Color tint = undefined(S, 5);
@@ -2515,7 +2515,7 @@ int L_DrawTextureNPatch(elf_State *S) {
 	int result = 0;
 	Texture2D texture = undefined(S, 0);
 	NPatchInfo nPatchInfo = undefined(S, 1);
-	Rectangle dest = undefined(S, 2);
+	Rect dest = undefined(S, 2);
 	Vector2 origin = undefined(S, 3);
 	float rotation = GetNumber(S, 4);
 	Color tint = undefined(S, 5);
@@ -2692,7 +2692,7 @@ int L_LoadFontData(elf_State *S) {
 int L_GenImageFontAtlas(elf_State *S) {
 	int result = 0;
 	const GlyphInfo * glyphs = undefined(S, 0);
-	Rectangle ** glyphRecs = undefined(S, 1);
+	Rect ** glyphRecs = undefined(S, 1);
 	int glyphCount = GetInteger(S, 2);
 	int fontSize = GetInteger(S, 3);
 	int padding = GetInteger(S, 4);
@@ -3283,7 +3283,7 @@ int L_DrawBillboardRec(elf_State *S) {
 	int result = 0;
 	Camera camera = undefined(S, 0);
 	Texture2D texture = undefined(S, 1);
-	Rectangle source = undefined(S, 2);
+	Rect source = undefined(S, 2);
 	Vector3 position = undefined(S, 3);
 	Vector2 size = undefined(S, 4);
 	Color tint = undefined(S, 5);
@@ -3294,7 +3294,7 @@ int L_DrawBillboardPro(elf_State *S) {
 	int result = 0;
 	Camera camera = undefined(S, 0);
 	Texture2D texture = undefined(S, 1);
-	Rectangle source = undefined(S, 2);
+	Rect source = undefined(S, 2);
 	Vector3 position = undefined(S, 3);
 	Vector3 up = undefined(S, 4);
 	Vector2 size = undefined(S, 5);

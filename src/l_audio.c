@@ -5,63 +5,110 @@
 // #include "include/elf.h"
 // #include "elements.h"
 
+#define WIN32_LEAN_AND_MEAN
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
 
 #undef PlaySound
 
+// todo: stop using mini audio's bullshit
+typedef struct MSOUND {
+	ma_sound sound; // must be first field!
+	b32      loaded;
+	// todo: load the sounds as needed!
+	// char     path[256];
+} MSOUND;
 
-enum {
-	VOICES_CAPACITY = 32,
-	SOUNDS_CAPACITY = 256,
-};
+typedef struct MVOICE {
+	ma_sound sound; // must be first field!
+	b32      id;
+} MVOICE;
+
 
 global ma_engine g_engine;
-global ma_sound  g_voices[VOICES_CAPACITY];
-global ma_sound  g_sounds[SOUNDS_CAPACITY];
 
-void PlaySound(int id) {
-	ma_sound *sound = &g_sounds[id];
+enum {
+	VOICES_CAPACITY = 64,
+	SOUNDS_CAPACITY = 2048,
+};
 
-	ma_sound *to_play = 0;
-	i32 open_voice_slot = -1;
+global MVOICE  g_voices[VOICES_CAPACITY];
+global MSOUND  g_sounds[SOUNDS_CAPACITY];
 
-	for (i32 i = 0; i < VOICES_CAPACITY; i ++) {
-		ma_sound *voice = & g_voices[i];
-		if (voice->pDataSource) {
-			if (ma_sound_at_end(voice)) {
-				to_play = voice;
+int GetNumVoices() {
+	return VOICES_CAPACITY;
+}
+
+int GetVoiceSound(int voiceid) {
+	MVOICE *voice = & g_voices[voiceid];
+	int soundid = -1;
+	if (voice->sound.pDataSource != 0) {
+		if (ma_sound_is_playing(&voice->sound)) {
+			soundid = voice->id;
+		}
+	}
+	return soundid;
+}
+
+void StopVoice(int id) {
+	MVOICE *voice = & g_voices[id];
+	ma_sound_stop(&voice->sound);
+}
+
+int PlaySound(int id) {
+	i32 voiceid = -1;
+
+	MSOUND *msnd = &g_sounds[id];
+
+	if (msnd->loaded) {
+		ma_sound *sound = (ma_sound *) msnd;
+
+		for (i32 i = 0; i < VOICES_CAPACITY; i ++) {
+			MVOICE *voice = & g_voices[i];
+
+			if (!voice->sound.pDataSource) {
+
+				ma_result error = ma_sound_init_copy(&g_engine, sound, 0, 0, &voice->sound);
+				ASSERT(error == MA_SUCCESS);
+
+				ma_sound_start(&voice->sound);
+
+				// TRACELOG("New Sound: %i", i);
+				voice->id = id;
+				voiceid = i;
+
 				break;
+			} else {
+
+				if (ma_sound_at_end(&voice->sound)) {
+
+					if (id == voice->id) {
+						ma_sound_start(&voice->sound);
+						// TRACELOG("Restart Sound: %i", i);
+					} else {
+
+						ma_sound_uninit(&voice->sound);
+
+						ma_result error = ma_sound_init_copy(&g_engine, sound, 0, 0, &voice->sound);
+						ASSERT(error == MA_SUCCESS);
+
+						ma_sound_start(&voice->sound);
+
+						// TRACELOG("Reuse Sound: %i", i);
+					}
+
+					voice->id = id;
+					voiceid = i;
+					break;
+				}
 			}
-		} else {
-			open_voice_slot = i;
-			break;
 		}
 	}
 
-	if (to_play) {
-		//
-		// todo: only uninit if the sound that we found isn't
-		// the same one we're trying to play
-		//
-		ma_sound_uninit(to_play);
-
-		ma_result result = ma_sound_init_copy(&g_engine, sound, 0, 0, to_play);
-		ASSERT(result == MA_SUCCESS);
-
-	} else if (open_voice_slot != -1) {
-		to_play = & g_voices[open_voice_slot];
-		ma_result result = ma_sound_init_copy(&g_engine, sound, 0, 0, to_play);
-		ASSERT(result == MA_SUCCESS);
-	} else {
-		TRACELOG("Too Many Sounds Playing Simultaneously");
-	}
-
-	if (to_play) {
-		ma_sound_set_pitch(to_play, 1.0);
-		ma_sound_start(to_play);
-	}
+	esc:
+	return voiceid;
+	// ma_sound_set_pitch(to_play, 1.0);
 }
 
 static void AudioDeviceDataCallback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
@@ -72,31 +119,10 @@ static void AudioDeviceDataCallback(ma_device* pDevice, void* pOutput, const voi
 	ma_engine_read_pcm_frames(pEngine, pOutput, frameCount, NULL);
 }
 
-ELF_FUNCTION(L_InitAudio) {
+int A_InitAudio() {
 	ma_engine_config config = ma_engine_config_init();
 	config.dataCallback = AudioDeviceDataCallback;
 	config.pProcessUserData = 0;
-
 	ma_result error = ma_engine_init(NULL, &g_engine);
-	elf_push_int(S, error == MA_SUCCESS);
-	return 1;
-}
-
-ELF_FUNCTION(L_LoadSound) {
-
-	int id = elf_get_int(S, 0);
-	char *name = elf_get_text(S, 1);
-
-	ma_sound *sound = &g_sounds[id];
-
-	ma_result error = ma_sound_init_from_file(&g_engine, name, 0, NULL, NULL, sound);
-	elf_push_int(S, error == MA_SUCCESS);
-
-	return 1;
-}
-
-ELF_FUNCTION(L_PlaySound) {
-	i32 id = elf_get_int(S, 0);
-	PlaySound(id);
-	return 0;
+	return error == MA_SUCCESS;
 }

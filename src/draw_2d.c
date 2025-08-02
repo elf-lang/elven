@@ -1,17 +1,171 @@
 #include "elements.h"
 #include "platform.h"
-#include "renderer.h"
 #include "draw_2d.h"
+#include "renderer.h"
 
 // sin,cos
 #include <math.h>
 
-global D_DrawBrush g;
+struct {
 
-static void EndDrawCall() {
+	Matrix transform;
+	Matrix matrixstack[16];
+	int    matrixindex;
+
+	// todo: remove!
+	vec2       center;
+	vec2       offset;
+	vec2        scale;
+
+	Color     color_0;
+	Color     color_1;
+	Color     color_2;
+	Color     color_3;
+	int       font;
+	int       font_size;
+	vec2i     fliponce;
+	vec2      texture_inv_resolution;
+	// quad texture coordinates already pre-multiplied
+	struct { f32 u0, v0, u1, v1; } region;
+
+	struct { Rect dst; iRect src; } quads[4096];
+	int                            nquads;
+} g;
+
+
+static Matrix ScaleMatrix(vec3 xyz) {
+	Matrix c = {
+		xyz.x,     0,     0, 0,
+		    0, xyz.y,     0, 0,
+		    0,     0, xyz.z, 0,
+		    0,     0,     0, 1,
+	};
+	return c;
+}
+static Matrix RotationMatrix(f32 r) {
+	f32 co = cosf(r);
+	f32 si = sinf(r);
+	Matrix c = {
+		co, si, 0, 0,
+		si, co, 0, 0,
+		0,   0, 1, 0,
+		0,   0, 0, 1,
+	};
+	return c;
+}
+static Matrix MultiplyMatrices(Matrix a, Matrix b) {
+	Matrix c;
+	for (int i = 0; i < 4; i ++) {
+		for (int j = 0; j < 4; j ++) {
+			c.rows[i].xyzw[j] =
+			a.rows[i].xyzw[0] * b.rows[0].xyzw[j] +
+			a.rows[i].xyzw[1] * b.rows[1].xyzw[j] +
+			a.rows[i].xyzw[2] * b.rows[2].xyzw[j] +
+			a.rows[i].xyzw[3] * b.rows[3].xyzw[j];
+		}
+	}
+	return c;
+}
+static vec4 MultiplyMatrixVector(Matrix a, vec4 b) {
+	vec4 c;
+	for (int i = 0; i < 4; i ++) {
+		c.xyzw[i] =
+		b.xyzw[i] * a.rows[i].xyzw[0] +
+		b.xyzw[i] * a.rows[i].xyzw[1] +
+		b.xyzw[i] * a.rows[i].xyzw[2] +
+		b.xyzw[i] * a.rows[i].xyzw[3];
+	}
+	return c;
+}
+
+void D_LoadIdentity() {
+	Matrix id = {
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1,
+	};
+	g.transform = id;
+}
+
+
+void D_PushMatrix() {
+	g.matrixstack[g.matrixindex ++] = g.transform;
+}
+
+void D_PopMatrix() {
+	g.transform = g.matrixstack[-- g.matrixindex];
+}
+
+
+
+
+static void ApplyTransform(f32 x, f32 y, R_Vertex3 *vertices, int num) {
+	for (int i = 0; i < num; i ++) {
+		vec4 position = { vertices[i].position.x, vertices[i].position.y, vertices[i].position.z, 1.0 };
+		position = MultiplyMatrixVector(g.transform, position);
+		vertices[i].position.x = position.x + x;
+		vertices[i].position.y = position.y + y;
+		vertices[i].position.z = position.z;
+
+		//	vertices[i].position.x *= g.scale.x;
+		//	vertices[i].position.y *= g.scale.y;
+		//	vertices[i].position.x += g.offset.x + x;
+		//	vertices[i].position.y += g.offset.y + y;
+	}
+}
+
+static void EndDrawCall(f32 x, f32 y, R_Vertex3 *vertices, int num) {
+	ApplyTransform(x, y, vertices, num);
 	g.fliponce.x = 0;
 	g.fliponce.y = 0;
 }
+
+void D_BeginQuads(R_Renderer *rend) {
+	g.nquads = 0;
+}
+
+void D_PushQuad(R_Renderer *rend, Rect dst, iRect src) {
+	g.quads[g.nquads].dst = dst;
+	g.quads[g.nquads].src = src;
+	g.nquads += 1;
+}
+
+void D_EndQuads(R_Renderer *rend) {
+	// god-tier optimization
+	if (g.nquads <= 0) return;
+
+	R_SetTopology(rend, TOPO_TRIANGLES);
+
+	R_Vertex3 *vertices = R_QueueVertices(rend, g.nquads * 6);
+	R_Vertex3 *cursor = vertices;
+
+	for (int i = 0; i < g.nquads; i ++) {
+		iRect src = g.quads[i].src;
+		Rect dst = g.quads[i].dst;
+
+		vec3 r_p0 = {     0,     0, 0 };
+		vec3 r_p1 = {     0, dst.h, 0 };
+		vec3 r_p2 = { dst.w, dst.h, 0 };
+		vec3 r_p3 = { dst.w,     0, 0 };
+
+		f32 u0 = src.x * g.texture_inv_resolution.x;
+		f32 v0 = src.y * g.texture_inv_resolution.y;
+		f32 u1 = (src.x + src.w) * g.texture_inv_resolution.x;
+		f32 v1 = (src.y + src.h) * g.texture_inv_resolution.y;
+
+		cursor[0]=(R_Vertex3){r_p0,{u0,v1},g.color_0};
+		cursor[1]=(R_Vertex3){r_p1,{u0,v0},g.color_1};
+		cursor[2]=(R_Vertex3){r_p2,{u1,v0},g.color_2};
+		cursor[3]=(R_Vertex3){r_p0,{u0,v1},g.color_0};
+		cursor[4]=(R_Vertex3){r_p2,{u1,v0},g.color_2};
+		cursor[5]=(R_Vertex3){r_p3,{u1,v1},g.color_3};
+		ApplyTransform(dst.x, dst.y, cursor, 6);
+		cursor += 6;
+	}
+
+}
+
 
 int D_GetFont() { return g.font; }
 void D_SetFont(int font) { g.font = font; }
@@ -22,8 +176,6 @@ void D_EndDrawing(R_Renderer *rend) {
 }
 
 void D_BeginDrawing(R_Renderer *rend) {
-
-
 	R_BeginFrame(rend);
 
 	// todo: just have a default brush
@@ -39,26 +191,13 @@ void D_BeginDrawing(R_Renderer *rend) {
 	R_SetTopology(rend, TOPO_TRIANGLES);
 	R_SetBlender(rend, BLENDER_ALPHA_BLEND);
 
+
+	D_LoadIdentity();
 }
 
 
 void D_Clear(R_Renderer *rend, Color color) {
 	R_ClearSurface(rend, color);
-}
-
-
-void D_SetTexture(R_Renderer *rend, TextureId id) {
-
-	R_SetTexture(rend, id);
-
-	vec2i resolution = R_GetTextureInfo(rend, id);
-	g.region.x0 = 0;
-	g.region.y0 = 0;
-	g.region.x1 = resolution.x;
-	g.region.y1 = resolution.y;
-
-	g.texture_inv_resolution.x = 1.0 / resolution.x;
-	g.texture_inv_resolution.y = 1.0 / resolution.y;
 }
 
 void D_SolidFill(R_Renderer *rend) {
@@ -80,9 +219,19 @@ void D_SetColor(Color color) {
 }
 
 void D_SetScale(f32 x, f32 y) {
-	g.scale.x = x;
-	g.scale.y = y;
+	g.transform = MultiplyMatrices(g.transform, ScaleMatrix((vec3){ x, y, 1 }));
 }
+
+vec3 D_GetScale() {
+	return (vec3) { g.transform.rows[0].x, g.transform.rows[1].y, g.transform.rows[2].z };
+}
+
+// no need for a full matrix multiply right...
+void D_Translate(f32 x, f32 y) {
+	g.transform.rows[0].w += x;
+	g.transform.rows[1].w += y;
+}
+
 
 void D_SetOffset(f32 x, f32 y) {
 	g.offset.x = x;
@@ -99,53 +248,53 @@ void D_SetFlipOnce(int x, int y) {
 	g.fliponce.y = y;
 }
 
-void D_SetRegion(i32 x0, i32 y0, i32 x1, i32 y1) {
-	g.region.x0 = x0;
-	g.region.y0 = y0;
-	g.region.x1 = x1;
-	g.region.y1 = y1;
+void D_SetTexture(R_Renderer *rend, TextureId id) {
+	R_SetTexture(rend, id);
+
+	vec2i resolution = R_GetTextureInfo(rend, id);
+
+	g.texture_inv_resolution.x = 1.0 / resolution.x;
+	g.texture_inv_resolution.y = 1.0 / resolution.y;
+
+	g.region.u0 = 0;
+	g.region.v0 = 0;
+	g.region.u1 = 1;
+	g.region.v1 = 1;
 }
 
-void D_SetRotation(f32 x) {
-	g.rotation = x;
+void D_SetRegion(i32 x0, i32 y0, i32 x1, i32 y1) {
+	g.region.u0 = x0 * g.texture_inv_resolution.x;
+	g.region.v0 = y0 * g.texture_inv_resolution.y;
+	g.region.u1 = x1 * g.texture_inv_resolution.x;
+	g.region.v1 = y1 * g.texture_inv_resolution.y;
+}
+
+
+void D_SetRotation(f32 radians) {
+	// todo: set transform directly here
+	g.transform = MultiplyMatrices(g.transform, RotationMatrix(radians));
 }
 
 void D_DrawRectangle(R_Renderer *rend, f32 x, f32 y, f32 w, f32 h) {
-
 	R_SetTopology(rend, TOPO_TRIANGLES);
 
-	x += g.offset.x;
-	y += g.offset.y;
-
-	vec3 r_p0 = { x + 0, y + 0 };
-	vec3 r_p1 = { x + 0, y + h };
-	vec3 r_p2 = { x + w, y + h };
-	vec3 r_p3 = { x + w, y + 0 };
-
-	//
-	// todo: get this from the currently bound sampling window,
-	// also, whenever this is set, allow for flipping of the
-	// sampling region too.
-	//
-	r_i32 src_r = {0, 0, 1, 1};
-	f32 u0 = g.region.x0 * g.texture_inv_resolution.x;
-	f32 v0 = g.region.y0 * g.texture_inv_resolution.y;
-	f32 u1 = g.region.x1 * g.texture_inv_resolution.x;
-	f32 v1 = g.region.y1 * g.texture_inv_resolution.y;
+	f32 u0 = g.region.u0;
+	f32 v0 = g.region.v0;
+	f32 u1 = g.region.u1;
+	f32 v1 = g.region.v1;
 
 	f32 temp;
 	if (g.fliponce.x) { temp = u0; u0 = u1, u1 = temp; }
 	if (g.fliponce.y) { temp = v0; v0 = v1, v1 = temp; }
 
 	R_Vertex3 *vertices = R_QueueVertices(rend, 6);
-	vertices[0]=(R_Vertex3){r_p0,{u0,v1},g.color_0};
-	vertices[1]=(R_Vertex3){r_p1,{u0,v0},g.color_1};
-	vertices[2]=(R_Vertex3){r_p2,{u1,v0},g.color_2};
-	vertices[3]=(R_Vertex3){r_p0,{u0,v1},g.color_0};
-	vertices[4]=(R_Vertex3){r_p2,{u1,v0},g.color_2};
-	vertices[5]=(R_Vertex3){r_p3,{u1,v1},g.color_3};
-
-	EndDrawCall();
+	vertices[0]=(R_Vertex3){{ 0, 0 },{ u0, v1 }, g.color_0 };
+	vertices[1]=(R_Vertex3){{ 0, h },{ u0, v0 }, g.color_1 };
+	vertices[2]=(R_Vertex3){{ w, h },{ u1, v0 }, g.color_2 };
+	vertices[3]=(R_Vertex3){{ 0, 0 },{ u0, v1 }, g.color_0 };
+	vertices[4]=(R_Vertex3){{ w, h },{ u1, v0 }, g.color_2 };
+	vertices[5]=(R_Vertex3){{ w, 0 },{ u1, v1 }, g.color_3 };
+	EndDrawCall(x, y, vertices, 6);
 }
 
 // todo: circle quality should be a brush param, who the

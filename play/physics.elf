@@ -4,8 +4,8 @@ particles := {}
 while PollWindow() ? {
 	Clear()
 
-	mx := GetCursorX() * 256
-	my := GetCursorY() * 256
+	mx := GetMouseX() * 256
+	my := GetMouseY() * 256
 
 	if Button(' ') & 4 ? {
 		particles:add({

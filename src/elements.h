@@ -89,12 +89,10 @@ typedef union {
 typedef union {
 	struct{ f32 x, y, z, w; };
 	struct{ f32 r, g, b, a; };
-	f32 xyzw[4];
-	f32 rgba[4];
-	struct{
-		vec2 xy;
-		vec2 zw;
-	};
+	f32  xyzw[4];
+	f32  rgba[4];
+	vec3 xyz;
+	struct { vec2 xy, zw; };
 } vec4;
 
 typedef union {
@@ -107,21 +105,15 @@ typedef union {
 
 typedef vec4_u8 Color;
 
-typedef struct {
-	union{
-		vec2i xy;
-		struct{i32 x,y;};
-	};
-	union{
-		struct{i32 size_x,size_y;};
-		struct{vec2i size;};
-		struct{i32 w,h;};
-	};
-} r_i32;
+typedef union {
+	struct { vec2i xy, wh; };
+	struct { i32 x, y, w, h; };
+} iRect;
 
-typedef struct {
-	f32 x, y, w, h;
-} r_f32;
+typedef union {
+	struct { vec2 xy, wh; };
+	struct { f32 x, y, w, h; };
+} Rect;
 
 #define vec2(x,y) (vec2){(x),(y)}
 #define vec2_add(a,b) ((vec2){(a).x+(b).x,(a).y+(b).y})

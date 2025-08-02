@@ -44,7 +44,7 @@ static int package_pipe(elf_State *S, FILE *file_, int pos, int size, void *data
 }
 
 int lib_package_get_info(elf_State *S) {
-	char *name = elf_get_text(S,0);
+	char *name = elf_getargtext(S,0);
 	elf_Table *info = elf_new_table(S);
 
 	FILE *pack = fopen(name,"rb");
@@ -79,7 +79,7 @@ int lib_package_create(elf_State *S) {
 	char *name;
 
 
-	name = elf_get_text(S,0);
+	name = elf_getargtext(S,0);
 	if (!name) {
 		elf_debug_log("first argument should be name of package file");
 		goto esc;

@@ -1,5 +1,21 @@
--- elven.c: make so that we can actually pass in
-the file name in the command line!
+-- elven.c: a lot of the functions will now rely on the stack,
+but we don't necessarily want the push and pop stuff happening
+all the time because it introduces uncertainty and noise
+instead use stack ids for as many as possible
+
+
+-- elven.c: figure out why we still ASSERT when
+the file isn't found on exec, we should handle it gracefully
+
+-- core.c: group all the very small utilities into one file
+
+-- elf.c: we need some sort of way to define symbols
+statically, to make things more convenient and robust.
+
+-- core.c: re-enable atomizer and instead of using the
+builtin table use a faster dedicated data structure
+
+-- lib_*.c: keep cleaning up the builtin libs
 
 -- table.c, lib_table.c: a good compressed binary
 exporter
@@ -9,8 +25,10 @@ once the string is created, but what if we
 generated them once the hash for a string was
 requested instead?
 
+-- [DONE] elven.c: make so that we can actually pass in
+the file name in the command line!
 
---	core.c freaking break is broken? (this might have been fixed or had
+--	core.c is "break" broken? (this might have been fixed or had
 something to do with not understing how for loops work)
 
 -- core.c should the signature of the function elf
@@ -29,7 +47,8 @@ there's some sort of bug with it...
 
 -- parse.c: introduce constant entitites and
 make it so that closures don't capture these.
-
+	Ok, but there's no way around this, like what would
+be the alternative?
 
 -- parse.c & gen.c: the parser should be the
 one adding the 'this' args.
@@ -42,32 +61,30 @@ now every piece of code we write will have
 to take it into account, should we instead
 have a separate flag internal to the table?
 
--- table.c: we're in dire need of a proper
-data structures, will we have arrays or and maps
-or associative arrays?
+-- table.c: is it a good data structure?
 
-++ parse.c: parse a table literal is needed ASAP!
+-- core.c: make iton and ntoi intrinsic!
+-- table.c: sorting!
+
+-- [DONE] parse.c: parse a table literal is needed ASAP!
 call it, load table or something.
 
--- parse.c: and and or expressions
+-- [NOT DOING IT] parse.c: and and or expressions
 if a == a or b or c ? {
 }
 
--- alloc.c: can now be removed, it's only
+-- [DONE] alloc.c: can now be removed, it's only
 ever used for doing temporary thread allocations,
 and that can be its own thing without need the
 allocator construct at all
 
--- elf-aux.c: can be completely removed...
+-- [DONE] elf-aux.c: can be completely removed...
 it's just a bunch of code for printing stuff, getting program
 info, I think it can be put on core.c, the other line information
 stuff can be... idk
 
--- error.h: remove
+-- [DONE] error.h: remove
 
--- core.c: make iton and ntoi intrinsic!
-
--- table.c: sorting!
 
 
 

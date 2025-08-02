@@ -1,5 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "include/elf.h"
-#include "src/core/r_core.h"
 
 // <3
 #define STB_IMAGE_IMPLEMENTATION
@@ -13,35 +13,41 @@
 
 #include "elements.h"
 #include "platform.h"
+#include "draw_2d.h"
 #include "renderer.h"
 
 #include "jam.h"
 
-#include "draw_2d.h"
 #include "fonts.h"
 
 #include "jam.c"
-
-OS_State g_os;
 
 #include "l_audio.c"
 #include "lib.c"
 
 
-int main() {
-	OS_InitPlatform(&g_os);
+// todo: convert command line arguments into real arguments
+int main(int nargs, char **args) {
 
-	jam_State jam = {};
-	elf_init(&jam.R);
-	elf_State *S = & jam.R;
+	char *name = "main.elf";
 
-	// elf_gc_state(&jam.R, ELF_GC_PAUSED);
-	elf_push_globals(S);
-	for (int i = 0; i < COUNTOF(g_lib); i ++) {
-		elf_push_string(S, g_lib[i].name);
-		elf_push_function(S, g_lib[i].function);
-		elf_table_set(S);
+	// todo: proper parser for this!
+	if (nargs >= 2) {
+		name = args[1];
 	}
 
-	elf_exec_file(&jam.R, "launch.elf", 0, 0);
+	OS_InitPlatform();
+	elf_State *inter = elf_new();
+
+	elf_push_globals(inter);
+	for (int i = 0; i < COUNTOF(g_lib); i ++) {
+		elf_push_string(inter, g_lib[i].name);
+		elf_push_function(inter, g_lib[i].function);
+		elf_table_set(inter);
+	}
+
+	// todo: expect one return for the exit code
+	elf_push_string(inter, name);
+	elf_read_file(inter, -1);
+	elf_exec(inter, 0, 0, false);
 }

@@ -26,8 +26,8 @@ UI_Slider = fun(hash, x, y, w, h) ? {
 	state := UI_State_Table[hash]
 	state.value ?= 0
 
-	cx := GetCursorX() * 256
-	cy := GetCursorY() * 128
+	cx := GetMouseX() * 256
+	cy := GetMouseY() * 128
 
 	hovering := false
 

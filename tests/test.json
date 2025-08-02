@@ -520,28 +520,28 @@ json {
       ]
     },
     {
-      "name": "Rectangle",
-      "description": "Rectangle, 4 components",
+      "name": "Rect",
+      "description": "Rect, 4 components",
       "fields": [
         {
           "type": "float",
           "name": "x",
-          "description": "Rectangle top-left corner position x"
+          "description": "Rect top-left corner position x"
         },
         {
           "type": "float",
           "name": "y",
-          "description": "Rectangle top-left corner position y"
+          "description": "Rect top-left corner position y"
         },
         {
           "type": "float",
           "name": "width",
-          "description": "Rectangle width"
+          "description": "Rect width"
         },
         {
           "type": "float",
           "name": "height",
-          "description": "Rectangle height"
+          "description": "Rect height"
         }
       ]
     },
@@ -633,7 +633,7 @@ json {
       "description": "NPatchInfo, n-patch layout info",
       "fields": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "source",
           "description": "Texture source rectangle"
         },
@@ -720,7 +720,7 @@ json {
           "description": "Texture atlas containing the glyphs"
         },
         {
-          "type": "Rectangle *",
+          "type": "Rect *",
           "name": "recs",
           "description": "Rectangles in texture for the glyphs"
         },
@@ -5210,7 +5210,7 @@ json {
           "name": "texture"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "source"
         }
       ]
@@ -5223,7 +5223,7 @@ json {
     {
       "name": "GetShapesTextureRectangle",
       "description": "Get texture source rectangle that is used for shapes drawing",
-      "returnType": "Rectangle"
+      "returnType": "Rect"
     },
     {
       "name": "DrawPixel",
@@ -5719,7 +5719,7 @@ json {
       "returnType": "void",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -5734,7 +5734,7 @@ json {
       "returnType": "void",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -5819,7 +5819,7 @@ json {
       "returnType": "void",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -5873,7 +5873,7 @@ json {
       "returnType": "void",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -5892,7 +5892,7 @@ json {
       "returnType": "void",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -5915,7 +5915,7 @@ json {
       "returnType": "void",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -5938,7 +5938,7 @@ json {
       "returnType": "void",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -6515,11 +6515,11 @@ json {
       "returnType": "bool",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec1"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec2"
         }
       ]
@@ -6561,7 +6561,7 @@ json {
           "name": "radius"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         }
       ]
@@ -6576,7 +6576,7 @@ json {
           "name": "point"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         }
       ]
@@ -6695,14 +6695,14 @@ json {
     {
       "name": "GetCollisionRec",
       "description": "Get collision rectangle for two rectangles collision",
-      "returnType": "Rectangle",
+      "returnType": "Rect",
       "params": [
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec1"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec2"
         }
       ]
@@ -7144,7 +7144,7 @@ json {
           "name": "image"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         }
       ]
@@ -7235,7 +7235,7 @@ json {
           "name": "image"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "crop"
         }
       ]
@@ -7641,7 +7641,7 @@ json {
     {
       "name": "GetImageAlphaBorder",
       "description": "Get image alpha border rectangle",
-      "returnType": "Rectangle",
+      "returnType": "Rect",
       "params": [
         {
           "type": "Image",
@@ -7947,7 +7947,7 @@ json {
           "name": "dst"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -7966,7 +7966,7 @@ json {
           "name": "dst"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -7993,11 +7993,11 @@ json {
           "name": "src"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "srcRec"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "dstRec"
         },
         {
@@ -8193,7 +8193,7 @@ json {
           "name": "texture"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "rec"
         },
         {
@@ -8322,7 +8322,7 @@ json {
           "name": "texture"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "source"
         },
         {
@@ -8345,11 +8345,11 @@ json {
           "name": "texture"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "source"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "dest"
         },
         {
@@ -8380,7 +8380,7 @@ json {
           "name": "nPatchInfo"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "dest"
         },
         {
@@ -8774,7 +8774,7 @@ json {
           "name": "glyphs"
         },
         {
-          "type": "Rectangle **",
+          "type": "Rect **",
           "name": "glyphRecs"
         },
         {
@@ -9092,7 +9092,7 @@ json {
     {
       "name": "GetGlyphAtlasRec",
       "description": "Get glyph rectangle in font atlas for a codepoint (unicode character), fallback to '?' if not found",
-      "returnType": "Rectangle",
+      "returnType": "Rect",
       "params": [
         {
           "type": "Font",
@@ -10189,7 +10189,7 @@ json {
           "name": "texture"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "source"
         },
         {
@@ -10220,7 +10220,7 @@ json {
           "name": "texture"
         },
         {
-          "type": "Rectangle",
+          "type": "Rect",
           "name": "source"
         },
         {

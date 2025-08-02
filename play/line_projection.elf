@@ -21,8 +21,8 @@ project_point_along_line = fun(point, line) ? {
 
 while PollWindow() ? {
 	Clear()
-	point.x = GetCursorX() * 256
-	point.y = GetCursorY() * 256
+	point.x = GetMouseX() * 256
+	point.y = GetMouseY() * 256
 	prime := project_point_along_line(point, line)
 	SetColor(255, 255, 255, 255)
 	DrawLine(line.x0, line.y0, line.x1, line.y1)
