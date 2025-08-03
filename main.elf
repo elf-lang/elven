@@ -1,5 +1,8 @@
+load "build.elf"
+
+#eof
 elf.pf("main.elf running")
-elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
+elf.change_work_dir("W:\\MicroRJ\\mammoth")
 load "main.elf"
 #eof
 // elf.create_process("notepad.exe")

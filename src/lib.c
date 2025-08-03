@@ -419,14 +419,14 @@ ELF_FUNCTION(L_OpenFileDialog) {
 
 // # AUDIO
 ELF_FUNCTION(L_GetNumVoices) {
-	int numvoices = GetNumVoices();
+	int numvoices = A_GetNumVoices();
 	elf_push_int(S, numvoices);
 	return 1;
 }
 
 ELF_FUNCTION(L_GetVoiceSound) {
 	int voiceid = elf_get_intarg(S, 0);
-	int sound = GetVoiceSound(voiceid);
+	int sound = A_GetVoiceSound(voiceid);
 	elf_push_int(S, sound);
 	return 1;
 }
@@ -440,36 +440,21 @@ ELF_FUNCTION(L_InitAudio) {
 ELF_FUNCTION(L_LoadSound) {
 	int id = elf_get_intarg(S, 0);
 	char *name = elf_get_text_arg(S, 1);
-	ASSERT(id < SOUNDS_CAPACITY);
-
-	MSOUND *msnd = &g_sounds[id];
-	ma_sound *sound = (ma_sound *) msnd;
-	if (msnd->loaded) {
-		ma_sound_uninit(sound);
-	}
-
-	// todo: remove this please!
-	wchar_t namew[1024] = {};
-	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name, -1, namew, sizeof(namew));
-
-	ma_result error = ma_sound_init_from_file_w(&g_engine, namew, 0, NULL, NULL, sound);
-	if (error == MA_SUCCESS) {
-		msnd->loaded = true;
-	}
-	elf_push_int(S, error == MA_SUCCESS);
+	int error = A_LoadSoundFromFile(id, name);
+	elf_push_int(S, error);
 	return 1;
 }
 
 ELF_FUNCTION(L_PlaySound) {
 	int id = elf_get_intarg(S, 0);
-	int voiceid = PlaySound(id);
+	int voiceid = A_PlaySound(id);
 	elf_push_int(S, voiceid);
 	return 1;
 }
 
 ELF_FUNCTION(L_StopVoice) {
 	int id = elf_get_intarg(S, 0);
-	StopVoice(id);
+	A_StopVoice(id);
 	return 0;
 }
 

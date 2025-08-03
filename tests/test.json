@@ -11119,7 +11119,7 @@ json {
       ]
     },
     {
-      "name": "PlaySound",
+      "name": "A_PlaySound",
       "description": "Play a sound",
       "returnType": "void",
       "params": [

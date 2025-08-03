@@ -1,0 +1,53 @@
+cleanupexts := "*.pch|*.ilk|*.lib|*.exe|*.exp|*.pdb"
+
+builddir := "build"
+targets := {"main", "renderer", "platform", "draw_2d", "audio", "fonts"}
+includes := {"elf", "miniaudio", "stb"}
+defines := {"_DEBUG","PLATFORM_DESKTOP"}
+libs := {"..\\elf\\elf", "User32", "Shell32", "Gdi32", "Winmm", "Comdlg32"}
+exename := "elven"
+
+cleantask = fun() ? {
+	paths := elf.get_path_list(".", 0)
+	elf.pf(paths)
+	for path = paths[...] ? {
+		if path:match(cleanupexts) ? {
+			// elf.pf("deleting file: ", path)
+			// elf.delete_file(path)
+		}
+	}
+}
+cleantask()
+
+
+elf.create_directory("build")
+if elf.change_work_dir("build") != true ? {
+	elf.exit(1)
+}
+
+
+cmd := "clang-cl /nologo -Od -Zi"
+
+for target = targets[...] ? {
+	cmd += f" ..\\src\\%{target}.c"
+}
+for lib = libs[...] ? {
+	cmd += f" %{lib}.lib"
+}
+for include = includes[...] ? {
+	cmd += f" /I..\\%{include}"
+}
+for define = defines[...] ? {
+	cmd += f" /D%{define}"
+}
+
+cmd += f" -Fe%{builddir}\\%{exename}.exe"
+
+
+elf.pf(cmd)
+
+elf.create_process(cmd)
+
+
+
+

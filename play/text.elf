@@ -285,7 +285,7 @@ PlayNote = fun(midi) ? {
 	// midi += 1 - midi % 2
 	sound := sounds[midi]
 	if sound ? {
-		PlaySound(sound)
+		A_PlaySound(sound)
 	} else {
 		elf.pf("MIDI Note: '", midi, "' Not Found")
 	}
@@ -331,7 +331,7 @@ while PollWindow() ? {
 			sound := sounds[random_note_name]
 			if sound ? {
 				elf.pf("Playing: '", random_note_name, "'")
-				PlaySound(sound)
+				A_PlaySound(sound)
 			}
 		}
 		random_note_name = nil

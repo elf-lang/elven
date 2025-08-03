@@ -3712,7 +3712,7 @@ int L_ExportWaveAsCode(elf_State *S) {
 int L_PlaySound(elf_State *S) {
 	int result = 0;
 	Sound sound = undefined(S, 0);
-	PlaySound(sound);
+	A_PlaySound(sound);
 	return result;
 }
 int L_StopSound(elf_State *S) {

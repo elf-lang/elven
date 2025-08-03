@@ -3,14 +3,13 @@
 //
 
 // #include "include/elf.h"
-// #include "elements.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
 
-#undef PlaySound
+#include "elements.h"
 
 // todo: stop using mini audio's bullshit
 typedef struct MSOUND {
@@ -36,11 +35,32 @@ enum {
 global MVOICE  g_voices[VOICES_CAPACITY];
 global MSOUND  g_sounds[SOUNDS_CAPACITY];
 
-int GetNumVoices() {
+
+int A_LoadSoundFromFile(int id, char *name) {
+	ASSERT(id < SOUNDS_CAPACITY);
+
+	MSOUND *msnd = &g_sounds[id];
+	ma_sound *sound = (ma_sound *) msnd;
+	if (msnd->loaded) {
+		ma_sound_uninit(sound);
+	}
+
+	// todo: remove this please!
+	wchar_t namew[1024] = {};
+	MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name, -1, namew, sizeof(namew));
+
+	ma_result error = ma_sound_init_from_file_w(&g_engine, namew, 0, NULL, NULL, sound);
+	if (error == MA_SUCCESS) {
+		msnd->loaded = true;
+	}
+	return error == MA_SUCCESS;
+}
+
+int A_GetNumVoices() {
 	return VOICES_CAPACITY;
 }
 
-int GetVoiceSound(int voiceid) {
+int A_GetVoiceSound(int voiceid) {
 	MVOICE *voice = & g_voices[voiceid];
 	int soundid = -1;
 	if (voice->sound.pDataSource != 0) {
@@ -51,12 +71,13 @@ int GetVoiceSound(int voiceid) {
 	return soundid;
 }
 
-void StopVoice(int id) {
+
+void A_StopVoice(int id) {
 	MVOICE *voice = & g_voices[id];
 	ma_sound_stop(&voice->sound);
 }
 
-int PlaySound(int id) {
+int A_PlaySound(int id) {
 	i32 voiceid = -1;
 
 	MSOUND *msnd = &g_sounds[id];

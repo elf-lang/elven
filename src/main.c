@@ -15,10 +15,9 @@
 #include "platform.h"
 #include "draw_2d.h"
 #include "renderer.h"
-
+#include "audio.h"
 #include "fonts.h"
 
-#include "l_audio.c"
 #include "lib.c"
 
 
@@ -35,6 +34,7 @@ int main(int nargs, char **args) {
 	OS_InitPlatform();
 	elf_State *inter = elf_new();
 
+	// todo: to be replaced with a directory with proper function definitions
 	elf_push_globals(inter);
 	for (int i = 0; i < COUNTOF(g_lib); i ++) {
 		elf_push_string(inter, g_lib[i].name);
