@@ -24,6 +24,10 @@ static inline Color _get_color_arg(elf_State *S) {
 	return color;
 }
 
+ELF_FUNCTION(L_SetAlpha) {
+	D_SetAlpha(elf_get_intarg(S, 0));
+	return 0;
+}
 
 ELF_FUNCTION(L_SetColor0) {
 	D_SetColor0(_get_color_arg(S));
@@ -228,7 +232,7 @@ ELF_FUNCTION(L_LoadTexture) {
 
 	R_Renderer *rend = glib.rend;
 
-	char *name = elf_getargtext(S, 0);
+	char *name = elf_get_text_arg(S, 0);
 
 	i32 c;
 
@@ -290,7 +294,7 @@ ELF_FUNCTION(L_InitWindow) {
 
 
 	int i = 0;
-	char *name = elf_getargtext(S,i++);
+	char *name = elf_get_text_arg(S,i++);
 	int resolution_x = elf_get_intarg(S,i++);
 	int resolution_y = elf_get_intarg(S,i++);
 	int window_scale = elf_get_intarg(S,i++);
@@ -364,7 +368,7 @@ ELF_FUNCTION(L_LoadFont) {
 	R_Renderer *rend = glib.rend;
 
 	int slot = elf_get_intarg(S, 0);
-	char *name = elf_getargtext(S, 1);
+	char *name = elf_get_text_arg(S, 1);
 	int size = elf_get_intarg(S, 2);
 
 	int id = InstallFont(rend, slot, name, size);
@@ -378,7 +382,7 @@ ELF_FUNCTION(L_DrawText) {
 
 	f32 x = elf_get_numarg(S, 0);
 	f32 y = elf_get_numarg(S, 1);
-	char *text = elf_getargtext(S, 2);
+	char *text = elf_get_text_arg(S, 2);
 
 	D_DrawText(rend, x, y, text);
 	return 0;
@@ -401,7 +405,7 @@ ELF_FUNCTION(L_GetNumFileDrops) {
 
 ELF_FUNCTION(L_OpenFileDialog) {
 
-	char *path = elf_getargtext(S, 0);
+	char *path = elf_get_text_arg(S, 0);
 
 	char buffer[256] = {};
 	int result = OS_OpenFileDialog(path, buffer, sizeof(buffer));
@@ -435,7 +439,7 @@ ELF_FUNCTION(L_InitAudio) {
 
 ELF_FUNCTION(L_LoadSound) {
 	int id = elf_get_intarg(S, 0);
-	char *name = elf_getargtext(S, 1);
+	char *name = elf_get_text_arg(S, 1);
 	ASSERT(id < SOUNDS_CAPACITY);
 
 	MSOUND *msnd = &g_sounds[id];

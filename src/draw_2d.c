@@ -182,7 +182,8 @@ void D_BeginDrawing(R_Renderer *rend) {
 	D_SetScale(1, 1);
 	D_SetOffset(0, 0);
 	D_SetCenter(0, 0);
-	D_SetFont(0);
+	// you don't want to do this
+	// D_SetFont(0);
 	D_SetTexture(rend, TEXTURE_DEFAULT);
 
 	R_SetSurface(rend, TEXTURE_RT_BASE);
@@ -190,7 +191,6 @@ void D_BeginDrawing(R_Renderer *rend) {
 	R_SetViewportFullScreen(rend);
 	R_SetTopology(rend, TOPO_TRIANGLES);
 	R_SetBlender(rend, BLENDER_ALPHA_BLEND);
-
 
 	D_LoadIdentity();
 }
@@ -209,6 +209,7 @@ Color D_GetColor1() { return g.color_1; }
 Color D_GetColor2() { return g.color_2; }
 Color D_GetColor3() { return g.color_3; }
 
+// todo: cap these to 255!
 void D_SetColor0(Color color) { g.color_0 = color; }
 void D_SetColor1(Color color) { g.color_1 = color; }
 void D_SetColor2(Color color) { g.color_2 = color; }
@@ -216,6 +217,10 @@ void D_SetColor3(Color color) { g.color_3 = color; }
 
 void D_SetColor(Color color) {
 	g.color_0 = g.color_1 = g.color_2 = g.color_3 = color;
+}
+
+void D_SetAlpha(int a) {
+	g.color_0.a = g.color_1.a = g.color_2.a = g.color_3.a = a;
 }
 
 void D_SetScale(f32 x, f32 y) {

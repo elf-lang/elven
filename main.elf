@@ -1,3 +1,15 @@
+elf.pf("main.elf running")
+elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
+load "main.elf"
+#eof
+// elf.create_process("notepad.exe")
+file := elf.open_file("dummy_file.txt", "rb")
+data := elf.read_file(file)
+times := elf.get_file_times(file)
+elf.pf(data)
+elf.pf(elf.file_time_to_system_time(times.access))
+#eof
+
 name := "Dayan"
 a := "I"
 b := "hate"

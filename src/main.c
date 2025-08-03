@@ -16,11 +16,7 @@
 #include "draw_2d.h"
 #include "renderer.h"
 
-#include "jam.h"
-
 #include "fonts.h"
-
-#include "jam.c"
 
 #include "l_audio.c"
 #include "lib.c"

@@ -19,7 +19,7 @@ typedef struct {
 	b32              closed;
 	vec2i            mouse_wheel;
 	vec2i            mouse;
-	Button           buttons[256];
+	Button           perpollkeys[256];
 	int              nextdropindex;
 } MWINDOW;
 
@@ -59,7 +59,7 @@ _(VK_ESCAPE         , KEY_ESCAPE       ,   1) \
 /* end */
 
 int OS_GetWindowKey(OS_WindowId id, int index) {
-	return g.windows[id].buttons[index].u;
+	return g.windows[id].perpollkeys[index].u;
 }
 
 vec2i OS_GetWindowMouseWheel(OS_WindowId id) {
@@ -188,8 +188,8 @@ b32 OS_PollWindow(OS_WindowId id) {
 	window->mouse_wheel.x = 0;
 	window->mouse_wheel.y = 0;
 
-	for (i32 i = 0; i < COUNTOF(window->buttons); i ++) {
-		window->buttons[i].u &= BUTTON_DOWN;
+	for (i32 i = 0; i < COUNTOF(window->perpollkeys); i ++) {
+		window->perpollkeys[i].u &= BUTTON_DOWN;
 	}
 
 	MSG msg = {};
@@ -354,20 +354,20 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 		} break;
 
 		case WM_LBUTTONUP: case WM_LBUTTONDOWN: {
-			update_button(&window->buttons[KEY_MOUSE_LEFT], msg == WM_LBUTTONDOWN);
+			update_button(&window->perpollkeys[KEY_MOUSE_LEFT], msg == WM_LBUTTONDOWN);
 		} break;
 		case WM_MBUTTONUP: case WM_MBUTTONDOWN: {
-			update_button(&window->buttons[KEY_MOUSE_MIDDLE], msg == WM_MBUTTONDOWN);
+			update_button(&window->perpollkeys[KEY_MOUSE_MIDDLE], msg == WM_MBUTTONDOWN);
 		} break;
 		case WM_RBUTTONUP: case WM_RBUTTONDOWN: {
-			update_button(&window->buttons[KEY_MOUSE_RIGHT], msg == WM_RBUTTONDOWN);
+			update_button(&window->perpollkeys[KEY_MOUSE_RIGHT], msg == WM_RBUTTONDOWN);
 		} break;
 
 		case WM_SYSKEYUP: case WM_KEYUP: {
-			update_button(&window->buttons[g.key_remapper[w]], FALSE);
+			update_button(&window->perpollkeys[g.key_remapper[w]], FALSE);
 		} break;
 		case WM_SYSKEYDOWN: case WM_KEYDOWN: {
-			update_button(&window->buttons[g.key_remapper[w]], TRUE);
+			update_button(&window->perpollkeys[g.key_remapper[w]], TRUE);
 		} break;
 		case WM_MOUSEMOVE: {
 			window->mouse.x = LOWORD(l);

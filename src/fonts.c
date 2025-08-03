@@ -26,42 +26,32 @@ struct D_FONT {
 
 global D_FONT g_fonts[FONTS_CAPACITY];
 
+// todo: this whole thing
 int InstallFont(R_Renderer *rend, int id, char *name, int size) {
-	// todo:
 	D_FONT *font = &g_fonts[id];
 
-	// todo:
 	enum { TEMP_SIZE = MEGABYTES(8) };
 	unsigned char *data = malloc(TEMP_SIZE);
 	OS_ReadEntireFile(name, data, TEMP_SIZE);
 
-	int r = 1024;
+	// todo:
+	int num_chars = 95;
+	int atlas_size = sqrt((size + 8) * (size + 8) * num_chars);
 
-	unsigned char *atlas = malloc(r * r);
-	int error = stbtt_BakeFontBitmap(data, 0, size, atlas, r, r, 32, 95, (stbtt_bakedchar *) font->glyphs);
+	unsigned char *atlas = malloc(atlas_size * atlas_size);
+
+	int error = stbtt_BakeFontBitmap(data, 0, size, atlas
+	, atlas_size, atlas_size, 32, 95, (stbtt_bakedchar *) font->glyphs);
+
 	if (error == 0) {
 		fprintf(stderr, "Could Not Create Font\n");
 	}
 
 	font->texture = R_FindFreeTexture(rend);
-	R_InstallTexture(rend, font->texture, FORMAT_R8_UNORM, (vec2i){r, r}, atlas);
+	R_InstallTexture(rend, font->texture, FORMAT_R8_UNORM, (vec2i){atlas_size, atlas_size}, atlas);
 
 	free(data);
 	free(atlas);
-
-	// char buffer[256];
-	// {
-	// 	sprintf_s(buffer, sizeof(buffer), "%s.font", output_name, buffer);
-	// 	FILE *file = fopen(buffer, "wb");
-	// 	if (!file) fprintf(stderr, "invalid name");
-	// 	fwrite(&ff, 1, sizeof(ff), file);
-	// 	fclose(file);
-	// }
-	// {
-	// 	sprintf_s(buffer, sizeof(buffer), "%s.bmp", output_name, buffer);
-	// 	stbi_write_bmp(buffer,r,r,1,atlas);
-	// }
-
 	return id;
 }
 
@@ -79,9 +69,10 @@ void D_DrawText(R_Renderer *rend, f32 x, f32 y, char *text) {
 
 	D_FONT *font = & g_fonts[D_GetFont()];
 
+	TextureId texture_prev = R_GetTexture(rend);
+
 	D_SetTexture(rend, font->texture);
 	D_BeginQuads(rend);
-
 	while (*text) {
 		i32 token = *text ++;
 		i32 index = token - 32;
@@ -93,6 +84,7 @@ void D_DrawText(R_Renderer *rend, f32 x, f32 y, char *text) {
 		}
 		x += glyph.xadvance * D_GetScale().x;
 	}
-
 	D_EndQuads(rend);
+
+	D_SetTexture(rend, texture_prev);
 }

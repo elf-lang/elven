@@ -65,6 +65,8 @@ void D_SetTexture(R_Renderer *rend, TextureId id);
 void D_SolidFill(R_Renderer *rend);
 void D_Clear(R_Renderer *rend, Color color);
 
+
+void D_SetAlpha(int a);
 void D_SetColor0(Color color);
 void D_SetColor1(Color color);
 void D_SetColor2(Color color);

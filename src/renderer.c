@@ -57,11 +57,11 @@ typedef struct R_Draw_State {
 typedef struct R_TEXTURE R_TEXTURE;
 struct R_TEXTURE {
 	b32                       inuse;
+	// to defer clearing until the render target is actually set
 	b32                       requires_clear;
 	Color                     clear_color;
 	vec2i                     resolution;
 	TextureFormat             format;
-	ID3D11SamplerState       *sampler;
 	union {
 		ID3D11Texture2D       *texture;
 		ID3D11Resource        *texture_resource;
@@ -131,7 +131,7 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 	R_Renderer *rend = calloc(1, sizeof(*rend));
 	rend->window = window;
 
-	HWND hwnd = (HWND) OS_GetWindowHandle(window);
+	HWND hwnd = OS_GetWindowHandle(window);
 
 	for (i32 i = 0; i < TEXTURE_FIRST_UNRESERVED_ID; i ++) {
 		rend->textures[i].inuse = true;
@@ -144,8 +144,10 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 
 	b32 success = true;
 
-	i32 device_flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-	device_flags |= D3D11_CREATE_DEVICE_DEBUG|D3D11_CREATE_DEVICE_SINGLETHREADED;
+	i32 device_flags = 0;
+	device_flags |= D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+	device_flags |= D3D11_CREATE_DEVICE_SINGLETHREADED;
+	device_flags |= D3D11_CREATE_DEVICE_DEBUG;
 
 	D3D_FEATURE_LEVEL feature_menu[2][2] = {
 		{D3D_FEATURE_LEVEL_11_1,D3D_FEATURE_LEVEL_11_0},
@@ -442,9 +444,11 @@ void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args) {
 	DX_RELEASE_MAYBE(texture->shader_resource_view);
 	DX_RELEASE_MAYBE(texture->render_target_view);
 
-	texture->sampler = rend->samplers[SAMPLER_POINT];
 	texture->resolution = args.resolution;
 	texture->format = args.format;
+	texture->texture = 0;
+	texture->shader_resource_view = 0;
+	texture->render_target_view = 0;
 
 	i32 bytes_per_pixel = g_format_to_size[args.format];
 	DXGI_FORMAT format = g_format_conversion_table[args.format];
@@ -479,7 +483,8 @@ void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args) {
 		D3D11_SUBRESOURCE_DATA *psubresource = 0;
 		if (args.colors) { psubresource = &subresource; }
 
-		ID3D11Device_CreateTexture2D(rend->device, &config, psubresource, &texture->texture);
+		HRESULT result = ID3D11Device_CreateTexture2D(rend->device, &config, psubresource, &texture->texture);
+		ASSERT(SUCCEEDED(result));
 	}
 
 	if (args.is_input) {
@@ -490,11 +495,13 @@ void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args) {
 			.Texture2D.MipLevels       = 1,
 		};
 
-		ID3D11Device_CreateShaderResourceView(rend->device, texture->texture_resource, &config, &texture->shader_resource_view);
+		HRESULT result = ID3D11Device_CreateShaderResourceView(rend->device, texture->texture_resource, &config, &texture->shader_resource_view);
+		ASSERT(SUCCEEDED(result));
 	}
 
 	if (args.is_output) {
-		ID3D11Device_CreateRenderTargetView(rend->device, texture->texture_resource, 0, &texture->render_target_view);
+		HRESULT result = ID3D11Device_CreateRenderTargetView(rend->device, texture->texture_resource, 0, &texture->render_target_view);
+		ASSERT(SUCCEEDED(result));
 	}
 }
 
@@ -589,13 +596,22 @@ R_SubmissionTicket R_SubmitVertices(R_Renderer *renderer, R_Vertex3 *vertices, i
 	return (R_SubmissionTicket){ offset };
 }
 
-void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
+void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
+	ASSERT(number != 0);
+
+	R_Draw_State prox = rend->draw_prox;
 	R_Draw_State prev = rend->draw_prev;
 	rend->draw_prev = prox;
 
 	ASSERT(prox.topology !=    MODE_NONE);
 	ASSERT(prox.texture  != TEXTURE_NONE);
 
+	// check number of vertices matches what we want to draw
+	switch (prox.topology) {
+		case TOPO_TRIANGLES: { ASSERT(number % 3 == 0); } break;
+		case MODE_LINES:     { ASSERT(number % 2 == 0); } break;
+		default: { ASSERT(!"SHMUCK"); } break;
+	}
 
 	if (prox.output == prox.texture) {
 		OS_ShowErrorMessage("Invalid Draw State: Output Is The Same As Input");
@@ -603,6 +619,8 @@ void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
 
 	b32 draw_constants_changed = rend->draw_constants_changed;
 	rend->draw_constants_changed = false;
+
+	b32 requires_flush = false;
 
 	if (prev.blender != prox.blender) {
 		ID3D11BlendState *blender = rend->blenders[prox.blender];
@@ -633,15 +651,14 @@ void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
 		}
 	}
 
-
-
 	if (prev.sampler != prox.sampler) {
 		ID3D11SamplerState *sampler = rend->samplers[prox.sampler];
 		ID3D11DeviceContext_PSSetSamplers(rend->context, 0, 1, &sampler);
 	}
 
 
-	if (prev.texture != prox.texture) {
+	if (prev.texture != prox.texture)
+	{
 		R_TEXTURE *texture = get_texture_by_id(rend, prox.texture);
 		R_TEXTURE *texture_prev = get_texture_by_id(rend, prev.texture);
 		if (texture->format != texture_prev->format) {
@@ -659,6 +676,9 @@ void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
 			draw_constants_changed = true;
 		}
 		ID3D11DeviceContext_PSSetShaderResources(rend->context, 0, 1, &texture->shader_resource_view);
+
+
+		requires_flush = true;
 	}
 
 	if (prev.viewport.x != prox.viewport.x || prev.viewport.y != prox.viewport.y) {
@@ -681,19 +701,15 @@ void rSubmitDrawState(R_Renderer *rend, R_Draw_State prox) {
 		ID3D11Buffer *constant_buffer = rend->constant_buffer;
 		rCopyMemory(rend, (ID3D11Resource *) constant_buffer, &rend->draw_constants, sizeof(rend->draw_constants));
 	}
-}
 
-void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
-	ASSERT(number != 0);
-
-	// check number of vertices matches what we want to draw
-	switch (rend->draw_prox.topology) {
-		case TOPO_TRIANGLES: { ASSERT(number % 3 == 0); } break;
-		case MODE_LINES:     { ASSERT(number % 2 == 0); } break;
-		default: { ASSERT(!"SHMUCK"); } break;
+	if (requires_flush) {
+		// so apparently this is how you fix the bug that I only
+		// get on my latop, and I have no idea why it happens,
+		// as in, why wouldn't the state be propagated by the
+		// time I issue the draw call? leads me to believe
+		// something else is wrong
+		ID3D11DeviceContext_Flush(rend->context);
 	}
-
-	rSubmitDrawState(rend, rend->draw_prox);
 
 	ID3D11DeviceContext_Draw(rend->context, number, offset.offset);
 }
@@ -763,7 +779,7 @@ vec2i R_GetTextureInfo(R_Renderer *rend, TextureId id) {
 	return get_texture_by_id(rend, id)->resolution;
 }
 
-b32 draw_state(R_Renderer *rend, i32 index, i32 value) {
+static b32 rSetDrawStateVar(R_Renderer *rend, i32 index, i32 value) {
 	b32 changed = rend->draw_prox.states[index] != value;
 
 	if (changed) {
@@ -776,20 +792,20 @@ b32 draw_state(R_Renderer *rend, i32 index, i32 value) {
 }
 
 void R_SetShader(R_Renderer *rend, ShaderId value) {
-	draw_state(rend, STATE_SHADER, value);
+	rSetDrawStateVar(rend, STATE_SHADER, value);
 }
 
 
 void R_SetSampler(R_Renderer *rend, SamplerId value) {
-	draw_state(rend, STATE_SAMPLER, value);
+	rSetDrawStateVar(rend, STATE_SAMPLER, value);
 }
 
 void R_SetBlender(R_Renderer *rend, BlenderId value) {
-	draw_state(rend, STATE_BLENDER, value);
+	rSetDrawStateVar(rend, STATE_BLENDER, value);
 }
 
 void R_SetTopology(R_Renderer *rend, Topology value) {
-	draw_state(rend, STATE_TOPOLOGY, value);
+	rSetDrawStateVar(rend, STATE_TOPOLOGY, value);
 }
 
 TextureId R_GetTexture(R_Renderer *rend) {
@@ -806,7 +822,7 @@ void R_SetSurface(R_Renderer *rend, TextureId value) {
 	R_TEXTURE *texture = get_texture_by_id(rend, value);
 	ASSERT(texture->render_target_view);
 
-	b32 changed = draw_state(rend, STATE_OUTPUT, value);
+	b32 changed = rSetDrawStateVar(rend, STATE_OUTPUT, value);
 
 	if (changed) {
 		// todo:
@@ -827,7 +843,7 @@ void R_SetTexture(R_Renderer *rend, TextureId value) {
 	R_TEXTURE *texture = get_texture_by_id(rend, value);
 	ASSERT(texture->shader_resource_view);
 
-	draw_state(rend, STATE_INPUT, value);
+	rSetDrawStateVar(rend, STATE_INPUT, value);
 }
 
 
