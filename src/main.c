@@ -1,11 +1,14 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "include/elf.h"
 
+
 // <3
+#define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 // <3
+#define STB_IMAGE_WRITE_STATIC
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 

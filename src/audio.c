@@ -1,13 +1,8 @@
-//
-// lib audio
-//
-
-// #include "include/elf.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define MINIAUDIO_IMPLEMENTATION
+#define MA_API static
 #include "miniaudio.h"
-
 
 #include "elements.h"
 

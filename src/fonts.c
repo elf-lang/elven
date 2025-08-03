@@ -1,7 +1,10 @@
 #if !defined(_DEBUG)
 #error "error"
 #endif
+
+
 // <3
+#define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 

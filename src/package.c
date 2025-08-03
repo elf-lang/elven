@@ -25,8 +25,8 @@ static FILE *package_open(elf_State *S, char *name) {
 		elf_Table *entry = res.x_tab;
 		elf_Value pos = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"pos")));
 		elf_Value size = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"size")));
-		ASSERT(pos.tag==elf_tag_int);
-		ASSERT(size.tag==elf_tag_int);
+		ASSERT(pos.tag==elf_tag_Int);
+		ASSERT(size.tag==elf_tag_Int);
 		file = malloc(sizeof(*file));
 		file->pos = pos.x_int;
 		file->size = size.x_int;

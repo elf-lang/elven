@@ -1,23 +1,14 @@
 cleanupexts := "*.pch|*.ilk|*.lib|*.exe|*.exp|*.pdb"
 
-builddir := "build"
-targets := {"main", "renderer", "platform", "draw_2d", "audio", "fonts"}
+otargets := {"renderer", "platform", "draw_2d", "audio", "fonts"}
+
 includes := {"elf", "miniaudio", "stb"}
 defines := {"_DEBUG","PLATFORM_DESKTOP"}
 libs := {"..\\elf\\elf", "User32", "Shell32", "Gdi32", "Winmm", "Comdlg32"}
 exename := "elven"
 
-cleantask = fun() ? {
-	paths := elf.get_path_list(".", 0)
-	elf.pf(paths)
-	for path = paths[...] ? {
-		if path:match(cleanupexts) ? {
-			// elf.pf("deleting file: ", path)
-			// elf.delete_file(path)
-		}
-	}
-}
-cleantask()
+dolinking = true
+docleaning = false
 
 
 elf.create_directory("build")
@@ -25,28 +16,79 @@ if elf.change_work_dir("build") != true ? {
 	elf.exit(1)
 }
 
-
-cmd := "clang-cl /nologo -Od -Zi"
-
-for target = targets[...] ? {
-	cmd += f" ..\\src\\%{target}.c"
+cleantask = fun() ? {
+	paths := elf.get_path_list(".", 0)
+	for path = paths[...] ? {
+		if path:match(cleanupexts) ? {
+			elf.pf("clean: ", path)
+			// elf.delete_file(path)
+		}
+	}
 }
-for lib = libs[...] ? {
-	cmd += f" %{lib}.lib"
+if docleaning ? {
+	cleantask()
 }
+
+
+// pre-generate part of command
+prebuildcmd := "clang-cl /nologo -Od -Zi"
+
 for include = includes[...] ? {
-	cmd += f" /I..\\%{include}"
+	prebuildcmd += f" /I..\\%{include}"
 }
 for define = defines[...] ? {
-	cmd += f" /D%{define}"
+	prebuildcmd += f" /D%{define}"
 }
 
-cmd += f" -Fe%{builddir}\\%{exename}.exe"
+for target = otargets[...] ? {
+	inputpath := f"..\\src\\%{target}.c"
+	outputpath := f"%{target}.obj"
 
+	writetimeinput := 1
+	writetimeoutput := 0
 
-elf.pf(cmd)
+	// get last write time of input
+	{
+		file := elf.open_file(inputpath, "r")
+		writetimeinput = elf.get_file_times(file).write
+		elf.close_file(file)
+	}
+	// get last write time of output
+	{
+		file := elf.open_file(outputpath, "r")
+		//  nil if not present
+		if file ? {
+			writetimeoutput = elf.get_file_times(file).write
+			elf.close_file(file)
+		}
+	}
+	if writetimeinput > writetimeoutput ? {
+		elf.pf("make: ", inputpath)
+		buildcmd := prebuildcmd + f" /c %{inputpath} /Fo%{outputpath}"
+		// elf.pf(buildcmd)
+		elf.create_process(buildcmd)
+		dolinking = true
+	}
+}
 
-elf.create_process(cmd)
+linktask = fun() ? {
+	elf.pf("link: ")
+	linkcmd := prebuildcmd + " ..\\src\\main.c"
+	for target = otargets[...] ? {
+		linkcmd += f" %{target}.obj"
+	}
+	for lib = libs[...] ? {
+		linkcmd += f" %{lib}.lib"
+	}
+	linkcmd += f" /OUT:%{exename}.exe"
+	elf.pf(linkcmd)
+	elf.create_process(linkcmd)
+}
+
+if dolinking ? {
+	linktask()
+}
+
 
 
 

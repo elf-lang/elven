@@ -1,6 +1,3 @@
-load "build.elf"
-
-#eof
 elf.pf("main.elf running")
 elf.change_work_dir("W:\\MicroRJ\\mammoth")
 load "main.elf"
