@@ -1,3 +1,14 @@
+PATH ?= "."
+InitWindow("Visual File Viewer", 320*4,180*4, 1)
+paths := elf.get_file_tree(PATH, 10)
+for path = paths[...] ? {
+	elf.pf(path)
+}
+while PollWindow() ? {
+	Clear(32, 32, 32, 255)
+}
+
+#eof
 // pf = elf.pf
 // abs  ?= fun(x)   ? { if x < 0 ? --> -x else --> x }
 // min  ?= fun(x,y) ? { if x < y ? -->  x else --> y }

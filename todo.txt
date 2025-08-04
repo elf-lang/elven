@@ -1,3 +1,7 @@
+-- change function signature for elf
+remove fixed size base render target
+
+
 -- elven.c: a lot of the functions will now rely on the stack,
 but we don't necessarily want the push and pop stuff happening
 all the time because it introduces uncertainty and noise

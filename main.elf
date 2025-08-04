@@ -1,5 +1,7 @@
-elf.pf("main.elf running")
-elf.change_work_dir("W:\\MicroRJ\\mammoth")
+// elf.change_work_dir("play")
+// load "visual_file_viewer.elf"
+// #eof
+elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
 load "main.elf"
 #eof
 // elf.create_process("notepad.exe")

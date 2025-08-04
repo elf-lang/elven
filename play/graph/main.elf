@@ -5,12 +5,12 @@ E   = 2.71828
 max := fun(a,b) ? { if a > b ? --> a else --> b }
 min := fun(a,b) ? { if a < b ? --> a else --> b }
 
-UPSCALE  	::= 2
-WIND_W   	::= 256
-WIND_H   	::= 256
+UPSCALE  	::= 1
+WIND_W   	::= 512
+WIND_H   	::= 512
 UNIT 			::= 8
-CENTER_X 	::= WIND_W / 2
-CENTER_Y 	::= WIND_H / 2
+CENTER_X 	::= WIND_W * 0.5
+CENTER_Y 	::= WIND_H * 0.5
 CELL 			::= UNIT
 
 _rgb = fun(r,g,b,a) ? ({r=r,g=g,b=b,a=a??255})
@@ -31,10 +31,8 @@ zoom_in_at_mouse ::= fun(by) ? {
 	if new_scale <= 0 ? {
 		ret
 	}
-
-	mouse_x ::= VIEW.mouse_x
-	mouse_y ::= VIEW.mouse_y
-
+	mouse_x ::= GetMouseX() * WIND_W
+	mouse_y ::= GetMouseY() * WIND_H
 	a ::= zoom / new_scale
 	if a != 0 ? {
 		offset.x = mouse_x - (mouse_x - offset.x) / a
@@ -43,68 +41,10 @@ zoom_in_at_mouse ::= fun(by) ? {
 	}
 }
 
-draw_grid ::= fun() ? {
-	scale 		::= zoom
-	cell_size   ::= CELL * scale
-	grid_size_x ::= WIND_W / cell_size + 1
-	grid_size_y ::= WIND_H / cell_size + 1
-
-	SetColor(255,255,255,255*0.25)
-	for y = 0...grid_size_y ? {
-		y0 := offset.y % cell_size + y * cell_size
-		DrawLine(0, y0, WIND_W, y0)
-	}
-	for x = 0...grid_size_x ? {
-		x0 := offset.x % cell_size + x * cell_size
-		DrawLine(x0, 0, x0, WIND_H)
-	}
-	SetColor(255,0,0,255*0.80)
-	DrawLine(offset.x, 0, offset.x, WIND_H)
-	SetColor(0,255,0,255*0.80)
-	DrawLine(0, offset.y, WIND_W, offset.y)
-}
-
-global name ?= 1
-
-
 offset_minus_mouse := {x=0,y=0}
-user_input ::= fun() ? {
 
-	// if VIEW.keys['Z'] & DOWN ? { zoom_in_at_mouse(0.01) }
-	// if VIEW.keys['X'] & DOWN ? { zoom_in_at_mouse(-0.01) }
-	// if VIEW.keys['W'] & DOWN ? { offset.y -= 1 }
-	// if VIEW.keys['S'] & DOWN ? { offset.y += 1 }
-	// if VIEW.keys['A'] & DOWN ? { offset.x -= 1 }
-	// if VIEW.keys['D'] & DOWN ? { offset.x += 1 }
-	// if VIEW.keys['R'] & DOWN ? {
-	// 	offset = INITIAL_OFFSET:clone()
-	// 	zoom   = 1.0
-	// }
 
-	mouse_x ::= 0
-	mouse_y ::= 0
-	// if VIEW.mouse[1] & PRESSED ? {
-	// 	dragging = true
-	// 	offset_minus_mouse.x = offset.x - mouse_x
-	// 	offset_minus_mouse.y = offset.y - mouse_y
-	// }
-	// if VIEW.mouse[1] & DOWN ? {
-	// 	if dragging ? {
-	// 		offset.x = offset_minus_mouse.x + mouse_x
-	// 		offset.y = offset_minus_mouse.y + mouse_y
-	// 	}
-	// }
-}
-
-while PollWindow() ? {
-	Clear(0, 0, 0, 0)
-
-	user_input()
-
-	draw_grid()
-	Z ::= zoom
-
-	force_radius := 8.0
+force_radius := 8.0
 	force_dropoff := 16.0
 	sources := {
 		{
@@ -157,6 +97,55 @@ while PollWindow() ? {
 		}
 	}
 
+
+while PollWindow() ? {
+	Clear(32, 32, 32, 255)
+
+	if Button('Z') & 1 ? { zoom_in_at_mouse(0.01) }
+	if Button('X') & 1 ? { zoom_in_at_mouse(-0.01) }
+	if Button('W') & 1 ? { offset.y -= 1 }
+	if Button('S') & 1 ? { offset.y += 1 }
+	if Button('A') & 1 ? { offset.x -= 1 }
+	if Button('D') & 1 ? { offset.x += 1 }
+	if Button('R') & 1 ? {
+		offset = INITIAL_OFFSET:clone()
+		zoom   = 1.0
+	}
+
+	mouse_x ::= GetMouseX() * WIND_W
+	mouse_y ::= GetMouseY() * WIND_H
+
+	if MouseButton(0) & 2 ? {
+		dragging = true
+		offset_minus_mouse.x = offset.x - mouse_x
+		offset_minus_mouse.y = offset.y - mouse_y
+	}
+	if MouseButton(0) & 1 ? {
+		if dragging ? {
+			offset.x = offset_minus_mouse.x + mouse_x
+			offset.y = offset_minus_mouse.y + mouse_y
+		}
+	}
+
+	cell_size   ::= CELL * zoom
+	grid_size_x ::= WIND_W / cell_size + 1
+	grid_size_y ::= WIND_H / cell_size + 1
+
+	SetColor(255,255,255,255*0.25)
+	for y = 0...grid_size_y ? {
+		y0 := offset.y % cell_size + y * cell_size
+		DrawLine(0, y0, WIND_W, y0)
+	}
+	for x = 0...grid_size_x ? {
+		x0 := offset.x % cell_size + x * cell_size
+		DrawLine(x0, 0, x0, WIND_H)
+	}
+	SetColor(255,0,0,255*0.80)
+	DrawLine(offset.x, 0, offset.x, WIND_H)
+	SetColor(0,255,0,255*0.80)
+	DrawLine(0, offset.y, WIND_W, offset.y)
+
+
 	// todo: instead of sampling this way,
 	// we should sample starting at the
 	// origin moving away in both directions,
@@ -170,16 +159,16 @@ while PollWindow() ? {
 		// remains the same regardless of the scale
 		for p = 0...WIND_W ? {
 			xv ::= p - offset.x
-			x0 ::= (xv + 0) / Z
-			x1 ::= (xv + 1) / Z
+			x0 ::= (xv + 0) / zoom
+			x1 ::= (xv + 1) / zoom
 			y0 ::= f(x0 / UNIT) * UNIT
 			y1 ::= f(x1 / UNIT) * UNIT
 			ddx := 0
 			if (y1 - y0) != 0 ? {
 				ddx = (x1 - x0) / (y1 - y0)
 			}
-			sy0 := offset.y - y0 * Z
-			sy1 := offset.y - y1 * Z
+			sy0 := offset.y - y0 * zoom
+			sy1 := offset.y - y1 * zoom
 			// window space clipping
 			// todo: clipping should depend on the slope,
 			// like if we're going up then x0 will be on

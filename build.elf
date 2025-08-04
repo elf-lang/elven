@@ -10,25 +10,25 @@ exename := "elven"
 dolinking = true
 docleaning = false
 
+cleantask = fun() ? {
+	paths := elf.get_path_list(".", 0)
+	for path = paths[...] ? {
+		if path:match(cleanupexts) ? {
+			elf.pf("clean: ", path)
+			elf.delete_file(path)
+		}
+	}
+}
+cleantask()
 
 elf.create_directory("build")
 if elf.change_work_dir("build") != true ? {
 	elf.exit(1)
 }
 
-cleantask = fun() ? {
-	paths := elf.get_path_list(".", 0)
-	for path = paths[...] ? {
-		if path:match(cleanupexts) ? {
-			elf.pf("clean: ", path)
-			// elf.delete_file(path)
-		}
-	}
-}
 if docleaning ? {
 	cleantask()
 }
-
 
 // pre-generate part of command
 prebuildcmd := "clang-cl /nologo -Od -Zi"
