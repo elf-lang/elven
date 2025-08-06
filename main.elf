@@ -1,8 +1,55 @@
+elf.change_work_dir("W:\\MicroRJ\\mammoth")
+load "main.elf"
+
+#eof
+tests := {
+	{ input = "test.wav", pattern = "*.wav", expected = true },
+	{ input = "song.elf", pattern = "*.wav|*.elf", expected = true },
+	{ input = "track.mp3", pattern = "*.wav|*.elf", expected = false },
+	{ input = "main.c", pattern = "m??n.c", expected = true },
+	{ input = "moon.c", pattern = "m??n.c", expected = true },
+	{ input = "man.c", pattern = "m??n.c", expected = false },
+	{ input = "lib.a", pattern = "*.a|*.so", expected = true },
+	{ input = "lib.so", pattern = "*.a|*.so", expected = true },
+	{ input = "lib.dll", pattern = "*.a|*.so", expected = false },
+	{ input = "readme.txt", pattern = "*.txt|*.md", expected = true },
+	{ input = "README.MD", pattern = "*.txt|*.md", expected = false },
+	{ input = "", pattern = "*", expected = true },
+	{ input = "", pattern = "?", expected = false },
+	{ input = "a", pattern = "?", expected = true },
+	{ input = "ab", pattern = "?", expected = false },
+}
+
+for test = tests[...] ? {
+	result := test.input:match(test.pattern)
+	if result != test.expected ? {
+		elf.pf("test failed"
+		,",      got: ", result
+		,", expected: ", test.expected
+		,",    input: ", test.input
+		,",  pattern: ", test.pattern)
+	}
+}
+elf.pf("done...")
+
+// pathlist := elf.get_path_list(".", 100)
+// for p = pathlist[...] ? {
+// 	if p:match("*") ? {
+// 		elf.pf(p)
+// 	}
+// }
+
+#eof
+elf.pf("":match(""))
+elf.pf("":match("*"))
+
+#eof
+
+#eof
 // elf.change_work_dir("play")
 // load "visual_file_viewer.elf"
 // #eof
-elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
-load "main.elf"
+
 #eof
 // elf.create_process("notepad.exe")
 file := elf.open_file("dummy_file.txt", "rb")
