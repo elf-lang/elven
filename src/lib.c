@@ -6,72 +6,73 @@ struct {
 	f64 target_seconds_to_sleep;
 	f64 pending_seconds_to_sleep;
 	vec2 mouse;
-} glib;
+	b32 targetsurface;
+} gl;
 
 
 // todo: if it's just one value then grayscale
 // todo: color modes for HSV!
-static inline Color _get_color_arg(elf_State *S, int nargs) {
+static inline Color _get_color_arg(elf_State *S, int args, int nargs) {
 	Color color = {};
-	if ((nargs - 1) > 2) {
-		color.r = elf_get_intarg(S, 0);
-		color.g = elf_get_intarg(S, 1);
-		color.b = elf_get_intarg(S, 2);
-		if ((nargs - 1) > 3) {
-			color.a = elf_get_intarg(S, 3);
+	if (nargs >= 4) {
+		color.r = elf_toint(S, args + 1);
+		color.g = elf_toint(S, args + 2);
+		color.b = elf_toint(S, args + 3);
+		if (nargs >= 5) {
+			color.a = elf_toint(S, args + 4);
 		}
 	}
 	return color;
 }
 
 ELF_FUNCTION(L_SetAlpha) {
-	D_SetAlpha(elf_get_intarg(S, 0));
+	D_SetAlpha(elf_toint(S, args + 1));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor0) {
-	D_SetColor0(_get_color_arg(S, nargs));
+	D_SetColor0(_get_color_arg(S, args, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor1) {
-	D_SetColor1(_get_color_arg(S, nargs));
+	D_SetColor1(_get_color_arg(S, args, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor2) {
-	D_SetColor2(_get_color_arg(S, nargs));
+	D_SetColor2(_get_color_arg(S, args, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor3) {
-	D_SetColor3(_get_color_arg(S, nargs));
+	D_SetColor3(_get_color_arg(S, args, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor) {
-	D_SetColor(_get_color_arg(S, nargs));
+	D_SetColor(_get_color_arg(S, args, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SolidFill) {
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 	D_SolidFill(rend);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetTexture) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
-	TextureId id = elf_get_intarg(S, 0);
+	TextureId id = elf_toint(S, args + 1 + 0);
 	D_SetTexture(rend, id);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetRegion) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
 	i32 x0 = elf_tonum(S, args + 1);
 	i32 y0 = elf_tonum(S, args + 2);
@@ -123,8 +124,8 @@ ELF_FUNCTION(L_SetOffset) {
 }
 
 ELF_FUNCTION(L_SetFlipOnce) {
-	int x = elf_get_intarg(S, 0);
-	int y = elf_get_intarg(S, 1);
+	int x = elf_toint(S, args + 1 + 0);
+	int y = elf_toint(S, args + 1 + 1);
 	D_SetFlipOnce(x, y);
 	return 0;
 }
@@ -144,16 +145,16 @@ ELF_FUNCTION(L_PopMatrix) {
 
 ELF_FUNCTION(L_Clear) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
-	Color color = _get_color_arg(S, nargs);
+	Color color = _get_color_arg(S, args, nargs);
 	D_Clear(rend, color);
 	return 0;
 }
 
 ELF_FUNCTION(L_DrawTriangle) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
 	f32 x0 = elf_tonum(S, args + 1);
 	f32 y0 = elf_tonum(S, args + 2);
@@ -172,7 +173,7 @@ ELF_FUNCTION(L_DrawTriangle) {
 
 ELF_FUNCTION(L_DrawLine) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
 	f32 x0 = elf_tonum(S, args + 1);
 	f32 y0 = elf_tonum(S, args + 2);
@@ -185,7 +186,7 @@ ELF_FUNCTION(L_DrawLine) {
 
 ELF_FUNCTION(L_DrawCircle) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
 	f32 x = elf_tonum(S, args + 1);
 	f32 y = elf_tonum(S, args + 2);
@@ -198,7 +199,7 @@ ELF_FUNCTION(L_DrawCircle) {
 
 ELF_FUNCTION(L_DrawRectangle) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
 	f32 x = elf_tonum(S, args + 1);
 	f32 y = elf_tonum(S, args + 2);
@@ -211,26 +212,26 @@ ELF_FUNCTION(L_DrawRectangle) {
 
 ELF_FUNCTION(L_GetTextureResolution) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
-	int id = elf_get_intarg(S, 0);
+	int id = elf_toint(S, args + 1 + 0);
 	vec2i res = R_GetTextureInfo(rend, id);
 
-	elf_push_table(S);
+	elf_pushtab(S);
 
-	elf_push_string(S, "x");
-	elf_push_int(S, res.x);
-	elf_table_set(S);
+	elf_pushstr(S, "x");
+	elf_pushint(S, res.x);
+	elf_setfield(S);
 
-	elf_push_string(S, "y");
-	elf_push_int(S, res.y);
-	elf_table_set(S);
+	elf_pushstr(S, "y");
+	elf_pushint(S, res.y);
+	elf_setfield(S);
 	return 1;
 }
 
 ELF_FUNCTION(L_LoadTexture) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
 	char *name = elf_get_text_arg(S, 0);
 
@@ -247,142 +248,192 @@ ELF_FUNCTION(L_LoadTexture) {
 
 	free(colors);
 
-	elf_push_int(S, id);
+	elf_pushint(S, id);
 	return 1;
 }
 
 ELF_FUNCTION(L_Button) {
 
-	OS_WindowId window = glib.window;
+	OS_WindowId window = gl.window;
 
-	i32 index = elf_get_intarg(S,0);
-	elf_push_int(S, OS_GetWindowKey(window, index));
+	i32 index = elf_toint(S, args + 1 + 0);
+	elf_pushint(S, OS_GetWindowKey(window, index));
 	return 1;
 }
 
 ELF_FUNCTION(L_MouseButton) {
 
-	OS_WindowId window = glib.window;
+	OS_WindowId window = gl.window;
 
-	i32 index = elf_get_intarg(S,0);
-	elf_push_int(S, OS_GetWindowKey(window, KEY_MOUSE_LEFT + index));
+	i32 index = elf_toint(S, args + 1 + 0);
+	elf_pushint(S, OS_GetWindowKey(window, KEY_MOUSE_LEFT + index));
 	return 1;
 }
 
 ELF_FUNCTION(L_GetMouseWheel) {
 
-	OS_WindowId window = glib.window;
+	OS_WindowId window = gl.window;
 
-	elf_push_int(S, OS_GetWindowMouseWheel(window).y);
+	elf_pushint(S, OS_GetWindowMouseWheel(window).y);
 	return 1;
 }
 
 ELF_FUNCTION(L_GetMouseX) {
 
-	elf_push_num(S, glib.mouse.x);
+	elf_pushnum(S, gl.mouse.x);
 	return 1;
 }
 
 ELF_FUNCTION(L_GetMouseY) {
 
-	elf_push_num(S, glib.mouse.y);
+	elf_pushnum(S, gl.mouse.y);
 	return 1;
 }
 
 
+
+static void BeginDrawing(R_Renderer *rend) {
+	R_BeginFrame(rend);
+
+	D_SetScale(1, 1);
+	D_SetOffset(0, 0);
+	D_SetCenter(0, 0);
+	// you don't want to do this
+	// D_SetFont(0);
+	D_SetTexture(rend, TEXTURE_DEFAULT);
+
+	R_SetSurface(rend, gl.targetsurface);
+	R_SetSampler(rend, SAMPLER_POINT);
+	R_SetViewportFullScreen(rend);
+	R_SetTopology(rend, TOPO_TRIANGLES);
+	R_SetBlender(rend, BLENDER_ALPHA_BLEND);
+
+	D_LoadIdentity();
+}
+
 ELF_FUNCTION(L_InitWindow) {
 
+	const char *name = elf_tostr(S, args + 1);
 
-	int i = 0;
-	char *name = elf_get_text_arg(S,i++);
-	int resolution_x = elf_get_intarg(S,i++);
-	int resolution_y = elf_get_intarg(S,i++);
-	int window_scale = elf_get_intarg(S,i++);
+	vec2i resolution = { 0 };
+	vec2i windowreso = { 0 };
 
-	if (window_scale <= 0) {
-		window_scale = 1;
+
+	if (nargs >= 4) {
+		resolution.x = windowreso.x = elf_toint(S, args + 2);
+		resolution.y = windowreso.y = elf_toint(S, args + 3);
+		if (nargs >= 5) {
+			int windowscale = elf_toint(S, args + 4);
+			windowreso.x *= windowscale;
+			windowreso.y *= windowscale;
+		}
 	}
 
-	OS_InstallWindow(WINDOW_MAIN, name, (vec2i){ resolution_x * window_scale, resolution_y * window_scale });
+	TRACELOG("Init Window... %ix%i", windowreso.x, windowreso.y);
+
+	OS_InstallWindow(WINDOW_MAIN, name, windowreso);
+
+	TRACELOG("Init Renderer...");
 	R_Renderer *rend = R_InitRenderer(WINDOW_MAIN);
-	glib.rend = rend;
-	glib.window = WINDOW_MAIN;
+	gl.rend = rend;
+	gl.window = WINDOW_MAIN;
+	gl.targetsurface = TEXTURE_RT_WINDOW;
 
-	R_InstallSurface(rend, TEXTURE_RT_BASE, FORMAT_R8G8B8_UNORM, (vec2i){ resolution_x, resolution_y });
+	if (resolution.x > 0 && resolution.y > 0) {
+		gl.targetsurface = TEXTURE_RT_BASE;
+		R_InstallSurface(rend, TEXTURE_RT_BASE, FORMAT_R8G8B8_UNORM, resolution);
+	}
 
-	glib.target_seconds_to_sleep = 1.0 / 60.0;
-	glib.begin_cycle_clock = OS_GetClock();
+	gl.target_seconds_to_sleep = 1.0 / 60.0;
+	gl.begin_cycle_clock = OS_GetTickCounter();
 
 	// OS_PollWindow(window);
-	D_BeginDrawing(rend);
+	BeginDrawing(rend);
 	return 0;
 }
 
 ELF_FUNCTION(L_PollWindow) {
 
-	R_Renderer *rend = glib.rend;
-	OS_WindowId window = glib.window;
+	R_Renderer *rend = gl.rend;
+	OS_WindowId window = gl.window;
+
+	b32 open = OS_PollWindow(window);
+
+	{
+		if (gl.targetsurface != TEXTURE_RT_WINDOW) {
+			R_Blit(rend, TEXTURE_RT_WINDOW, gl.targetsurface);
+		}
+		R_EndFrame(rend);
+	}
+
+	if (!open) goto esc;
 
 	// because we only have one window
 	OS_ForgetFileDrops();
-	b32 open = OS_PollWindow(window);
 
-	iRect rect = R_GetBlitRect(rend, TEXTURE_RT_WINDOW, TEXTURE_RT_BASE);
+	// begin a new frame
+	BeginDrawing(rend);
+
+	iRect rect = R_GetBlitRect(rend, TEXTURE_RT_WINDOW, gl.targetsurface);
 	vec2i mouse = OS_GetWindowMouse(window);
-	glib.mouse.x = 0 + (mouse.x - rect.x) / (f32) rect.w;
-	glib.mouse.y = 1 - (mouse.y - rect.y) / (f32) rect.h;
-	// let it be negative because this way the user knows it is out of bounds
-	// glib.mouse.x = glib.mouse.x < 0 ? 0 : glib.mouse.x > 1.0 ? 1.0 : glib.mouse.x;
-	// glib.mouse.y = glib.mouse.y < 0 ? 0 : glib.mouse.y > 1.0 ? 1.0 : glib.mouse.y;
 
-	D_EndDrawing(rend);
-	D_BeginDrawing(rend);
+	// can be negative
+	gl.mouse.x = 0 + (mouse.x - rect.x) / (f32) rect.w;
+	gl.mouse.y = 1 - (mouse.y - rect.y) / (f32) rect.h;
 
 	// todo: fix this thing, it works too well
-	i64 end_cycle_clock = OS_GetClock();
-	i64 elapsed_clocks = end_cycle_clock - glib.begin_cycle_clock;
+	i64 end_cycle_clock = OS_GetTickCounter();
+	i64 elapsed_clocks = end_cycle_clock - gl.begin_cycle_clock;
 	f64 elapsed_seconds = elapsed_clocks * OS_GetClocksToSeconds();
-	glib.pending_seconds_to_sleep += glib.target_seconds_to_sleep - elapsed_seconds;
+	gl.pending_seconds_to_sleep += gl.target_seconds_to_sleep - elapsed_seconds;
 
 	// todo: instead of making this logic work in seconds
 	// make it work in clock cycles directly
 	f64 clock_accuracy = 1.0 / 1000.0;
-	glib.begin_cycle_clock = OS_GetClock();
-	while (glib.pending_seconds_to_sleep > clock_accuracy) {
-		OS_Sleep(glib.pending_seconds_to_sleep * 1000);
-		glib.begin_cycle_clock = OS_GetClock();
-		glib.pending_seconds_to_sleep -= (glib.begin_cycle_clock - end_cycle_clock) * OS_GetClocksToSeconds();
+	gl.begin_cycle_clock = OS_GetTickCounter();
+	while (gl.pending_seconds_to_sleep > clock_accuracy) {
+		OS_Sleep(gl.pending_seconds_to_sleep * 1000);
+		gl.begin_cycle_clock = OS_GetTickCounter();
+		gl.pending_seconds_to_sleep -= (gl.begin_cycle_clock - end_cycle_clock) * OS_GetClocksToSeconds();
 	}
 
-	elf_push_int(S, open);
+	esc:
+	elf_pushint(S, open);
 	return 1;
 }
 
 ELF_FUNCTION(L_SetFont) {
-	D_SetFont(elf_get_intarg(S, 0));
+	D_SetFont(elf_toint(S, args + 1 + 0));
 	return 0;
 }
 
 ELF_FUNCTION(L_LoadFont) {
 
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
-	int slot = elf_get_intarg(S, 0);
+	int slot = elf_toint(S, args + 1 + 0);
 	char *name = elf_get_text_arg(S, 1);
-	int size = elf_get_intarg(S, 2);
+	int size = elf_toint(S, args + 1 + 2);
 
 	int id = InstallFont(rend, slot, name, size);
-	elf_push_int(S, id);
+	elf_pushint(S, id);
+	return 1;
+}
+
+ELF_FUNCTION(L_MeasureText) {
+	const char *text = elf_tostr(S, args + 1);
+
+	f32 w = D_MeasureText(text);
+	elf_pushnum(S, w);
 	return 1;
 }
 
 ELF_FUNCTION(L_DrawText) {
-
-	R_Renderer *rend = glib.rend;
+	R_Renderer *rend = gl.rend;
 
 	f32 x = elf_tonum(S, args + 1);
 	f32 y = elf_tonum(S, args + 2);
-	char *text = elf_get_text_arg(S, 2);
+	const char *text = elf_tostr(S, args + 3);
 
 	D_DrawText(rend, x, y, text);
 	return 0;
@@ -390,16 +441,16 @@ ELF_FUNCTION(L_DrawText) {
 
 ELF_FUNCTION(L_GetFileDrop) {
 
-	OS_WindowId window = glib.window;
-	i32 index = elf_get_intarg(S, 0);
-	elf_push_string(S, OS_GetFileDrop(index));
+	OS_WindowId window = gl.window;
+	i32 index = elf_toint(S, args + 1 + 0);
+	elf_pushstr(S, OS_GetFileDrop(index));
 	return 1;
 }
 
 ELF_FUNCTION(L_GetNumFileDrops) {
 
-	OS_WindowId window = glib.window;
-	elf_push_int(S, OS_GetNumFileDrops());
+	OS_WindowId window = gl.window;
+	elf_pushint(S, OS_GetNumFileDrops());
 	return 1;
 }
 
@@ -410,9 +461,9 @@ ELF_FUNCTION(L_OpenFileDialog) {
 	char buffer[256] = {};
 	int result = OS_OpenFileDialog(path, buffer, sizeof(buffer));
 	if (result) {
-		elf_push_string(S, buffer);
+		elf_pushstr(S, buffer);
 	} else {
-		elf_push_nil(S);
+		elf_pushnil(S);
 	}
 	return 1;
 }
@@ -420,40 +471,40 @@ ELF_FUNCTION(L_OpenFileDialog) {
 // # AUDIO
 ELF_FUNCTION(L_GetNumVoices) {
 	int numvoices = A_GetNumVoices();
-	elf_push_int(S, numvoices);
+	elf_pushint(S, numvoices);
 	return 1;
 }
 
 ELF_FUNCTION(L_GetVoiceSound) {
-	int voiceid = elf_get_intarg(S, 0);
+	int voiceid = elf_toint(S, args + 1 + 0);
 	int sound = A_GetVoiceSound(voiceid);
-	elf_push_int(S, sound);
+	elf_pushint(S, sound);
 	return 1;
 }
 
 ELF_FUNCTION(L_InitAudio) {
 	int error = A_InitAudio();
-	elf_push_int(S, error);
+	elf_pushint(S, error);
 	return 1;
 }
 
 ELF_FUNCTION(L_LoadSound) {
-	int id = elf_get_intarg(S, 0);
+	int id = elf_toint(S, args + 1 + 0);
 	char *name = elf_get_text_arg(S, 1);
 	int error = A_LoadSoundFromFile(id, name);
-	elf_push_int(S, error);
+	elf_pushint(S, error);
 	return 1;
 }
 
 ELF_FUNCTION(L_PlaySound) {
-	int id = elf_get_intarg(S, 0);
+	int id = elf_toint(S, args + 1 + 0);
 	int voiceid = A_PlaySound(id);
-	elf_push_int(S, voiceid);
+	elf_pushint(S, voiceid);
 	return 1;
 }
 
 ELF_FUNCTION(L_StopVoice) {
-	int id = elf_get_intarg(S, 0);
+	int id = elf_toint(S, args + 1 + 0);
 	A_StopVoice(id);
 	return 0;
 }
@@ -488,8 +539,10 @@ static const elf_Binding g_lib[] = {
 	{ "DrawTriangle"                     , L_DrawTriangle                         },
 	{ "DrawLine"                         , L_DrawLine                             },
 	{ "DrawCircle"                       , L_DrawCircle                           },
-	{ "DrawText"                         , L_DrawText                             },
 	{ "SetFlipOnce"                      , L_SetFlipOnce                          },
+
+	{ "DrawText"                         , L_DrawText                             },
+	{ "MeasureText"                      , L_MeasureText                             },
 
 
 	{ "LoadFont"                         , L_LoadFont                             },

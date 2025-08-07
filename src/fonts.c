@@ -59,7 +59,20 @@ int InstallFont(R_Renderer *rend, int id, char *name, int size) {
 }
 
 
+f32 D_MeasureText(const char *text) {
+	f32 width = 0.0;
 
+	D_FONT *font = & g_fonts[D_GetFont()];
+	while (*text) {
+		i32 token = *text ++;
+		i32 index = token - 32;
+
+		stbtt_bakedchar glyph = font->glyphs[index];
+		width += glyph.xadvance;
+	}
+
+	return width * D_GetScale().x;
+}
 
 //
 // todo: proper text rendering...
@@ -68,9 +81,10 @@ void D_DrawText(R_Renderer *rend, f32 x, f32 y, char *text) {
 	// why would you even call
 	ASSERT(text);
 
+	D_FONT *font = & g_fonts[D_GetFont()];
+
 	Color color = D_GetColor0();
 
-	D_FONT *font = & g_fonts[D_GetFont()];
 
 	TextureId texture_prev = R_GetTexture(rend);
 

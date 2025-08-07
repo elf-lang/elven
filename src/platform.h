@@ -58,14 +58,14 @@ void OS_Sleep(int ms);
 void OS_ShowErrorMessage(char *msg);
 b32 OS_OpenFileDialog(char *path, char *buffer, int bufsize);
 
-i64 OS_GetClock();
+i64 OS_GetTickCounter();
 f64 OS_GetClocksToSeconds();
 
 void OS_InitPlatform();
 void OS_EndPlatform();
 
 
-void OS_InstallWindow(OS_WindowId id, char *name, vec2i resolution);
+void OS_InstallWindow(OS_WindowId id, const char *name, vec2i resolution);
 
 #if defined(_WIN32_API)
 HWND OS_GetWindowHandle(OS_WindowId window);

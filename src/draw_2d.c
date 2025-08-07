@@ -170,32 +170,6 @@ void D_EndQuads(R_Renderer *rend) {
 int D_GetFont() { return g.font; }
 void D_SetFont(int font) { g.font = font; }
 
-void D_EndDrawing(R_Renderer *rend) {
-	R_Blit(rend, TEXTURE_RT_WINDOW, TEXTURE_RT_BASE);
-	R_EndFrame(rend);
-}
-
-void D_BeginDrawing(R_Renderer *rend) {
-	R_BeginFrame(rend);
-
-	// todo: just have a default brush
-	D_SetScale(1, 1);
-	D_SetOffset(0, 0);
-	D_SetCenter(0, 0);
-	// you don't want to do this
-	// D_SetFont(0);
-	D_SetTexture(rend, TEXTURE_DEFAULT);
-
-	R_SetSurface(rend, TEXTURE_RT_BASE);
-	R_SetSampler(rend, SAMPLER_POINT);
-	R_SetViewportFullScreen(rend);
-	R_SetTopology(rend, TOPO_TRIANGLES);
-	R_SetBlender(rend, BLENDER_ALPHA_BLEND);
-
-	D_LoadIdentity();
-}
-
-
 void D_Clear(R_Renderer *rend, Color color) {
 	R_ClearSurface(rend, color);
 }

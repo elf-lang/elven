@@ -1,4 +1,15 @@
-elf.change_work_dir("W:\\MicroRJ\\mammoth")
+elf.pf("main")
+
+
+pathlist := elf.get_path_list(".", 100)
+for p = pathlist[...] ? {
+	elf.pf(p)
+}
+
+
+#eof
+
+elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
 load "main.elf"
 #eof
 
@@ -51,13 +62,6 @@ for test = tests[...] ? {
 	}
 }
 elf.pf("done...")
-
-// pathlist := elf.get_path_list(".", 100)
-// for p = pathlist[...] ? {
-// 	if p:match("*") ? {
-// 		elf.pf(p)
-// 	}
-// }
 
 #eof
 elf.pf("":match(""))

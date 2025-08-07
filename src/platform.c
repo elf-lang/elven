@@ -207,27 +207,30 @@ b32 OS_PollWindow(OS_WindowId id) {
 	return ! window->closed;
 }
 
-void OS_InstallWindow(OS_WindowId id, char *name, vec2i resolution) {
+void OS_InstallWindow(OS_WindowId id, const char *name, vec2i resolution) {
 	MWINDOW *window = &g.windows[id];
 	window->resolution = resolution;
 
 	// todo: this only has to be done once
 	{
-		WNDCLASSEXW window_class = {
-			.cbSize = sizeof(window_class),
+		WNDCLASSEXW windowclass = {
+			.cbSize = sizeof(windowclass),
 			.lpfnWndProc = Win32_WindowProcedure,
 			.hInstance = GetModuleHandle(0),
 			.lpszClassName = WIN32_WINDOW_CLASS_NAME,
 			.hCursor = LoadCursorA(NULL, IDC_ARROW),
 			.hIcon = LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(1)),
 		};
-		if (!RegisterClassExW(&window_class)) {
+		if (!RegisterClassExW(&windowclass)) {
 			OS_ShowErrorMessage(0);
 		}
 	}
 
-	i32 screen_x = GetSystemMetrics(SM_CXSCREEN);
-	i32 screen_y = GetSystemMetrics(SM_CYSCREEN);
+	i32 monitorw = GetSystemMetrics(SM_CXSCREEN);
+	i32 monitorh = GetSystemMetrics(SM_CYSCREEN);
+
+	if (resolution.x == 0) resolution.x = monitorw * 0.90;
+	if (resolution.y == 0) resolution.y = monitorh * 0.90;
 
 	RECT window_rect = {
 		.left = 0,
@@ -239,11 +242,11 @@ void OS_InstallWindow(OS_WindowId id, char *name, vec2i resolution) {
 	b32 error = AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, FALSE);
 	ASSERT(error != 0);
 
-	i32 size_x = window_rect.right - window_rect.left;
-	i32 size_y = window_rect.bottom - window_rect.top;
+	i32 windoww = window_rect.right - window_rect.left;
+	i32 windowh = window_rect.bottom - window_rect.top;
 
-	i32 window_x = screen_x * 0.5 - size_x * 0.5;
-	i32 window_y = screen_y * 0.5 - size_y * 0.5;
+	i32 windowx = (monitorw - windoww) * 0.5;
+	i32 windowy = (monitorh - windowh) * 0.5;
 
 
 	HWND hwnd;
@@ -254,7 +257,7 @@ void OS_InstallWindow(OS_WindowId id, char *name, vec2i resolution) {
 
 		hwnd = CreateWindowExW(0
 		, WIN32_WINDOW_CLASS_NAME, window_title
-		, WS_OVERLAPPEDWINDOW, window_x, window_y, size_x, size_y
+		, WS_OVERLAPPEDWINDOW, windowx, windowy, windoww, windowh
 		, NULL, NULL, GetModuleHandle(0), NULL);
 
 		SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR) window);
@@ -273,7 +276,7 @@ void OS_InstallWindow(OS_WindowId id, char *name, vec2i resolution) {
 }
 
 
-i64 OS_GetClock() {
+i64 OS_GetTickCounter() {
 	LARGE_INTEGER p = {};
 	QueryPerformanceCounter(&p);
 	return p.QuadPart;

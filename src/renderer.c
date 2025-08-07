@@ -899,6 +899,10 @@ iRect R_GetBlitRect(R_Renderer *rend, TextureId output, TextureId input) {
 	vec2i output_resolution = R_GetTextureInfo(rend, output);
 	vec2i input_resolution = R_GetTextureInfo(rend, input);
 
+	if (output == input) {
+		return (iRect) { 0, 0, output_resolution.x, output_resolution.y };
+	}
+
 	// integer
 	i32 max_scale = MIN(output_resolution.x / (f32) input_resolution.x, output_resolution.y / (f32) input_resolution.y);
 

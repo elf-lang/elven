@@ -54,9 +54,8 @@ typedef enum {
 
 void D_PushMatrix();
 void D_PopMatrix();
+void D_LoadIdentity();
 
-void D_BeginDrawing(R_Renderer *rend);
-void D_EndDrawing(R_Renderer *rend);
 void D_DrawRectangle(R_Renderer *rend, f32 x, f32 y, f32 w, f32 h);
 void D_DrawCircle(R_Renderer *rend, f32 x, f32 y, f32 r, f32 v);
 void D_DrawLine(R_Renderer *rend, f32 x0, f32 y0, f32 x1, f32 y1);
@@ -72,6 +71,11 @@ void D_SetColor1(Color color);
 void D_SetColor2(Color color);
 void D_SetColor3(Color color);
 void D_SetColor(Color color);
+Color D_GetColor0();
+Color D_GetColor1();
+Color D_GetColor2();
+Color D_GetColor3();
+
 void D_SetRegion(i32 x0, i32 y0, i32 x1, i32 y1);
 
 
@@ -85,16 +89,9 @@ void D_SetScale(f32, f32);
 vec3 D_GetScale();
 void D_SetRotation(f32);
 
-
-Color D_GetColor0();
-Color D_GetColor1();
-Color D_GetColor2();
-Color D_GetColor3();
-
 void D_BeginQuads(R_Renderer *rend);
 void D_PushQuad(R_Renderer *rend, Rect dst, iRect src);
 void D_EndQuads(R_Renderer *rend);
 
 int D_GetFont();
 void D_SetFont(int font);
-void D_DrawText(R_Renderer *rend, f32 x, f32 y, char *text);

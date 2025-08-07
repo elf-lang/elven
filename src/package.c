@@ -60,9 +60,9 @@
 // 		pos = ftell(pack);
 // 		elf_debug_log("package file: %s, pos: %i, size: %i", name,pos,size);
 // 		elf_Table *entry = elf_new_table(S);
-// 		elf_table_set(entry, elf_string(S,"pos"), VALUE_INTEGER(pos));
-// 		elf_table_set(entry, elf_string(S,"size"), VALUE_INTEGER(size));
-// 		elf_table_set(info, elf_string(S,name), VALUE_TABLE(entry));
+// 		elf_setfield(entry, elf_string(S,"pos"), VALUE_INTEGER(pos));
+// 		elf_setfield(entry, elf_string(S,"size"), VALUE_INTEGER(size));
+// 		elf_setfield(info, elf_string(S,name), VALUE_TABLE(entry));
 // 		fseek(pack,size,SEEK_CUR);
 // 	}
 
