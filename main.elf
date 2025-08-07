@@ -1,7 +1,27 @@
 elf.change_work_dir("W:\\MicroRJ\\mammoth")
 load "main.elf"
-
 #eof
+
+
+elf.pf(nil == nil)
+elf.pf(nil !=   1)
+elf.pf(nil !=  "")
+elf.pf(nil !=  {})
+elf.pf(1.0 == 1)
+elf.pf(1.1 == 1)
+elf.pf("name" == "name")
+#eof
+
+
+elf.pf("myname"["name"])
+#eof
+
+elf.pf({}:get_meta())
+lol_meta := {}
+lol_meta:set_meta({"lol"})
+elf.pf(elf.get_meta(lol_meta))
+#eof
+
 tests := {
 	{ input = "test.wav", pattern = "*.wav", expected = true },
 	{ input = "song.elf", pattern = "*.wav|*.elf", expected = true },

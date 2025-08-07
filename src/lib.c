@@ -11,13 +11,13 @@ struct {
 
 // todo: if it's just one value then grayscale
 // todo: color modes for HSV!
-static inline Color _get_color_arg(elf_State *S) {
+static inline Color _get_color_arg(elf_State *S, int nargs) {
 	Color color = {};
-	if (elf_get_num_args(S) > 2) {
+	if ((nargs - 1) > 2) {
 		color.r = elf_get_intarg(S, 0);
 		color.g = elf_get_intarg(S, 1);
 		color.b = elf_get_intarg(S, 2);
-		if (elf_get_num_args(S) > 3) {
+		if ((nargs - 1) > 3) {
 			color.a = elf_get_intarg(S, 3);
 		}
 	}
@@ -30,27 +30,27 @@ ELF_FUNCTION(L_SetAlpha) {
 }
 
 ELF_FUNCTION(L_SetColor0) {
-	D_SetColor0(_get_color_arg(S));
+	D_SetColor0(_get_color_arg(S, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor1) {
-	D_SetColor1(_get_color_arg(S));
+	D_SetColor1(_get_color_arg(S, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor2) {
-	D_SetColor2(_get_color_arg(S));
+	D_SetColor2(_get_color_arg(S, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor3) {
-	D_SetColor3(_get_color_arg(S));
+	D_SetColor3(_get_color_arg(S, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor) {
-	D_SetColor(_get_color_arg(S));
+	D_SetColor(_get_color_arg(S, nargs));
 	return 0;
 }
 
@@ -73,37 +73,37 @@ ELF_FUNCTION(L_SetRegion) {
 
 	R_Renderer *rend = glib.rend;
 
-	i32 x0 = elf_get_numarg(S, 0);
-	i32 y0 = elf_get_numarg(S, 1);
-	i32 x1 = x0 + elf_get_numarg(S, 2);
-	i32 y1 = y0 + elf_get_numarg(S, 3);
+	i32 x0 = elf_tonum(S, args + 1);
+	i32 y0 = elf_tonum(S, args + 2);
+	i32 x1 = x0 + elf_tonum(S, args + 3);
+	i32 y1 = y0 + elf_tonum(S, args + 4);
 	D_SetRegion(x0, y0, x1, y1);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetRotation) {
-	D_SetRotation(elf_get_numarg(S,0));
+	D_SetRotation(elf_tonum(S, args + 1));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetCenter) {
-	f32 x = elf_get_numarg(S,0);
-	f32 y = elf_get_numarg(S,1);
+	f32 x = elf_tonum(S, args + 1);
+	f32 y = elf_tonum(S, args + 2);
 	D_SetCenter(x, y);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetScale) {
-	f32 x = elf_get_numarg(S,0);
-	f32 y = elf_get_numarg(S,1);
+	f32 x = elf_tonum(S, args + 1);
+	f32 y = elf_tonum(S, args + 2);
 	D_SetScale(x, y);
 	return 0;
 }
 
 
 ELF_FUNCTION(L_Translate) {
-	f32 x = elf_get_numarg(S,0);
-	f32 y = elf_get_numarg(S,1);
+	f32 x = elf_tonum(S, args + 1);
+	f32 y = elf_tonum(S, args + 2);
 	D_Translate(x, y);
 	return 0;
 }
@@ -116,15 +116,15 @@ ELF_FUNCTION(L_GetTranslation) {
 
 // todo: valid?
 ELF_FUNCTION(L_SetOffset) {
-	f32 x = elf_get_numarg(S,0);
-	f32 y = elf_get_numarg(S,1);
+	f32 x = elf_tonum(S, args + 1);
+	f32 y = elf_tonum(S, args + 2);
 	D_SetOffset(x, y);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetFlipOnce) {
-	int x = elf_get_intarg(S,0);
-	int y = elf_get_intarg(S,1);
+	int x = elf_get_intarg(S, 0);
+	int y = elf_get_intarg(S, 1);
 	D_SetFlipOnce(x, y);
 	return 0;
 }
@@ -146,7 +146,7 @@ ELF_FUNCTION(L_Clear) {
 
 	R_Renderer *rend = glib.rend;
 
-	Color color = _get_color_arg(S);
+	Color color = _get_color_arg(S, nargs);
 	D_Clear(rend, color);
 	return 0;
 }
@@ -155,14 +155,14 @@ ELF_FUNCTION(L_DrawTriangle) {
 
 	R_Renderer *rend = glib.rend;
 
-	f32 x0 = elf_get_numarg(S, 0);
-	f32 y0 = elf_get_numarg(S, 1);
+	f32 x0 = elf_tonum(S, args + 1);
+	f32 y0 = elf_tonum(S, args + 2);
 
-	f32 x1 = elf_get_numarg(S, 2);
-	f32 y1 = elf_get_numarg(S, 3);
+	f32 x1 = elf_tonum(S, args + 3);
+	f32 y1 = elf_tonum(S, args + 4);
 
-	f32 x2 = elf_get_numarg(S, 4);
-	f32 y2 = elf_get_numarg(S, 5);
+	f32 x2 = elf_tonum(S, args + 5);
+	f32 y2 = elf_tonum(S, args + 6);
 
 	D_DrawTriangle(rend, x0, y0, x1, y1, x2, y2);
 	return 0;
@@ -174,10 +174,10 @@ ELF_FUNCTION(L_DrawLine) {
 
 	R_Renderer *rend = glib.rend;
 
-	f32 x0 = elf_get_numarg(S, 0);
-	f32 y0 = elf_get_numarg(S, 1);
-	f32 x1 = elf_get_numarg(S, 2);
-	f32 y1 = elf_get_numarg(S, 3);
+	f32 x0 = elf_tonum(S, args + 1);
+	f32 y0 = elf_tonum(S, args + 2);
+	f32 x1 = elf_tonum(S, args + 3);
+	f32 y1 = elf_tonum(S, args + 4);
 
 	D_DrawLine(rend, x0, y0, x1, y1);
 	return 0;
@@ -187,10 +187,10 @@ ELF_FUNCTION(L_DrawCircle) {
 
 	R_Renderer *rend = glib.rend;
 
-	f32 x = elf_get_numarg(S, 0);
-	f32 y = elf_get_numarg(S, 1);
-	f32 r = elf_get_numarg(S, 2);
-	f32 v = elf_get_numarg(S, 3);
+	f32 x = elf_tonum(S, args + 1);
+	f32 y = elf_tonum(S, args + 2);
+	f32 r = elf_tonum(S, args + 3);
+	f32 v = elf_tonum(S, args + 4);
 
 	D_DrawCircle(rend, x, y, r, v);
 	return 0;
@@ -200,10 +200,10 @@ ELF_FUNCTION(L_DrawRectangle) {
 
 	R_Renderer *rend = glib.rend;
 
-	f32 x = elf_get_numarg(S, 0);
-	f32 y = elf_get_numarg(S, 1);
-	f32 w = elf_get_numarg(S, 2);
-	f32 h = elf_get_numarg(S, 3);
+	f32 x = elf_tonum(S, args + 1);
+	f32 y = elf_tonum(S, args + 2);
+	f32 w = elf_tonum(S, args + 3);
+	f32 h = elf_tonum(S, args + 4);
 
 	D_DrawRectangle(rend, x, y, w, h);
 	return 0;
@@ -380,8 +380,8 @@ ELF_FUNCTION(L_DrawText) {
 
 	R_Renderer *rend = glib.rend;
 
-	f32 x = elf_get_numarg(S, 0);
-	f32 y = elf_get_numarg(S, 1);
+	f32 x = elf_tonum(S, args + 1);
+	f32 y = elf_tonum(S, args + 2);
 	char *text = elf_get_text_arg(S, 2);
 
 	D_DrawText(rend, x, y, text);

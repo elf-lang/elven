@@ -2,6 +2,23 @@ cleanupexts := "*.pch|*.ilk|*.lib|*.exe|*.exp|*.pdb"
 
 otargets := {"renderer", "platform", "draw_2d", "audio", "fonts"}
 
+// elf is terrible for this
+// find_includes = fun(name) ? {
+	// file := elf.open_file(name, "rb")
+	// defer elf.close_file(file)
+	// text := elf.read_file(file)
+
+	//	for c = text[...] ? {
+	//		if c == '#' ? {
+	//			isinclude := text:match_substring("include", 1)
+	//			if isinclude ? {
+	//				target := text:
+	//			}
+	//		}
+	//	}
+// }
+
+
 includes := {"elf", "miniaudio", "stb"}
 defines := {"_DEBUG","PLATFORM_DESKTOP"}
 libs := {"..\\elf\\elf", "User32", "Shell32", "Gdi32", "Winmm", "Comdlg32"}
@@ -15,7 +32,7 @@ cleantask = fun() ? {
 	for path = paths[...] ? {
 		if path:match(cleanupexts) ? {
 			elf.pf("clean: ", path)
-			elf.delete_file(path)
+			// elf.delete_file(path)
 		}
 	}
 }
@@ -44,25 +61,31 @@ for target = otargets[...] ? {
 	inputpath := f"..\\src\\%{target}.c"
 	outputpath := f"%{target}.obj"
 
-	writetimeinput := 1
-	writetimeoutput := 0
+	do_make := true
 
 	// get last write time of input
 	{
 		file := elf.open_file(inputpath, "r")
-		writetimeinput = elf.get_file_times(file).write
+
+		writetimeinput := elf.get_file_times(file).write
+
 		elf.close_file(file)
-	}
-	// get last write time of output
-	{
-		file := elf.open_file(outputpath, "r")
-		//  nil if not present
+
+		file = elf.open_file(outputpath, "r")
+
+		// nil if not present
 		if file ? {
-			writetimeoutput = elf.get_file_times(file).write
+
+			writetimeoutput := elf.get_file_times(file).write
 			elf.close_file(file)
+
+			if writetimeoutput > writetimeinput ? {
+				do_make = false
+			}
 		}
 	}
-	if writetimeinput > writetimeoutput ? {
+
+	if do_make ? {
 		elf.pf("make: ", inputpath)
 		buildcmd := prebuildcmd + f" /c %{inputpath} /Fo%{outputpath}"
 		// elf.pf(buildcmd)
