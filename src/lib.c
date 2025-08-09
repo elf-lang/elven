@@ -13,7 +13,7 @@ struct {
 // todo: if it's just one value then grayscale
 // todo: color modes for HSV!
 static inline Color _get_color_arg(elf_State *S, int args, int nargs) {
-	Color color = {};
+	Color color = {0,0,0,255};
 	if (nargs >= 4) {
 		color.r = elf_toint(S, args + 1);
 		color.g = elf_toint(S, args + 2);
@@ -50,10 +50,19 @@ ELF_FUNCTION(L_SetColor3) {
 	return 0;
 }
 
+
 ELF_FUNCTION(L_SetColor) {
 	D_SetColor(_get_color_arg(S, args, nargs));
 	return 0;
 }
+
+
+ELF_FUNCTION(L_SetColorP) {
+	elf_u32 packed = elf_toint(S, args + 1);
+	D_SetColor((Color){ packed >> 24, packed >> 16, packed >> 8, packed >> 0 });
+	return 0;
+}
+
 
 ELF_FUNCTION(L_SolidFill) {
 	R_Renderer *rend = gl.rend;
@@ -110,7 +119,6 @@ ELF_FUNCTION(L_Translate) {
 }
 
 ELF_FUNCTION(L_GetTranslation) {
-	elf_error(S, -1, "Not Impl!");
 	return 0;
 }
 
@@ -233,7 +241,7 @@ ELF_FUNCTION(L_LoadTexture) {
 
 	R_Renderer *rend = gl.rend;
 
-	char *name = elf_get_text_arg(S, 0);
+	char *name = f_checktext(S, 0);
 
 	i32 c;
 
@@ -252,12 +260,15 @@ ELF_FUNCTION(L_LoadTexture) {
 	return 1;
 }
 
+// todo: possibly rename to "Keyboard" and then MouseButton to "Mouse"
 ELF_FUNCTION(L_Button) {
-
 	OS_WindowId window = gl.window;
-
-	i32 index = elf_toint(S, args + 1 + 0);
-	elf_pushint(S, OS_GetWindowKey(window, index));
+	int state = 0;
+	for (int i = 1; i < nargs; i ++) {
+		i32 index = elf_toint(S, args + i);
+		state |= OS_GetWindowKey(window, index);
+	}
+	elf_pushint(S, state);
 	return 1;
 }
 
@@ -412,7 +423,7 @@ ELF_FUNCTION(L_LoadFont) {
 	R_Renderer *rend = gl.rend;
 
 	int slot = elf_toint(S, args + 1 + 0);
-	char *name = elf_get_text_arg(S, 1);
+	char *name = f_checktext(S, 1);
 	int size = elf_toint(S, args + 1 + 2);
 
 	int id = InstallFont(rend, slot, name, size);
@@ -456,7 +467,7 @@ ELF_FUNCTION(L_GetNumFileDrops) {
 
 ELF_FUNCTION(L_OpenFileDialog) {
 
-	char *path = elf_get_text_arg(S, 0);
+	char *path = f_checktext(S, 0);
 
 	char buffer[256] = {};
 	int result = OS_OpenFileDialog(path, buffer, sizeof(buffer));
@@ -490,7 +501,7 @@ ELF_FUNCTION(L_InitAudio) {
 
 ELF_FUNCTION(L_LoadSound) {
 	int id = elf_toint(S, args + 1 + 0);
-	char *name = elf_get_text_arg(S, 1);
+	char *name = f_checktext(S, 1);
 	int error = A_LoadSoundFromFile(id, name);
 	elf_pushint(S, error);
 	return 1;
@@ -529,6 +540,8 @@ static const elf_Binding g_lib[] = {
 	{ "SetTexture"                       , L_SetTexture                           },
 	{ "SetRegion"                        , L_SetRegion                            },
 	{ "SetCenter"                        , L_SetCenter                            },
+	{ "SetAlpha"                         , L_SetAlpha                             },
+	{ "SetColorP"                        , L_SetColorP                            },
 	{ "SetColor"                         , L_SetColor                             },
 	{ "SetColor0"                        , L_SetColor0                            },
 	{ "SetColor1"                        , L_SetColor1                            },

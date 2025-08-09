@@ -1,7 +1,30 @@
-
-elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
+elf.change_work_dir("W:\\MicroRJ\\game2")
 load "main.elf"
 #eof
+
+elf.pf(0)
+elf.pf(1)
+elf.pf(10)
+elf.pf(100)
+elf.pf(111)
+elf.pf(0xff == 255)
+
+#eof
+
+
+arr := {"a", "b", "c", "d", "e"}
+for i = arr[...]  ? {
+	elf.pf(#index, ": ", #value)
+}
+// these are just steps, so the index
+for i = 1, 2, 3, 5, 7, 11  ? {
+	elf.pf(#index, ": ", #value)
+}
+// for i = 0 ... 10 ? {
+// 	elf.pf(i)
+// }
+#eof
+
 
 
 // so one of the most used features of dynamic languages

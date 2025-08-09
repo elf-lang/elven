@@ -38,7 +38,7 @@ int main(int nargs, char **args) {
 	elf_State *inter = elf_new();
 
 	// todo: to be replaced with a directory with proper function definitions
-	elf_pushglobals(inter);
+	elf_getglobals(inter);
 	for (int i = 0; i < COUNTOF(g_lib); i ++) {
 		elf_pushstr(inter, g_lib[i].name);
 		elf_pushfun(inter, g_lib[i].function);

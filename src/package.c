@@ -25,8 +25,8 @@
 // 		elf_Table *entry = res.x_tab;
 // 		elf_Value pos = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"pos")));
 // 		elf_Value size = elf_table_get(entry, VALUE_STRING(elf_new_string(S,"size")));
-// 		ASSERT(pos.tag==elf_tag_Int);
-// 		ASSERT(size.tag==elf_tag_Int);
+// 		ASSERT(pos.tag==ELF_TINTEGER);
+// 		ASSERT(size.tag==ELF_TINTEGER);
 // 		file = malloc(sizeof(*file));
 // 		file->pos = pos.x_int;
 // 		file->size = size.x_int;
@@ -44,7 +44,7 @@
 // }
 
 // int lib_package_get_info(elf_State *S) {
-// 	char *name = elf_get_text_arg(S,0);
+// 	char *name = f_checktext(S,0);
 // 	elf_Table *info = elf_new_table(S);
 
 // 	FILE *pack = fopen(name,"rb");
@@ -79,12 +79,12 @@
 // 	char *name;
 
 
-// 	name = elf_get_text_arg(S,0);
+// 	name = f_checktext(S,0);
 // 	if (!name) {
 // 		elf_debug_log("first argument should be name of package file");
 // 		goto esc;
 // 	}
-// 	info = elf_get_table(S,1);
+// 	info = elf_gettabraw(S,1);
 // 	if (!info) {
 // 		elf_debug_log("second argument must be package info table");
 // 		goto esc;
