@@ -51,14 +51,14 @@
 // 	fseek(pack,0,SEEK_END);
 // 	int package_size = ftell(pack);
 // 	fseek(pack,0,SEEK_SET);
-// 	elf_debug_log("package size: %i", package_size);
+// 	elf_ldebug("package size: %i", package_size);
 // 	int size,pos;
 // 	while (ftell(pack) < package_size) {
 // 		char name[128]={};
 // 		fread(&size,sizeof(size),1,pack);
 // 		fread(name,sizeof(name),1,pack);
 // 		pos = ftell(pack);
-// 		elf_debug_log("package file: %s, pos: %i, size: %i", name,pos,size);
+// 		elf_ldebug("package file: %s, pos: %i, size: %i", name,pos,size);
 // 		elf_Table *entry = elf_new_table(S);
 // 		elf_setfield(entry, elf_string(S,"pos"), VALUE_INTEGER(pos));
 // 		elf_setfield(entry, elf_string(S,"size"), VALUE_INTEGER(size));
@@ -81,17 +81,17 @@
 
 // 	name = f_checktext(S,0);
 // 	if (!name) {
-// 		elf_debug_log("first argument should be name of package file");
+// 		elf_ldebug("first argument should be name of package file");
 // 		goto esc;
 // 	}
 // 	info = elf_gettabraw(S,1);
 // 	if (!info) {
-// 		elf_debug_log("second argument must be package info table");
+// 		elf_ldebug("second argument must be package info table");
 // 		goto esc;
 // 	}
 // 	pack = fopen(name,"wb");
 // 	if (!pack) {
-// 		elf_debug_log("could not open package file for writting");
+// 		elf_ldebug("could not open package file for writting");
 // 		goto esc;
 // 	}
 
@@ -101,14 +101,14 @@
 
 // 		file=fopen(v.x_str->text,"rb");
 // 		if(file==0){
-// 			elf_debug_log("could not read file: %s", v.x_str->text);
+// 			elf_ldebug("could not read file: %s", v.x_str->text);
 // 			goto esc;
 
 // 		}
 // 		fseek(file,0,SEEK_END);
 // 		size=ftell(file);
 // 		fseek(file,0,SEEK_SET);
-// 		elf_debug_log("packing file: %s, %i", v.x_str->text,size);
+// 		elf_ldebug("packing file: %s, %i", v.x_str->text,size);
 
 // 		char name[128] = {};
 // 		strcpy(name,v.x_str->text);
@@ -121,19 +121,19 @@
 // 			ASSERT(read <= sizeof(buff));
 // 			if(read==0)break;
 // 			if(read<0) {
-// 				elf_debug_log("error while reading from package file: %i", read);
+// 				elf_ldebug("error while reading from package file: %i", read);
 // 				goto esc;
 // 			}
 // 			wrote=fwrite(buff,1,read,pack);
 // 			ASSERT(wrote <= read);
 // 			if(wrote<=0) {
-// 				elf_debug_log("error while writting to package file");
+// 				elf_ldebug("error while writting to package file");
 // 				goto esc;
 // 			}
 // 			size -= wrote;
 // 		} while(size > 0);
 // 		if(size != 0) {
-// 			elf_debug_log("error packaging file: %i",size);
+// 			elf_ldebug("error packaging file: %i",size);
 // 			goto esc;
 // 		}
 // 		fclose(file);

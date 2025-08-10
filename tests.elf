@@ -1,0 +1,157 @@
+// this should be in elf
+
+// #assert 0 == 1
+
+{
+	foo = fun (x, y, z, w) ? {
+		#assert(elf.nargs() == 3)
+		#assert(elf.nvargs() == 0)
+		#assert(z == nil)
+		#assert(w == nil)
+	}
+
+	foo(1, 2)
+}
+{
+	a := 0
+	b := a
+	c := a
+	#assert #getmem(this) == 0
+	#assert #getmem(a) == 1
+	#assert #getmem(b) == 2
+	#assert #getmem(c) == 3
+}
+
+{
+	#assert 0 == false
+	#assert 1 == true
+	#assert 0x80 == 128
+	#assert 0xC0 == 192
+	#assert 0xff == 255
+	#assert 0x100 == 256
+	#assert nil == nil
+	#assert nil !=   1
+	#assert nil !=  ""
+	#assert nil !=  {}
+	#assert 1.0 == 1
+	#assert 1.1 != 1
+	#assert "name" == "name"
+	#assert "myname"["name"] == 2
+}
+
+{
+	#assert elf.format("% % %", 1, 2, 3) == "1 2 3"
+	#assert elf.format("%% %", 1, 2, 3) == "12 3"
+	#assert f"%{1} %{2} %{3}" == "1 2 3"
+	#assert f"%{1}%{2} %{3}" == "12 3"
+}
+
+{
+
+	m := {"lol"}
+	t := {}
+	elf.set_meta(t, m)
+	#assert elf.get_meta(t) == m
+}
+
+{
+	values := { 1, 2, 3, 5, 7, 11 }
+	step := 0
+	for i = 1, 2, 3, 5, 7, 11  ? {
+		#assert(#index == 0)
+		#assert(#value == values:idx(step))
+		step += 1
+	}
+}
+
+
+{
+	// ensure the function doesn't override vargs with 7's
+	foo = fun(...) ? {
+		#assert(elf.nargs() == 5)
+		#assert(elf.nvargs() == 4)
+
+		a := 7
+		b := 7
+		c := 7
+		d := 7
+		for i = 1 ... elf.nargs() ? {
+			#assert(elf.arg(i) == i)
+		}
+	}
+	foo(1, 2, 3, 4)
+}
+
+
+
+{
+	// ensure the function DOES override vargs with 7's
+	// because it is not defined as variadic, so the
+	// runtime shouldn't do anything to protect them
+	// note that nvargs still just returns the number of additional
+	// arguments
+	foo = fun() ? {
+		#assert(elf.nargs() == 5)
+		#assert(elf.nvargs() == 4)
+
+		a := 7
+		b := 7
+		c := 7
+		d := 7
+		for i = 1 ... elf.nargs() ? {
+			#assert(elf.arg(i) == 7)
+		}
+	}
+	foo(1, 2, 3, 4)
+}
+
+
+{
+	foo = fun(...) ? {
+		#assert(elf.nargs() == 1)
+		#assert(elf.nvargs() == 0)
+	}
+	foo()
+}
+
+{
+	foo = fun(...) ? {
+		#assert(elf.nargs() == 6)
+		// 6 - 1 because 'this'
+		#assert(elf.nvargs() == 5)
+	}
+	foo(1, 2, 3, 4, 5)
+}
+
+
+
+{
+	#assert "test.wav":match("*.wav") == true
+	#assert "song.elf":match("*.wav|*.elf") == true
+	#assert "track.mp3":match("*.wav|*.elf") == false
+	#assert "main.c":match("m??n.c") == true
+	#assert "moon.c":match("m??n.c") == true
+	#assert "man.c":match("m??n.c") == false
+	#assert "lib.a":match("*.a|*.so") == true
+	#assert "lib.so":match("*.a|*.so") == true
+	#assert "lib.dll":match("*.a|*.so") == false
+	#assert "readme.txt":match("*.txt|*.md") == true
+	#assert "README.MD":match("*.txt|*.md") == false
+	#assert "":match("*") == true
+	#assert "":match("?") == false
+	#assert "a":match("?") == true
+	#assert "ab":match("??") == true
+	#assert "ab":match("?") == false
+}
+
+
+
+{
+	#assert json { "s": "K" } .s == "K"
+	#assert json { "i": 7 }   .i == 7
+	#assert json { "inner": { "s": "K"} } .inner.s == "K"
+}
+
+
+
+elf.printl("Tests Passed!")

@@ -53,10 +53,8 @@ typedef struct R_Draw_State {
 
 
 
-
 typedef struct R_TEXTURE R_TEXTURE;
 struct R_TEXTURE {
-	b32                       inuse;
 	// to defer clearing until the render target is actually set
 	b32                       requires_clear;
 	Color                     clear_color;
@@ -109,6 +107,7 @@ struct R_Renderer {
 	ID3D11BlendState   *blenders[BLENDER_CAPACITY];
 	ID3D11SamplerState *samplers[SAMPLER_CAPACITY];
 	ID3D11PixelShader   *shaders[SHADER_CAPACITY];
+	// todo: track which textures are in use, FindFreeTexture()
 	R_TEXTURE           textures[TEXTURE_CAPACITY];
 
 	// todo: structure this better!
@@ -132,10 +131,6 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 	rend->window = window;
 
 	HWND hwnd = OS_GetWindowHandle(window);
-
-	for (i32 i = 0; i < TEXTURE_FIRST_UNRESERVED_ID; i ++) {
-		rend->textures[i].inuse = true;
-	}
 
 	rend->mem_vertices = VirtualAlloc(0, MEGABYTES(128), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	rend->max_vertices = MEGABYTES(128) / sizeof(*rend->mem_vertices);
@@ -296,6 +291,8 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 		ID3D11Device_CreateBuffer(rend->device, &config, NULL, &rend->vertices_submission_buffer);
 	}
 
+	STATIC_ASSERT(TEXTURE_DEFAULT == 1);
+
 	Color color = {255, 255, 255, 255};
 	R_InstallTexture(rend, TEXTURE_DEFAULT, FORMAT_R8G8B8_UNORM, (vec2i){1,1}, &color);
 
@@ -434,7 +431,13 @@ static const i32 g_format_to_size[] = {
 	[FORMAT_R32G32B32_FLOAT]= 16,
 };
 
-void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args) {
+
+void
+R_InstallTextureEx(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride)
+{
+
+	ASSERT(resolution.x != 0);
+	ASSERT(resolution.y != 0);
 	ASSERT(R_GetSurface(rend) != id);
 	ASSERT(R_GetTexture(rend) != id);
 
@@ -444,24 +447,24 @@ void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args) {
 	DX_RELEASE_MAYBE(texture->shader_resource_view);
 	DX_RELEASE_MAYBE(texture->render_target_view);
 
-	texture->resolution = args.resolution;
-	texture->format = args.format;
+	texture->resolution = resolution;
+	texture->format = format;
 	texture->texture = 0;
 	texture->shader_resource_view = 0;
 	texture->render_target_view = 0;
 
-	i32 bytes_per_pixel = g_format_to_size[args.format];
-	DXGI_FORMAT format = g_format_conversion_table[args.format];
+	i32 bytes_per_pixel = g_format_to_size[format];
+	DXGI_FORMAT dxgi_format = g_format_conversion_table[format];
 
 	// .Usage = D3D11_USAGE_DYNAMIC,
 	// .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
 	{
 		D3D11_TEXTURE2D_DESC config = {
-			.Width              = args.resolution.x,
-			.Height             = args.resolution.y,
+			.Width              = resolution.x,
+			.Height             = resolution.y,
 			.MipLevels          = 1,
 			.ArraySize          = 1,
-			.Format             = format,
+			.Format             = dxgi_format,
 			.SampleDesc.Count   = 1,
 			.SampleDesc.Quality = 0,
 			.Usage              = D3D11_USAGE_DEFAULT,
@@ -469,25 +472,27 @@ void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args) {
 			.CPUAccessFlags     = 0,
 			.MiscFlags          = 0,
 		};
-		if (args.is_input)  config.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
-		if (args.is_output) config.BindFlags |= D3D11_BIND_RENDER_TARGET;
 
-		i32 stride = args.stride;
-		if (stride == 0) stride = args.resolution.x * bytes_per_pixel;
+		if (flags & R_BIND_INPUT) config.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+		if (flags & R_BIND_OUTPUT) config.BindFlags |= D3D11_BIND_RENDER_TARGET;
+
+		if (contentsstride <= 0) {
+			contentsstride = resolution.x * bytes_per_pixel;
+		}
 
 		D3D11_SUBRESOURCE_DATA subresource = {
-			.pSysMem     = args.colors,
-			.SysMemPitch = stride,
+			.pSysMem     = contents,
+			.SysMemPitch = contentsstride,
 		};
 
 		D3D11_SUBRESOURCE_DATA *psubresource = 0;
-		if (args.colors) { psubresource = &subresource; }
+		if (contents) { psubresource = &subresource; }
 
-		HRESULT result = ID3D11Device_CreateTexture2D(rend->device, &config, psubresource, &texture->texture);
-		ASSERT(SUCCEEDED(result));
+		HRESULT hnoerror = ID3D11Device_CreateTexture2D(rend->device, &config, psubresource, &texture->texture);
+		ASSERT(SUCCEEDED(hnoerror));
 	}
 
-	if (args.is_input) {
+	if (flags & R_BIND_INPUT) {
 		D3D11_SHADER_RESOURCE_VIEW_DESC config = {
 			.Format                    = DXGI_FORMAT_UNKNOWN,
 			.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D,
@@ -495,34 +500,26 @@ void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args) {
 			.Texture2D.MipLevels       = 1,
 		};
 
-		HRESULT result = ID3D11Device_CreateShaderResourceView(rend->device, texture->texture_resource, &config, &texture->shader_resource_view);
-		ASSERT(SUCCEEDED(result));
+		HRESULT hnoerror = ID3D11Device_CreateShaderResourceView(rend->device, texture->texture_resource, &config, &texture->shader_resource_view);
+		ASSERT(SUCCEEDED(hnoerror));
 	}
 
-	if (args.is_output) {
-		HRESULT result = ID3D11Device_CreateRenderTargetView(rend->device, texture->texture_resource, 0, &texture->render_target_view);
-		ASSERT(SUCCEEDED(result));
+	if (flags & R_BIND_OUTPUT) {
+		HRESULT hnoerror = ID3D11Device_CreateRenderTargetView(rend->device, texture->texture_resource, 0, &texture->render_target_view);
+		ASSERT(SUCCEEDED(hnoerror));
 	}
 }
 
+
 void R_InstallSurface(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution) {
-	R_InstallTextureEx(rend, id, (R_TEXTURE_PARAMS) {
-		.resolution = resolution,
-		.format     = format,
-		.is_input   = true,
-		.is_output  = true,
-	});
+	R_InstallTextureEx(rend, id, format, resolution, R_BIND_INPUT|R_BIND_OUTPUT, 0, 0);
 }
 
 
 void R_InstallTexture(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution, void *contents) {
-	R_InstallTextureEx(rend, id, (R_TEXTURE_PARAMS) {
-		.resolution = resolution,
-		.format     = format,
-		.is_input   = true,
-		.colors     = contents,
-	});
+	R_InstallTextureEx(rend, id, format, resolution, R_BIND_INPUT, contents, 0);
 }
+
 
 static void rCopyMemory(R_Renderer *rend, ID3D11Resource *resource, void *memory, i32 length) {
 
@@ -764,17 +761,6 @@ void R_FlushVertices(R_Renderer *rend) {
 	}
 }
 
-TextureId R_FindFreeTexture(R_Renderer *rend) {
-	R_TEXTURE *texture = rend->textures;
-	R_TEXTURE *end = rend->textures + COUNTOF(rend->textures);
-	while (texture->inuse && texture < end) texture ++;
-
-	TextureId id = TEXTURE_NONE;
-	if (!texture->inuse) id = texture - rend->textures;
-	texture->inuse = true;
-	return id;
-}
-
 vec2i R_GetTextureInfo(R_Renderer *rend, TextureId id) {
 	return get_texture_by_id(rend, id)->resolution;
 }
@@ -871,9 +857,7 @@ void R_ClearSurface(R_Renderer *rend, Color color) {
 	}
 
 	//
-	// additionally we could introduce a flag that specifies whether the render
-	// target is clear and it matches the specified clear color, to avoid clearing
-	// the target unnecessarily, but this would only be used to support one case
+	// todo: remove this
 	//
 	output_texture->requires_clear = true;
 	output_texture->clear_color = color;

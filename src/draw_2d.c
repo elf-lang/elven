@@ -262,6 +262,9 @@ void D_DrawRectangle(R_Renderer *rend, f32 x, f32 y, f32 w, f32 h) {
 	f32 u1 = g.region.u1;
 	f32 v1 = g.region.v1;
 
+	if (w == 0) w = R_GetTextureInfo(rend, R_GetTexture(rend)).x;
+	if (h == 0) h = R_GetTextureInfo(rend, R_GetTexture(rend)).y;
+
 	f32 temp;
 	if (g.fliponce.x) { temp = u0; u0 = u1, u1 = temp; }
 	if (g.fliponce.y) { temp = v0; v0 = v1, v1 = temp; }

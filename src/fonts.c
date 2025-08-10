@@ -30,7 +30,8 @@ struct D_FONT {
 global D_FONT g_fonts[FONTS_CAPACITY];
 
 // todo: this whole thing
-int InstallFont(R_Renderer *rend, int id, char *name, int size) {
+int
+InstallFont(R_Renderer *rend, int id, char *name, int size) {
 	D_FONT *font = &g_fonts[id];
 
 	enum { TEMP_SIZE = MEGABYTES(8) };
@@ -50,7 +51,8 @@ int InstallFont(R_Renderer *rend, int id, char *name, int size) {
 		fprintf(stderr, "Could Not Create Font\n");
 	}
 
-	font->texture = R_FindFreeTexture(rend);
+	// todo: this is weird!
+	font->texture = TEXTURE_CAPACITY - 1 - id;
 	R_InstallTexture(rend, font->texture, FORMAT_R8_UNORM, (vec2i){atlas_size, atlas_size}, atlas);
 
 	free(data);

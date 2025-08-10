@@ -38,7 +38,10 @@ typedef enum {
 	TEXTURE_RT_WINDOW,
 	TEXTURE_RT_BASE,
 
+	// you must add this offset yourself! unless
+	// you're the script, in which case this is added
 	TEXTURE_FIRST_UNRESERVED_ID,
+
 
 	TEXTURE_CAPACITY = 128,
 } TextureId;

@@ -18,18 +18,14 @@ STATIC_ASSERT(sizeof(R_Vertex3) == 32);
 
 R_Renderer *R_InitRenderer(OS_WindowId window);
 vec2i R_GetTextureInfo(R_Renderer *rend, TextureId id);
-TextureId R_FindFreeTexture(R_Renderer *rend);
 
-typedef struct {
-	vec2i     resolution;
-	TextureFormat  format;
-	void     *colors;
-	i32       stride;
-	b32       is_input;
-	b32       is_output;
-} R_TEXTURE_PARAMS;
+enum {
+	R_BIND_INPUT  = 1,
+	R_BIND_OUTPUT = 2,
+	R_DYNAMIC     = 4,
+};
 
-void R_InstallTextureEx(R_Renderer *rend, TextureId id, R_TEXTURE_PARAMS args);
+void R_InstallTextureEx(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride);
 void R_InstallTexture(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution, void *contents);
 void R_InstallSurface(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution);
 

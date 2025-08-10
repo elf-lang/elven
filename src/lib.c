@@ -75,7 +75,7 @@ ELF_FUNCTION(L_SetTexture) {
 	R_Renderer *rend = gl.rend;
 
 	TextureId id = elf_toint(S, args + 1 + 0);
-	D_SetTexture(rend, id);
+	D_SetTexture(rend, TEXTURE_FIRST_UNRESERVED_ID + id);
 	return 0;
 }
 
@@ -241,21 +241,17 @@ ELF_FUNCTION(L_LoadTexture) {
 
 	R_Renderer *rend = gl.rend;
 
-	char *name = f_checktext(S, 0);
+	int id = elf_toint(S, args + 1);
+	char *name = f_checktext(S, 1);
 
 	i32 c;
-
 	vec2i resolution = {};
 	Color *colors = (Color *) stbi_load(name, &resolution.x, &resolution.y, &c, 4);
 
-	// we create a new id automatically, because the user doesn't
-	// know which ids are taken already, unless we added a custom
-	// offset here #todo
-	TextureId id = R_FindFreeTexture(rend);
-	R_InstallTexture(rend, id, FORMAT_R8G8B8_UNORM, resolution, colors);
-
-	free(colors);
-
+	if (colors) {
+		R_InstallTexture(rend, TEXTURE_FIRST_UNRESERVED_ID + id, FORMAT_R8G8B8_UNORM, resolution, colors);
+		free(colors);
+	}
 	elf_pushint(S, id);
 	return 1;
 }
