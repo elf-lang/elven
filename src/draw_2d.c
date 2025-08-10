@@ -66,14 +66,14 @@ static Matrix MultiplyMatrices(Matrix a, Matrix b) {
 	}
 	return c;
 }
-static vec4 MultiplyMatrixVector(Matrix a, vec4 b) {
+static vec4 MultiplyMatrixVector(Matrix m, vec4 v) {
 	vec4 c;
 	for (int i = 0; i < 4; i ++) {
 		c.xyzw[i] =
-		b.xyzw[i] * a.rows[i].xyzw[0] +
-		b.xyzw[i] * a.rows[i].xyzw[1] +
-		b.xyzw[i] * a.rows[i].xyzw[2] +
-		b.xyzw[i] * a.rows[i].xyzw[3];
+		v.xyzw[0] * m.rows[i].xyzw[0] +
+		v.xyzw[1] * m.rows[i].xyzw[1] +
+		v.xyzw[2] * m.rows[i].xyzw[2] +
+		v.xyzw[3] * m.rows[i].xyzw[3];
 	}
 	return c;
 }
@@ -205,7 +205,6 @@ vec3 D_GetScale() {
 	return (vec3) { g.transform.rows[0].x, g.transform.rows[1].y, g.transform.rows[2].z };
 }
 
-// no need for a full matrix multiply right...
 void D_Translate(f32 x, f32 y) {
 	g.transform.rows[0].w += x;
 	g.transform.rows[1].w += y;
@@ -213,8 +212,8 @@ void D_Translate(f32 x, f32 y) {
 
 
 void D_SetOffset(f32 x, f32 y) {
-	g.offset.x = x;
-	g.offset.y = y;
+	g.transform.rows[0].w = x;
+	g.transform.rows[1].w = y;
 }
 
 void D_SetCenter(f32 x, f32 y) {
