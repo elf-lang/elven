@@ -3,6 +3,66 @@
 // #assert 0 == 1
 
 {
+	a, b, c := 1, 2, 3
+	a, b, c += 1, ...
+	#assert a == 2
+	#assert b == 3
+	#assert c == 4
+}
+{
+	a, b, c = 1, 2, 3
+	a, b, c ?= 7, 7, 7
+	#assert a == 1
+	#assert b == 2
+	#assert c == 3
+}
+
+{
+	a, b, c = nil, nil, nil
+	a, b, c ?= 2, 3, 5
+	#assert a == 2
+	#assert b == 3
+	#assert c == 5
+}
+
+{
+	tb := {}
+	tb[0], tb[1], tb[2] = 2, 3, 5
+	#assert tb[0] == 2
+	#assert tb[1] == 3
+	#assert tb[2] == 5
+}
+{
+	tb := {}
+	tb.name, a, tb.last = "Dayan", 1, "Rodr"
+	#assert a == 1
+	#assert tb.name == "Dayan"
+	#assert tb.last == "Rodr"
+}
+{
+	a, b = 4, 5
+	#assert a == 4
+	#assert b == 5
+}
+{
+	a, b := 0, 0
+	a, b = 4, 5
+	#assert a == 4
+	#assert b == 5
+}
+{
+	a := 1
+	#assert #getmem(a) == 1
+}
+{
+	a, b, c := 1
+	#assert #getmem(a) == 1
+	#assert #getmem(b) == 2
+	#assert #getmem(c) == 3
+}
+
+
+{
 	foo = fun (x, y, z, w) ? {
 		#assert(elf.nargs() == 3)
 		#assert(elf.nvargs() == 0)
