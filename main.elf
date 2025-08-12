@@ -1,8 +1,76 @@
-load "tests.elf"
-
 elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
 load "main.elf"
 #eof
+
+load "tests.elf"
+#eof
+
+
+t = {
+	name = "x",
+	nam1 = "x",
+	nam2 = "x",
+	nam3 = "x",
+	nam4 = "x",
+}
+
+elf.printl(t)
+
+#eof
+retfoo = fun(x) --> x
+elf.printl(retfoo(2) * retfoo(4) * retfoo(4))
+a := 0
+elf.printl(#getmem(a))
+#eof
+elf.printl(1, ", ", 2, ", ", 3, ", ", 4)
+elf.printl(retfoo(1), ", ", retfoo(2), ", ", retfoo(3), ", ", retfoo(4))
+foo = fun(x, y, z) ? {
+	elf.printl(x)
+	elf.printl(y)
+	elf.printl(z)
+	--> nil
+}
+// foo(1, 2, 3)
+if foo(1, 2, 3) ?? foo(1, 2, 3) ?? foo(1, 2, 3) ? {
+}
+//	a := 1
+//	elf.pf("mem: ", #getmem(a))
+
+
+#eof
+
+if 1 || 2 ? { }
+a := 1
+elf.pf("mem: ", #getmem(a))
+
+#eof
+a := 1
+b := a
+c := 1
+elf.pf("mem: ", #getmem(a))
+elf.pf("mem: ", #getmem(b))
+elf.pf("mem: ", #getmem(c))
+
+
+#eof
+foo = fun(x) ? {
+	elf.printl(x)
+	--> nil
+}
+if foo(1) ?? foo(1) ?? foo(1) ? {
+}
+
+
+#eof
+
+
+
+name := 1
+last := 1
+elf.printl(f"%{name}")
+#eof
+
+
 
 // #assert(1 == 2)
 
