@@ -38,16 +38,21 @@ int main(int nargs, char **args) {
 	elf_State *S = elf_new();
 
 	// todo: to be replaced with a directory with proper function definitions
-	elf_getglobals(S);
+	elf_pullglobals(S);
 	for (int i = 0; i < COUNTOF(g_lib); i ++) {
-		elf_pushstr(S, g_lib[i].name);
+		elf_pushtext(S, g_lib[i].name);
 		elf_pushfun(S, g_lib[i].function);
 		elf_setfield(S);
 	}
 
 	// todo: expect one return for the exit code
-	elf_loadcodefile(S, name);
+	elf_pushcodefile(S, name);
 	elf_pushnil(S);
+
+	for (int i=2; i<nargs; ++i) {
+		// elf_pushvalueastext(S, args[i]);
+	}
+
 	int nrets = elf_call(S, 1, 0);
 	return 0;
 }

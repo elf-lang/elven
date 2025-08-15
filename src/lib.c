@@ -12,53 +12,53 @@ struct {
 
 // todo: if it's just one value then grayscale
 // todo: color modes for HSV!
-static inline Color _get_color_arg(elf_State *S, int args, int nargs) {
+static inline Color _get_color_arg(elf_State *S, int nargs) {
 	Color color = {0,0,0,255};
 	if (nargs >= 4) {
-		color.r = elf_toint(S, args + 1);
-		color.g = elf_toint(S, args + 2);
-		color.b = elf_toint(S, args + 3);
+		color.r = elf_loadint(S, 1);
+		color.g = elf_loadint(S, 2);
+		color.b = elf_loadint(S, 3);
 		if (nargs >= 5) {
-			color.a = elf_toint(S, args + 4);
+			color.a = elf_loadint(S, 4);
 		}
 	}
 	return color;
 }
 
 ELF_FUNCTION(L_SetAlpha) {
-	D_SetAlpha(elf_toint(S, args + 1));
+	D_SetAlpha(elf_loadint(S, 1));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor0) {
-	D_SetColor0(_get_color_arg(S, args, nargs));
+	D_SetColor0(_get_color_arg(S, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor1) {
-	D_SetColor1(_get_color_arg(S, args, nargs));
+	D_SetColor1(_get_color_arg(S, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor2) {
-	D_SetColor2(_get_color_arg(S, args, nargs));
+	D_SetColor2(_get_color_arg(S, nargs));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetColor3) {
-	D_SetColor3(_get_color_arg(S, args, nargs));
+	D_SetColor3(_get_color_arg(S, nargs));
 	return 0;
 }
 
 
 ELF_FUNCTION(L_SetColor) {
-	D_SetColor(_get_color_arg(S, args, nargs));
+	D_SetColor(_get_color_arg(S, nargs));
 	return 0;
 }
 
 
 ELF_FUNCTION(L_SetColorP) {
-	elf_u32 packed = elf_toint(S, args + 1);
+	elf_u32 packed = elf_loadint(S, 1);
 	D_SetColor((Color){ packed >> 24, packed >> 16, packed >> 8, packed >> 0 });
 	return 0;
 }
@@ -74,7 +74,7 @@ ELF_FUNCTION(L_SetTexture) {
 
 	R_Renderer *rend = gl.rend;
 
-	TextureId id = elf_toint(S, args + 1 + 0);
+	TextureId id = elf_loadint(S, 1);
 	D_SetTexture(rend, TEXTURE_FIRST_UNRESERVED_ID + id);
 	return 0;
 }
@@ -83,37 +83,37 @@ ELF_FUNCTION(L_SetRegion) {
 
 	R_Renderer *rend = gl.rend;
 
-	i32 x0 = elf_tonum(S, args + 1);
-	i32 y0 = elf_tonum(S, args + 2);
-	i32 x1 = x0 + elf_tonum(S, args + 3);
-	i32 y1 = y0 + elf_tonum(S, args + 4);
+	i32 x0 = elf_loadnum(S, 1);
+	i32 y0 = elf_loadnum(S, 2);
+	i32 x1 = x0 + elf_loadnum(S, 3);
+	i32 y1 = y0 + elf_loadnum(S, 4);
 	D_SetRegion(x0, y0, x1, y1);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetRotation) {
-	D_SetRotation(elf_tonum(S, args + 1));
+	D_SetRotation(elf_loadnum(S, 1));
 	return 0;
 }
 
 ELF_FUNCTION(L_SetCenter) {
-	f32 x = elf_tonum(S, args + 1);
-	f32 y = elf_tonum(S, args + 2);
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
 	D_SetCenter(x, y);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetScale) {
-	f32 x = elf_tonum(S, args + 1);
-	f32 y = elf_tonum(S, args + 2);
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
 	D_SetScale(x, y);
 	return 0;
 }
 
 
 ELF_FUNCTION(L_Translate) {
-	f32 x = elf_tonum(S, args + 1);
-	f32 y = elf_tonum(S, args + 2);
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
 	D_Translate(x, y);
 	return 0;
 }
@@ -125,15 +125,15 @@ ELF_FUNCTION(L_GetTranslation) {
 
 // todo: valid?
 ELF_FUNCTION(L_SetOffset) {
-	f32 x = elf_tonum(S, args + 1);
-	f32 y = elf_tonum(S, args + 2);
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
 	D_SetOffset(x, y);
 	return 0;
 }
 
 ELF_FUNCTION(L_SetFlipOnce) {
-	int x = elf_toint(S, args + 1 + 0);
-	int y = elf_toint(S, args + 1 + 1);
+	int x = elf_loadint(S, 1);
+	int y = elf_loadint(S, 1);
 	D_SetFlipOnce(x, y);
 	return 0;
 }
@@ -155,7 +155,7 @@ ELF_FUNCTION(L_Clear) {
 
 	R_Renderer *rend = gl.rend;
 
-	Color color = _get_color_arg(S, args, nargs);
+	Color color = _get_color_arg(S, nargs);
 	D_Clear(rend, color);
 	return 0;
 }
@@ -164,14 +164,14 @@ ELF_FUNCTION(L_DrawTriangle) {
 
 	R_Renderer *rend = gl.rend;
 
-	f32 x0 = elf_tonum(S, args + 1);
-	f32 y0 = elf_tonum(S, args + 2);
+	f32 x0 = elf_loadnum(S, 1);
+	f32 y0 = elf_loadnum(S, 2);
 
-	f32 x1 = elf_tonum(S, args + 3);
-	f32 y1 = elf_tonum(S, args + 4);
+	f32 x1 = elf_loadnum(S, 3);
+	f32 y1 = elf_loadnum(S, 4);
 
-	f32 x2 = elf_tonum(S, args + 5);
-	f32 y2 = elf_tonum(S, args + 6);
+	f32 x2 = elf_loadnum(S, 5);
+	f32 y2 = elf_loadnum(S, 6);
 
 	D_DrawTriangle(rend, x0, y0, x1, y1, x2, y2);
 	return 0;
@@ -183,10 +183,10 @@ ELF_FUNCTION(L_DrawLine) {
 
 	R_Renderer *rend = gl.rend;
 
-	f32 x0 = elf_tonum(S, args + 1);
-	f32 y0 = elf_tonum(S, args + 2);
-	f32 x1 = elf_tonum(S, args + 3);
-	f32 y1 = elf_tonum(S, args + 4);
+	f32 x0 = elf_loadnum(S, 1);
+	f32 y0 = elf_loadnum(S, 2);
+	f32 x1 = elf_loadnum(S, 3);
+	f32 y1 = elf_loadnum(S, 4);
 
 	D_DrawLine(rend, x0, y0, x1, y1);
 	return 0;
@@ -196,10 +196,10 @@ ELF_FUNCTION(L_DrawCircle) {
 
 	R_Renderer *rend = gl.rend;
 
-	f32 x = elf_tonum(S, args + 1);
-	f32 y = elf_tonum(S, args + 2);
-	f32 r = elf_tonum(S, args + 3);
-	f32 v = elf_tonum(S, args + 4);
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
+	f32 r = elf_loadnum(S, 3);
+	f32 v = elf_loadnum(S, 4);
 
 	D_DrawCircle(rend, x, y, r, v);
 	return 0;
@@ -209,10 +209,10 @@ ELF_FUNCTION(L_DrawRectangle) {
 
 	R_Renderer *rend = gl.rend;
 
-	f32 x = elf_tonum(S, args + 1);
-	f32 y = elf_tonum(S, args + 2);
-	f32 w = elf_tonum(S, args + 3);
-	f32 h = elf_tonum(S, args + 4);
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
+	f32 w = elf_loadnum(S, 3);
+	f32 h = elf_loadnum(S, 4);
 
 	D_DrawRectangle(rend, x, y, w, h);
 	return 0;
@@ -222,16 +222,16 @@ ELF_FUNCTION(L_GetTextureResolution) {
 
 	R_Renderer *rend = gl.rend;
 
-	int id = elf_toint(S, args + 1 + 0);
+	int id = elf_loadint(S, 1);
 	vec2i res = R_GetTextureInfo(rend, id);
 
 	elf_pushtab(S);
 
-	elf_pushstr(S, "x");
+	elf_pushtext(S, "x");
 	elf_pushint(S, res.x);
 	elf_setfield(S);
 
-	elf_pushstr(S, "y");
+	elf_pushtext(S, "y");
 	elf_pushint(S, res.y);
 	elf_setfield(S);
 	return 1;
@@ -241,8 +241,8 @@ ELF_FUNCTION(L_LoadTexture) {
 
 	R_Renderer *rend = gl.rend;
 
-	int id = elf_toint(S, args + 1);
-	char *name = f_checktext(S, 1);
+	int id = elf_loadint(S, 1);
+	const char *name = elf_loadtext(S, 2);
 
 	i32 c;
 	vec2i resolution = {};
@@ -256,23 +256,27 @@ ELF_FUNCTION(L_LoadTexture) {
 	return 1;
 }
 
+
+
 // todo: possibly rename to "Keyboard" and then MouseButton to "Mouse"
 ELF_FUNCTION(L_Button) {
 	OS_WindowId window = gl.window;
 	int state = 0;
 	for (int i = 1; i < nargs; i ++) {
-		i32 index = elf_toint(S, args + i);
+		i32 index = elf_loadint(S, i);
 		state |= OS_GetWindowKey(window, index);
 	}
 	elf_pushint(S, state);
 	return 1;
 }
 
+
+
 ELF_FUNCTION(L_MouseButton) {
 
 	OS_WindowId window = gl.window;
 
-	i32 index = elf_toint(S, args + 1 + 0);
+	i32 index = elf_loadint(S, 1);
 	elf_pushint(S, OS_GetWindowKey(window, KEY_MOUSE_LEFT + index));
 	return 1;
 }
@@ -320,17 +324,17 @@ static void BeginDrawing(R_Renderer *rend) {
 
 ELF_FUNCTION(L_InitWindow) {
 
-	const char *name = elf_tostr(S, args + 1);
+	const char *name = elf_loadtext(S, 1);
 
 	vec2i resolution = { 0 };
 	vec2i windowreso = { 0 };
 
 
 	if (nargs >= 4) {
-		resolution.x = windowreso.x = elf_toint(S, args + 2);
-		resolution.y = windowreso.y = elf_toint(S, args + 3);
+		resolution.x = windowreso.x = elf_loadint(S, 2);
+		resolution.y = windowreso.y = elf_loadint(S, 3);
 		if (nargs >= 5) {
-			int windowscale = elf_toint(S, args + 4);
+			int windowscale = elf_loadint(S, 4);
 			windowreso.x *= windowscale;
 			windowreso.y *= windowscale;
 		}
@@ -410,7 +414,7 @@ ELF_FUNCTION(L_PollWindow) {
 }
 
 ELF_FUNCTION(L_SetFont) {
-	D_SetFont(elf_toint(S, args + 1 + 0));
+	D_SetFont(elf_loadint(S, 1));
 	return 0;
 }
 
@@ -418,17 +422,17 @@ ELF_FUNCTION(L_LoadFont) {
 
 	R_Renderer *rend = gl.rend;
 
-	int slot = elf_toint(S, args + 1 + 0);
-	char *name = f_checktext(S, 1);
-	int size = elf_toint(S, args + 1 + 2);
+	int slot = elf_loadint(S, 1);
+	const char *name = elf_loadtext(S, 2);
+	int size = elf_loadint(S, 3);
 
-	int id = InstallFont(rend, slot, name, size);
+	int id = InstallFont(rend, slot, (char *) name, size);
 	elf_pushint(S, id);
 	return 1;
 }
 
 ELF_FUNCTION(L_MeasureText) {
-	const char *text = elf_tostr(S, args + 1);
+	const char *text = elf_loadtext(S, 1);
 
 	f32 w = D_MeasureText(text);
 	elf_pushnum(S, w);
@@ -438,9 +442,9 @@ ELF_FUNCTION(L_MeasureText) {
 ELF_FUNCTION(L_DrawText) {
 	R_Renderer *rend = gl.rend;
 
-	f32 x = elf_tonum(S, args + 1);
-	f32 y = elf_tonum(S, args + 2);
-	const char *text = elf_tostr(S, args + 3);
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
+	const char *text = elf_loadtext(S, 3);
 
 	D_DrawText(rend, x, y, text);
 	return 0;
@@ -449,8 +453,8 @@ ELF_FUNCTION(L_DrawText) {
 ELF_FUNCTION(L_GetFileDrop) {
 
 	OS_WindowId window = gl.window;
-	i32 index = elf_toint(S, args + 1 + 0);
-	elf_pushstr(S, OS_GetFileDrop(index));
+	i32 index = elf_loadint(S, 1);
+	elf_pushtext(S, OS_GetFileDrop(index));
 	return 1;
 }
 
@@ -463,12 +467,12 @@ ELF_FUNCTION(L_GetNumFileDrops) {
 
 ELF_FUNCTION(L_OpenFileDialog) {
 
-	char *path = f_checktext(S, 0);
+	const char *path = elf_loadtext(S, 1);
 
 	char buffer[256] = {};
-	int result = OS_OpenFileDialog(path, buffer, sizeof(buffer));
+	int result = OS_OpenFileDialog((char *) path, buffer, sizeof(buffer));
 	if (result) {
-		elf_pushstr(S, buffer);
+		elf_pushtext(S, buffer);
 	} else {
 		elf_pushnil(S);
 	}
@@ -483,7 +487,7 @@ ELF_FUNCTION(L_GetNumVoices) {
 }
 
 ELF_FUNCTION(L_GetVoiceSound) {
-	int voiceid = elf_toint(S, args + 1 + 0);
+	int voiceid = elf_loadint(S, 1);
 	int sound = A_GetVoiceSound(voiceid);
 	elf_pushint(S, sound);
 	return 1;
@@ -495,23 +499,27 @@ ELF_FUNCTION(L_InitAudio) {
 	return 1;
 }
 
+
+
 ELF_FUNCTION(L_LoadSound) {
-	int id = elf_toint(S, args + 1 + 0);
-	char *name = f_checktext(S, 1);
-	int error = A_LoadSoundFromFile(id, name);
+	int id = elf_loadint(S, 1);
+	const char *name = elf_loadtext(S, 2);
+	int error = A_LoadSoundFromFile(id, (char *) name);
 	elf_pushint(S, error);
 	return 1;
 }
 
+
+
 ELF_FUNCTION(L_PlaySound) {
-	int id = elf_toint(S, args + 1 + 0);
+	int id = elf_loadint(S, 1);
 	int voiceid = A_PlaySound(id);
 	elf_pushint(S, voiceid);
 	return 1;
 }
 
 ELF_FUNCTION(L_StopVoice) {
-	int id = elf_toint(S, args + 1 + 0);
+	int id = elf_loadint(S, 1);
 	A_StopVoice(id);
 	return 0;
 }

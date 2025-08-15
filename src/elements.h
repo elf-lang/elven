@@ -9,6 +9,7 @@
 
 // printf
 #include <stdio.h>
+#include <assert.h>
 
 
 #if !defined(TRACELOG)
@@ -143,27 +144,7 @@ static inline void update_button(Button *btn, i32 state) {
 	}
 }
 
-
-
-
-#if !defined(ASSERT_ALWAYS)
-#define ASSERT_ALWAYS(xx) \
-do { \
-	if (!(xx)){ \
-		printf("%s[%i] %s(): '%s' triggered assertion\n",__FILE__,__LINE__,__func__,#xx); \
-		__debugbreak(); \
-	}; \
-} while(0)
-#endif
-
-
-#if !defined(ASSERT)
-	#if defined(_DEBUG)
-		#define ASSERT(xx) ASSERT_ALWAYS(xx)
-	#else
-		#define ASSERT(xx)
-	#endif
-#endif
+#define ASSERT assert
 
 
 #define BLACK (Color) { 0  ,   0,   0,   0 }

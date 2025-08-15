@@ -14,7 +14,8 @@ src/audio.c       ^
 src/baked_fonts.c ^
 elf/elf.lib
 
-@SET LIBS=User32.lib Shell32.lib Gdi32.lib Winmm.lib Comdlg32.lib freetype.lib
+@rem freetype.lib
+@SET LIBS=User32.lib Shell32.lib Gdi32.lib Winmm.lib Comdlg32.lib
 
 @REM -fsanitize=address
 clang-cl /Istb /Ielf /Iminiaudio /Ifreetype/include /nologo -Od -Zi %SRCIN% -DPLATFORM_DESKTOP -Feelven.exe %LIBS% -D_DEBUG

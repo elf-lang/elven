@@ -1,10 +1,9 @@
-//
-// baked font file (.bff)
-//
-
+#if defined(USE_FREETYPE)
 #define _CRT_SECURE_NO_WARNINGS
 #include "ft2build.h"
 #include FT_FREETYPE_H
+#endif
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -42,26 +41,6 @@ typedef struct {
 	short x_advance, unused;
 } BF_Glyph;
 
-#if 0
-typedef struct {
-	// must contain 'BFF'
-	char      magic_bytes[3];
-	char      version;
-	char      format;
-	char      unused_0;
-	char      unused_1;
-	char      unused_2;
-	short     atlas_width;
-	short     atlas_height;
-} bff_FILE_HEADER;
-
-
-typedef struct {
-	bff_FILE_HEADER header;
-	BF_Glyph       glyphs[256];
-	unsigned char   atlas_data[];
-} bff_FILE_DATA;
-#endif
 
 enum {
 	FONTS_CAPACITY       = 16,
@@ -91,7 +70,7 @@ enum {
 
 
 
-static int RunSimplePacker(FT_Face face, BF_Glyph *glyphs, int num_glyphs, int padding, int atlas_width, int atlas_height) {
+static int RunSimplePacker(BF_Glyph *glyphs, int num_glyphs, int padding, int atlas_width, int atlas_height) {
 	atlas_width -= padding * 2;
 	atlas_height -= padding * 2;
 
@@ -130,9 +109,10 @@ int InstallFont(R_Renderer *rend, int id, char *path, int font_size)
 {
 	D_FONT *font = & g_fonts[id];
 
-
-	int render_mode = FT_RENDER_MODE_NORMAL; // _LCD;
 	int padding = 1;
+
+#if defined(USE_FREETYPE)
+	int render_mode = FT_RENDER_MODE_NORMAL; // _LCD;
 
 	int width_multiplier = 1;
 	if (render_mode == FT_RENDER_MODE_LCD) {
@@ -155,15 +135,19 @@ int InstallFont(R_Renderer *rend, int id, char *path, int font_size)
 
 	// FT_LOAD_MONOCHROME | FT_LOAD_NO_HINTING
 
+#endif
+
+
 	int num_glyphs = 127 - 32;
 
 	BF_Glyph *glyphs = font->glyphs;
 
+
+	int strip_width = 1;
+	int strip_height = 1;
+
+#if defined(USE_FREETYPE)
 	FT_Bitmap *bmp = & face->glyph->bitmap;
-
-	int strip_width = 0;
-	int strip_height = 0;
-
 	for (int i = 0; i < num_glyphs; i ++) {
 		int character = i + 32;
 
@@ -181,6 +165,7 @@ int InstallFont(R_Renderer *rend, int id, char *path, int font_size)
 		strip_width += glyphs[character].w + padding;
 		strip_height += glyphs[character].h + padding;
 	}
+#endif
 
 	int atlas_area_approx = sqrt(strip_width * strip_height);
 	int stride = pow(2, ceil(log2(atlas_area_approx)));
@@ -188,13 +173,14 @@ int InstallFont(R_Renderer *rend, int id, char *path, int font_size)
 	int atlas_width = stride;
 	int atlas_height = stride;
 
-	int pack_result = RunSimplePacker(face, glyphs + 32, num_glyphs, padding, atlas_width, atlas_height);
+	int pack_result = RunSimplePacker(glyphs + 32, num_glyphs, padding, atlas_width, atlas_height);
 	assert(pack_result);
 
 
 	// todo: determine how much of the thing we actually used up
 	unsigned char *temp_atlas = calloc(atlas_width * atlas_height, 1);
 
+#if defined(USE_FREETYPE)
 	for (int i = 0; i < num_glyphs; i ++) {
 		int character = 32 + i;
 		int glyph_index = FT_Get_Char_Index(face, character);
@@ -230,11 +216,11 @@ int InstallFont(R_Renderer *rend, int id, char *path, int font_size)
 			}
 		}
 	}
+#endif
 
 	TextureId texture_id = TEXTURE_CAPACITY - 1 - id;
 	R_InstallTexture(rend, texture_id, FORMAT_R8_UNORM, (vec2i){ atlas_width, atlas_height }, temp_atlas);
 	font->texture = texture_id;
-
 	return id;
 }
 

@@ -44,7 +44,7 @@
 // }
 
 // int lib_package_get_info(elf_State *S) {
-// 	char *name = f_checktext(S,0);
+// 	char *name = elf_loadtext(S,0);
 // 	elf_Table *info = elf_new_table(S);
 
 // 	FILE *pack = fopen(name,"rb");
@@ -79,7 +79,7 @@
 // 	char *name;
 
 
-// 	name = f_checktext(S,0);
+// 	name = elf_loadtext(S,0);
 // 	if (!name) {
 // 		elf_ldebug("first argument should be name of package file");
 // 		goto esc;

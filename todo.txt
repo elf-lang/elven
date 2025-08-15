@@ -11,34 +11,16 @@ instead use stack ids for as many as possible
 -- elven.c: figure out why we still ASSERT when
 the file isn't found on exec, we should handle it gracefully
 
--- core.c: group all the very small utilities into one file
-
 -- elf.c: we need some sort of way to define symbols
 statically, to make things more convenient and robust.
 
 -- core.c: re-enable atomizer and instead of using the
 builtin table use a faster dedicated data structure
 
--- lib_*.c: keep cleaning up the builtin libs
+-- l_*.c: keep cleaning up the builtin libs
 
 -- table.c, lib_table.c: a good compressed binary
 exporter
-
--- strings: hashes for strings are generated
-once the string is created, but what if we
-generated them once the hash for a string was
-requested instead?
-
--- [DONE] elven.c: make so that we can actually pass in
-the file name in the command line!
-
---	core.c is "break" broken? (this might have been fixed or had
-something to do with not understing how for loops work)
-
--- core.c should the signature of the function elf
-knows how to call be (elf_State *S), this means that
-we have to use function calls just to know the number
-of arguments and get access to them.
 
 -- parse.c core.c: why is nil not being properly handled
 name = nil
@@ -411,8 +393,6 @@ on a single line?
 They just get evaluated, or discarded,
 but that should be a syntax error
 -  byte.c: fix stupid bytecode!
--  byte.h & core.c: get rid of yield, delay, and leave instructions they
-are no longer in use!
 - 	parse.c & gen.c: 'then' branch will require us to
 move the entire if elif thing to the generator.
 -  parse.c & gen.c: multi-returns
@@ -444,14 +424,9 @@ rid of the unused ones?
 loaded, even when not in use?
 - 	If there are no files, do we keep the source code for
 each file?
--	If prototypes are dynamic, will they become objects too?
-Or will they get treated separately?
 -	Will bytecode be allocated per prototype or still be
 emitted to the same buffer?
 - 	organize library, organize elf.h
--	figure what the API for the core
-library will be, setup some constraints
-it should adhere to.
 -	core lib function that tells you whether
 an object is visible, and tells the path.
 - bytecode should be much smaller

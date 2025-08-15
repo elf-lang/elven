@@ -3,6 +3,16 @@ InitWindow("packer", 320, 180, 4)
 freespaces={}
 freespaces:add { x=0,y=0,w=320,h=180 }
 
+dummyrects := {{x=0,y=0,w=320,h=180}}
+splitrect:=function(p,r)?{
+	dummyrects:add { x=p.x        ,y=p.y,w=r.x-p.x    ,h=p.h}
+	dummyrects:add { x=p.x+r.x+r.w,y=p.y,w=p.w-r.x-r.w,h=p.h}
+	dummyrects:add { x=p.x, y=r.y+r.h, w=p.w, h=p.h-r.y-p.y }
+	dummyrects:add { x=p.x, y=p.y, w=p.w, h=r.y             }
+	p.w=0
+	p.h=0
+}
+
 packrect:=function(r){
 
 	bestspace:=nil
@@ -15,7 +25,14 @@ packrect:=function(r){
 	if bestspace ? {
 		for freespace=freespaces[...]?{
 			if freespace.w>=r.w && freespace.h>=r.h?{
-				if freespace.w*freespace.h<bestspace.w*bestspace.h?{
+				bestwastedspacex := bestspace.w-r.w
+				bestwastedspacey := bestspace.h-r.h
+
+				wastedspacex := freespace.w-r.w
+				wastedspacey := freespace.h-r.h
+
+
+				if wastedspacex*wastedspacey<bestwastedspacex*bestwastedspacey ? {
 					bestspace=freespace
 				}
 			}
@@ -24,14 +41,25 @@ packrect:=function(r){
 		r.x=bestspace.x
 		r.y=bestspace.y
 
+		removespaceswithin:=fun(r)?{
+			for fs=freespaces[...]?{
+				if fs.x>=r.x && fs.x+fs.w<=r.x+r.w
+				&& fs.y>=r.y && fs.y+fs.h<=r.y+r.h ? {
+					fs.w=0
+					fs.h=0
+				}
+			}
+		}
 		addfreespace:=fun(r)?{
-			// only add free space if not fully contained within another one
+			if r.w<=0 ? -->
+			if r.h<=0 ? -->
 			for fs=freespaces[...]?{
 				if r.x>=fs.x && r.x+r.w<=fs.x+fs.w
 				&& r.y>=fs.y && r.y+r.h<=fs.y+fs.h ? {
 					-->
 				}
 			}
+			removespaceswithin(r)
 			freespaces:add(r)
 		}
 
@@ -48,12 +76,10 @@ packrect:=function(r){
 				fs.w=0
 				fs.h=0
 
-				if fsw>r.w ? {
-					addfreespace { x=fsx+r.w,y=fsy,w=fsw-r.w,h=fsh}
-				}
-				if fsh>r.h ? {
-					addfreespace { x=fsx,y=fsy+r.h,w=fsw,h=fsh-r.h}
-				}
+				addfreespace { x=fsx    ,y=fsy,w=r.x-fsx,h=fsh}
+				addfreespace { x=fsx+r.w,y=fsy,w=fsw-r.w,h=fsh}
+				addfreespace { x=fsx,y=fsy    ,w=fsw,h=r.y-fsy}
+				addfreespace { x=fsx,y=fsy+r.h,w=fsw,h=fsh-r.h}
 			}
 		}
 	}
@@ -65,8 +91,10 @@ rects := {}
 while PollWindow() ? {
 	// Clear(0, 255 * 0.4, 255 * 0.8)
 	Clear(32, 32, 32)
-
+	mx := GetMouseX() * 320
+	my := GetMouseY() * 180
 	for fr=freespaces[...] ? {
+		if fr.w==0 || fr.h==0 ? continue
 		SetColor(255,0,0,16)
 		DrawRectangle(fr.x,fr.y,fr.w,fr.h)
 	}
@@ -87,4 +115,12 @@ while PollWindow() ? {
 		SetColor(r.r,r.g,r.b)
 		DrawRectangle(r.x,r.y,r.w,r.h)
 	}
+
+	// SetColor(255, 0, 0)
+	// if MouseButton(0) & 4 ? {
+	// 	splitrect(dummyrects:idx(0), {x=mx,y=my,w=32,h=32})
+	// }
+	// for r = dummyrects[...] ? {
+	// 	DrawRectangle(r.x,r.y,r.w,r.h)
+	// }
 }

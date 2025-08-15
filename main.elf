@@ -1,5 +1,6 @@
-elf.change_work_dir("W:\\MicroRJ\\elf.tetris")
+elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
 load "main.elf"
+
 #eof
 
 TAU ::= 6.283185307179586
