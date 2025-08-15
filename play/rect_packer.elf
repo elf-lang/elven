@@ -1,0 +1,90 @@
+InitWindow("packer", 320, 180, 4)
+
+freespaces={}
+freespaces:add { x=0,y=0,w=320,h=180 }
+
+packrect:=function(r){
+
+	bestspace:=nil
+	for freespace=freespaces[...]?{
+		if freespace.w>=r.w && freespace.h>=r.h?{
+			bestspace=freespace
+			break
+		}
+	}
+	if bestspace ? {
+		for freespace=freespaces[...]?{
+			if freespace.w>=r.w && freespace.h>=r.h?{
+				if freespace.w*freespace.h<bestspace.w*bestspace.h?{
+					bestspace=freespace
+				}
+			}
+		}
+
+		r.x=bestspace.x
+		r.y=bestspace.y
+
+		addfreespace:=fun(r)?{
+			// only add free space if not fully contained within another one
+			for fs=freespaces[...]?{
+				if r.x>=fs.x && r.x+r.w<=fs.x+fs.w
+				&& r.y>=fs.y && r.y+r.h<=fs.y+fs.h ? {
+					-->
+				}
+			}
+			freespaces:add(r)
+		}
+
+		// look for all free spaces that overlap this rect
+		for fs=freespaces[...]?{
+			if r.x+r.w>fs.x && fs.x+fs.w>r.x
+			&& r.y+r.h>fs.y && fs.y+fs.h>r.y ? {
+
+				fsw:=fs.w
+				fsh:=fs.h
+				fsx:=fs.x
+				fsy:=fs.y
+
+				fs.w=0
+				fs.h=0
+
+				if fsw>r.w ? {
+					addfreespace { x=fsx+r.w,y=fsy,w=fsw-r.w,h=fsh}
+				}
+				if fsh>r.h ? {
+					addfreespace { x=fsx,y=fsy+r.h,w=fsw,h=fsh-r.h}
+				}
+			}
+		}
+	}
+}
+
+nextrecttopack := 0
+rects := {}
+
+while PollWindow() ? {
+	// Clear(0, 255 * 0.4, 255 * 0.8)
+	Clear(32, 32, 32)
+
+	for fr=freespaces[...] ? {
+		SetColor(255,0,0,16)
+		DrawRectangle(fr.x,fr.y,fr.w,fr.h)
+	}
+	if Button(' ')&4 ? {
+		r := {
+			x=64+elf.random()*(320-64*2)
+			y=64+elf.random()*(180-64*2)
+			w=8+elf.random()*16
+			h=8+elf.random()*16
+			r=128+elf.random()*127
+			g=128+elf.random()*127
+			b=128+elf.random()*127
+		}
+		rects:add(r)
+		packrect(r)
+	}
+	for r = rects[...] ? {
+		SetColor(r.r,r.g,r.b)
+		DrawRectangle(r.x,r.y,r.w,r.h)
+	}
+}

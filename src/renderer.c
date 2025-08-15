@@ -326,14 +326,14 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 		"};\n"
 		"Texture2D    main_t2d     : register(t0);\n"
 		"SamplerState main_sampler : register(s0);\n"
-		"Vertex_Out main_vs(Vertex_In input, uint vertex_id: SV_VertexID) {\n"
+		"Vertex_Out MainVS(Vertex_In input, uint vertex_id: SV_VertexID) {\n"
 		"	Vertex_Out output;\n"
 		"	output.position = mul(transform, float4(input.position, 1));\n"
 		"	output.texcoords = input.texcoords;\n"
 		"	output.color = input.color;\n"
 		"	return output;\n"
 		"}\n"
-		"float4 main_ps(Vertex_Out input) : SV_TARGET {\n"
+		"float4 MainPS(Vertex_Out input) : SV_TARGET {\n"
 		"	float4 color = input.color;\n"
 		"	float4 sample = main_t2d.Sample(main_sampler, input.texcoords);\n"
 		"	float4 final_color = mul(texture_color_transform, sample) * color;\n"
@@ -346,7 +346,7 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 
 		// pixel shader
 		if (SUCCEEDED(D3DCompile(shader_source, strlen(shader_source)
-		,    shader_name, 0, 0, "main_ps", "ps_5_0", compilation_flags, 0, &bytecode_b, &messages_b)))
+		,    shader_name, 0, 0, "MainPS", "ps_5_0", compilation_flags, 0, &bytecode_b, &messages_b)))
 		{
 			ID3D11Device_CreatePixelShader(rend->device
 			, bytecode_b->lpVtbl->GetBufferPointer(bytecode_b)
@@ -362,7 +362,7 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 
    	// vertex shader
 		if (SUCCEEDED(D3DCompile(shader_source, strlen(shader_source)
-		,    shader_name, 0, 0, "main_vs", "vs_5_0", compilation_flags, 0, &bytecode_b, &messages_b)))
+		,    shader_name, 0, 0, "MainVS", "vs_5_0", compilation_flags, 0, &bytecode_b, &messages_b)))
 		{
 			if (SUCCEEDED(ID3D11Device_CreateVertexShader(rend->device
 			,    bytecode_b->lpVtbl->GetBufferPointer(bytecode_b)

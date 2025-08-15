@@ -3,7 +3,7 @@
 
 
 // <3
-#define STB_IMAGE_STATIC
+// #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -19,7 +19,7 @@
 #include "draw_2d.h"
 #include "renderer.h"
 #include "audio.h"
-#include "fonts.h"
+#include "baked_fonts.h"
 
 #include "lib.c"
 

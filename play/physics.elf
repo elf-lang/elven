@@ -1,20 +1,55 @@
-InitWindow("Physics", 256, 256, 2)
-particles := {}
+InitWindow("Physics", 256, 256, 3)
+ball := {}
 
+player := { x=0,y=0,vx=0,vy=0 }
+
+playerhit=fun(p,fr,fx,fy)?{
+	for o = ball[...] ? {
+		dx := o.x - (p.x+4)
+		dy := o.y - (p.y+8)
+		ls := dx * dx + dy * dy
+		rs := fr + o.r
+		if ls < rs * rs ? {
+			o.vx+=fx
+			o.vy+=fy
+		}
+	}
+}
 while PollWindow() ? {
 	Clear()
+
+	inputx := (Button('D')&1)-(Button('A')&1)
+	inputy := (Button('W')&1)-(Button('S')&1)
+	player.x += inputx
+	if inputy>0 ?{
+		if player.y==0?{
+			player.vy=2
+			playerhit(player,8,inputx,3)
+		}
+	}
+	player.x+=player.vx
+	player.y+=player.vy
+	if player.y<0?{
+		player.y=0
+	}
+	if player.y>0?{
+		player.vy-=0.25
+	}
+
+	SetColor(255, 255, 255, 255)
+	DrawRectangle(player.x,player.y,8,16)
 
 	mx := GetMouseX() * 256
 	my := GetMouseY() * 256
 
-	if Button(' ') & 4 ? {
-		particles:add({
+	if MouseButton(0) & 4 ? {
+		ball:add({
 			x = mx, y = my, r = 8,
 			vx = 0, vy = 0,
 		})
 	}
 
-	for p = particles[...] ? {
+	for p = ball[...] ? {
 		p.vy -= 0.1
 		p.x += p.vx
 		p.y += p.vy
@@ -23,22 +58,27 @@ while PollWindow() ? {
 		ny := 0
 
 		SetColor(255, 255, 255, 255)
-		for o = particles[...] ? {
-			if p == o ? {
-				continue
-			}
-			dx := o.x - p.x
-			dy := o.y - p.y
-			ls := dx * dx + dy * dy
-			rs := p.r + o.r
-			if ls < rs * rs ? {
-				SetColor(255, 0, 0, 255)
 
-				l := sqrt(ls)
-				nx := dx / l
-				ny := dy / l
-			}
-		}
+		// for o = ball[...] ? {
+		// 	if p == o ? {
+		// 		continue
+		// 	}
+		// 	dx := o.x - p.x
+		// 	dy := o.y - p.y
+		// 	ls := dx * dx + dy * dy
+		// 	rs := p.r + o.r
+		// 	if ls < rs * rs ? {
+		// 		SetColor(255, 0, 0, 255)
+
+		// 		l := sqrt(ls)
+		// 		nx := dx / l
+		// 		ny := dy / l
+		// 		// o.vx += nx * 0.1 * (l - o.r) * 0.5
+		// 		// o.vy += ny * 0.1 * (l - o.r) * 0.5
+		// 		// p.vx -= nx * 0.1 * (l - p.r) * 0.5
+		// 		// p.vy -= ny * 0.1 * (l - p.r) * 0.5
+		// 	}
+		// }
 
 		if p.x < p.r ? {
 			p.x = p.r
@@ -57,10 +97,10 @@ while PollWindow() ? {
 			ny = -1
 		}
 		if nx != 0 ? {
-			p.vx = p.vx * - 0.75
+			p.vx = p.vx * - 0.80
 		}
 		if ny != 0 ? {
-			p.vy = p.vy * - 0.75
+			p.vy = p.vy * - 0.80
 		}
 
 		DrawCircle(p.x, p.y, p.r, 2)

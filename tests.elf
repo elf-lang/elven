@@ -1,6 +1,36 @@
 // this should be in elf
 
-// #assert 0 == 1
+{
+	t = { x = "x", y = "y", z = "z", w = "w" }
+	#assert t.x == "x"
+	#assert t.y == "y"
+	#assert t.z == "z"
+	#assert t.w == "w"
+}
+
+{
+	#assert #getexpr(1 && 0 || 1) == "EXPR_OR"
+	#assert #getexpr(1 && (0 || 1)) == "EXPR_AND"
+
+	#assert (0 <= 1) == true
+	#assert (0 <= 1) == true
+	#assert (1 <= 1) == true
+	#assert (0 >= 0) == true
+	#assert (1 >= 1) == true
+	#assert (1 >= 0) == true
+	#assert (0 && 0 && 0 && 0) == 0
+	#assert (0 || 0 || 0 || 0) == 0
+	#assert (0 && 0 || 0) == 0
+	#assert (0 && 0 || 1) == 1
+	#assert (0 && 1 || 2) == 1
+	#assert (0 && 0) == 0
+	#assert (0 && 1) == 0
+	#assert (1 && 1) == 1
+	#assert (0 || 0) == 0
+	#assert (0 || 1) == 1
+	#assert (1 || 1) == 1
+	#assert (0 && 0 || 0) == 0
+}
 
 {
 	a, b, c := 1, 2, 3
