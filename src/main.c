@@ -1,5 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "include/elf.h"
+#include "src/platform/system.h"
 
 
 // <3
@@ -16,20 +17,18 @@
 
 #include "elements.h"
 #include "platform.h"
-#include "draw_2d.h"
 #include "renderer.h"
-#include "audio.h"
-#include "baked_fonts.h"
+#include "drawstate.h"
+#include "draw_helpers.c"
+#include "l_state.c"
+#include "l_tiles.c"
+#include "l_archive.c"
 
-#include "lib.c"
 
-
-// todo: convert command line arguments into real arguments
 int main(int nargs, char **args) {
 
 	char *name = "main.elf";
 
-	// todo: proper parser for this!
 	if (nargs >= 2) {
 		name = args[1];
 	}
@@ -39,9 +38,20 @@ int main(int nargs, char **args) {
 
 	// todo: to be replaced with a directory with proper function definitions
 	elf_pullglobals(S);
-	for (int i = 0; i < COUNTOF(g_lib); i ++) {
-		elf_pushtext(S, g_lib[i].name);
-		elf_pushfun(S, g_lib[i].function);
+	for (int i = 0; i < COUNTOF(l_state); i ++) {
+		elf_pushtext(S, l_state[i].name);
+		elf_pushfun(S, l_state[i].function);
+		elf_setfield(S);
+	}
+	for (int i = 0; i < COUNTOF(l_tiles); i ++) {
+		elf_pushtext(S, l_tiles[i].name);
+		elf_pushfun(S, l_tiles[i].function);
+		elf_setfield(S);
+	}
+
+	for (int i = 0; i < COUNTOF(l_arch); i ++) {
+		elf_pushtext(S, l_arch[i].name);
+		elf_pushfun(S, l_arch[i].function);
 		elf_setfield(S);
 	}
 
@@ -49,10 +59,20 @@ int main(int nargs, char **args) {
 	elf_pushcodefile(S, name);
 	elf_pushnil(S);
 
+	// todo: proper parser for this!
+	int ncallargs = 1;
 	for (int i=2; i<nargs; ++i) {
-		// elf_pushvalueastext(S, args[i]);
+		char *arg = args[i];
+		if (!strcmp(arg, "-s")){
+			char asstr[256]={};
+			sprintf(asstr, "\"%s\"", args[i+1]);
+			arg = asstr;
+			i ++;
+		}
+		elf_load_const_expr_from_text(S, "arg", arg);
+		ncallargs ++;
 	}
 
-	int nrets = elf_call(S, 1, 0);
+	int nrets = elf_call(S, ncallargs, 0);
 	return 0;
 }

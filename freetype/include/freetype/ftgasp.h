@@ -37,7 +37,7 @@ FT_BEGIN_HEADER
    *   gasp_table
    *
    * @title:
-   *   Gasp Table
+   *   Gasp Tab
    *
    * @abstract:
    *   Retrieving TrueType 'gasp' table entries.

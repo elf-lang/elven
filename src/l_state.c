@@ -1,58 +1,49 @@
-struct {
-	R_Renderer *rend;
-	OS_WindowId window;
-	i64 begin_cycle_clock;
-	f64 clocks_to_seconds;
-	f64 target_seconds_to_sleep;
-	f64 pending_seconds_to_sleep;
-	vec2 mouse;
-	b32 targetsurface;
-} gl;
+
+
+D_DrawState gd;
+
 
 
 // todo: if it's just one value then grayscale
 // todo: color modes for HSV!
-static inline Color _get_color_arg(elf_State *S, int nargs) {
+static inline Color _get_color_args2(elf_State *S, int index, int nargs) {
+	nargs -= index;
+
 	Color color = {0,0,0,255};
-	if (nargs >= 4) {
-		color.r = elf_loadint(S, 1);
-		color.g = elf_loadint(S, 2);
-		color.b = elf_loadint(S, 3);
-		if (nargs >= 5) {
-			color.a = elf_loadint(S, 4);
+	if (nargs >= 3) {
+		color.r = (u8) elf_loadint(S, index + 0);
+		color.g = (u8) elf_loadint(S, index + 1);
+		color.b = (u8) elf_loadint(S, index + 2);
+		if (nargs >= 4) {
+			color.a = (u8) elf_loadint(S, index + 3);
 		}
 	}
 	return color;
 }
 
-ELF_FUNCTION(L_SetAlpha) {
-	D_SetAlpha(elf_loadint(S, 1));
-	return 0;
-}
 
-ELF_FUNCTION(L_SetColor0) {
-	D_SetColor0(_get_color_arg(S, nargs));
-	return 0;
-}
-
-ELF_FUNCTION(L_SetColor1) {
-	D_SetColor1(_get_color_arg(S, nargs));
-	return 0;
-}
-
-ELF_FUNCTION(L_SetColor2) {
-	D_SetColor2(_get_color_arg(S, nargs));
-	return 0;
-}
-
-ELF_FUNCTION(L_SetColor3) {
-	D_SetColor3(_get_color_arg(S, nargs));
-	return 0;
+static inline Color _get_color_arg(elf_State *S, int nargs) {
+	return _get_color_args2(S, 1, nargs);
 }
 
 
-ELF_FUNCTION(L_SetColor) {
-	D_SetColor(_get_color_arg(S, nargs));
+
+ELF_FUNCTION(L_SetAlpha) { D_SetAlpha((u8) elf_loadint(S, 1)); return 0; }
+
+ELF_FUNCTION(L_SetColor0) { D_SetColor0(_get_color_arg(S, nargs)); return 0; }
+ELF_FUNCTION(L_SetColor1) { D_SetColor1(_get_color_arg(S, nargs)); return 0; }
+ELF_FUNCTION(L_SetColor2) { D_SetColor2(_get_color_arg(S, nargs)); return 0; }
+ELF_FUNCTION(L_SetColor3) { D_SetColor3(_get_color_arg(S, nargs)); return 0; }
+
+ELF_FUNCTION(L_SetColor)  { D_SetColor(_get_color_arg(S, nargs)); return 0; }
+
+ELF_FUNCTION(L_SetLayerColor)  {
+	D_SetLayerColor(elf_loadint(S, 1), _get_color_args2(S, 2, nargs));
+	return 0;
+}
+
+ELF_FUNCTION(L_SetLayerAlpha)  {
+	D_SetLayerAlpha(elf_loadint(S, 1), elf_loadint(S, 2));
 	return 0;
 }
 
@@ -65,24 +56,20 @@ ELF_FUNCTION(L_SetColorP) {
 
 
 ELF_FUNCTION(L_SolidFill) {
-	R_Renderer *rend = gl.rend;
-	D_SolidFill(rend);
+	D_SolidFill();
 	return 0;
 }
+
 
 ELF_FUNCTION(L_SetTexture) {
-
-	R_Renderer *rend = gl.rend;
-
-	TextureId id = elf_loadint(S, 1);
-	D_SetTexture(rend, TEXTURE_FIRST_UNRESERVED_ID + id);
+	RID id = (RID) elf_loadsys(S, 1);
+	D_SetTexture(id);
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_SetRegion) {
-
-	R_Renderer *rend = gl.rend;
-
 	i32 x0 = elf_loadnum(S, 1);
 	i32 y0 = elf_loadnum(S, 2);
 	i32 x1 = x0 + elf_loadnum(S, 3);
@@ -91,10 +78,16 @@ ELF_FUNCTION(L_SetRegion) {
 	return 0;
 }
 
+
+
+
 ELF_FUNCTION(L_SetRotation) {
 	D_SetRotation(elf_loadnum(S, 1));
 	return 0;
 }
+
+
+
 
 ELF_FUNCTION(L_SetCenter) {
 	f32 x = elf_loadnum(S, 1);
@@ -102,6 +95,8 @@ ELF_FUNCTION(L_SetCenter) {
 	D_SetCenter(x, y);
 	return 0;
 }
+
+
 
 ELF_FUNCTION(L_SetScale) {
 	f32 x = elf_loadnum(S, 1);
@@ -111,6 +106,7 @@ ELF_FUNCTION(L_SetScale) {
 }
 
 
+
 ELF_FUNCTION(L_Translate) {
 	f32 x = elf_loadnum(S, 1);
 	f32 y = elf_loadnum(S, 2);
@@ -118,12 +114,14 @@ ELF_FUNCTION(L_Translate) {
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_GetTranslation) {
 	return 0;
 }
 
 
-// todo: valid?
+
 ELF_FUNCTION(L_SetOffset) {
 	f32 x = elf_loadnum(S, 1);
 	f32 y = elf_loadnum(S, 2);
@@ -131,18 +129,23 @@ ELF_FUNCTION(L_SetOffset) {
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_SetFlipOnce) {
 	int x = elf_loadint(S, 1);
-	int y = elf_loadint(S, 1);
+	int y = elf_loadint(S, 2);
 	D_SetFlipOnce(x, y);
 	return 0;
 }
+
 
 
 ELF_FUNCTION(L_PushMatrix) {
 	D_PushMatrix();
 	return 0;
 }
+
+
 
 ELF_FUNCTION(L_PopMatrix) {
 	D_PopMatrix();
@@ -152,18 +155,14 @@ ELF_FUNCTION(L_PopMatrix) {
 
 
 ELF_FUNCTION(L_Clear) {
-
-	R_Renderer *rend = gl.rend;
-
 	Color color = _get_color_arg(S, nargs);
-	D_Clear(rend, color);
+	D_Clear(color);
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_DrawTriangle) {
-
-	R_Renderer *rend = gl.rend;
-
 	f32 x0 = elf_loadnum(S, 1);
 	f32 y0 = elf_loadnum(S, 2);
 
@@ -173,86 +172,80 @@ ELF_FUNCTION(L_DrawTriangle) {
 	f32 x2 = elf_loadnum(S, 5);
 	f32 y2 = elf_loadnum(S, 6);
 
-	D_DrawTriangle(rend, x0, y0, x1, y1, x2, y2);
+	D_DrawTriangle(x0, y0, x1, y1, x2, y2);
 	return 0;
 }
 
 
 
 ELF_FUNCTION(L_DrawLine) {
-
-	R_Renderer *rend = gl.rend;
-
 	f32 x0 = elf_loadnum(S, 1);
 	f32 y0 = elf_loadnum(S, 2);
 	f32 x1 = elf_loadnum(S, 3);
 	f32 y1 = elf_loadnum(S, 4);
 
-	D_DrawLine(rend, x0, y0, x1, y1);
+	D_DrawLine(x0, y0, x1, y1);
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_DrawCircle) {
-
-	R_Renderer *rend = gl.rend;
-
 	f32 x = elf_loadnum(S, 1);
 	f32 y = elf_loadnum(S, 2);
 	f32 r = elf_loadnum(S, 3);
 	f32 v = elf_loadnum(S, 4);
-
-	D_DrawCircle(rend, x, y, r, v);
+	D_DrawCircle(x, y, r, v);
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_DrawRectangle) {
-
-	R_Renderer *rend = gl.rend;
-
 	f32 x = elf_loadnum(S, 1);
 	f32 y = elf_loadnum(S, 2);
 	f32 w = elf_loadnum(S, 3);
 	f32 h = elf_loadnum(S, 4);
 
-	D_DrawRectangle(rend, x, y, w, h);
+	D_DrawRectangle(x, y, w, h);
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_GetTextureResolution) {
-
-	R_Renderer *rend = gl.rend;
-
-	int id = elf_loadint(S, 1);
-	vec2i res = R_GetTextureInfo(rend, id);
+	RID id = (RID) elf_loadint(S, 1);
+	vec2i reso = R_GetTextureInfo(gd.rend, id);
 
 	elf_pushtab(S);
 
 	elf_pushtext(S, "x");
-	elf_pushint(S, res.x);
+	elf_pushint(S, reso.x);
 	elf_setfield(S);
 
 	elf_pushtext(S, "y");
-	elf_pushint(S, res.y);
+	elf_pushint(S, reso.y);
 	elf_setfield(S);
 	return 1;
 }
 
+
+
 ELF_FUNCTION(L_LoadTexture) {
+	R_Renderer *rend = gd.rend;
+	const char *name = elf_loadtext(S, 1);
 
-	R_Renderer *rend = gl.rend;
+	vec2i resolution;
+	i32 num_channels;
+	i32 wanted_channels = 4;
+	Color *colors = (Color *) stbi_load(name, &resolution.x, &resolution.y, &num_channels, wanted_channels);
 
-	int id = elf_loadint(S, 1);
-	const char *name = elf_loadtext(S, 2);
-
-	i32 c;
-	vec2i resolution = {};
-	Color *colors = (Color *) stbi_load(name, &resolution.x, &resolution.y, &c, 4);
-
+	RID rid = RID_NONE;
 	if (colors) {
-		R_InstallTexture(rend, TEXTURE_FIRST_UNRESERVED_ID + id, FORMAT_R8G8B8_UNORM, resolution, colors);
+		rid = R_InstallTexture(rend, FORMAT_R8G8B8_UNORM, resolution, colors);
 		free(colors);
 	}
-	elf_pushint(S, id);
+	elf_pushsys(S, rid);
 	return 1;
 }
 
@@ -260,11 +253,10 @@ ELF_FUNCTION(L_LoadTexture) {
 
 // todo: possibly rename to "Keyboard" and then MouseButton to "Mouse"
 ELF_FUNCTION(L_Button) {
-	OS_WindowId window = gl.window;
 	int state = 0;
 	for (int i = 1; i < nargs; i ++) {
 		i32 index = elf_loadint(S, i);
-		state |= OS_GetWindowKey(window, index);
+		state |= OS_GetWindowKey(gd.window, index);
 	}
 	elf_pushint(S, state);
 	return 1;
@@ -273,31 +265,29 @@ ELF_FUNCTION(L_Button) {
 
 
 ELF_FUNCTION(L_MouseButton) {
-
-	OS_WindowId window = gl.window;
-
 	i32 index = elf_loadint(S, 1);
-	elf_pushint(S, OS_GetWindowKey(window, KEY_MOUSE_LEFT + index));
+	elf_pushint(S, OS_GetWindowKey(gd.window, KEY_MOUSE_LEFT + index));
 	return 1;
 }
+
+
 
 ELF_FUNCTION(L_GetMouseWheel) {
-
-	OS_WindowId window = gl.window;
-
-	elf_pushint(S, OS_GetWindowMouseWheel(window).y);
+	elf_pushint(S, OS_GetWindowMouseWheel(gd.window).y);
 	return 1;
 }
+
+
 
 ELF_FUNCTION(L_GetMouseX) {
-
-	elf_pushnum(S, gl.mouse.x);
+	elf_pushnum(S, gd.mouse.x);
 	return 1;
 }
 
-ELF_FUNCTION(L_GetMouseY) {
 
-	elf_pushnum(S, gl.mouse.y);
+
+ELF_FUNCTION(L_GetMouseY) {
+	elf_pushnum(S, gd.mouse.y);
 	return 1;
 }
 
@@ -309,18 +299,18 @@ static void BeginDrawing(R_Renderer *rend) {
 	D_SetScale(1, 1);
 	D_SetOffset(0, 0);
 	D_SetCenter(0, 0);
-	// you don't want to do this
-	// D_SetFont(0);
-	D_SetTexture(rend, TEXTURE_DEFAULT);
+	D_LoadIdentity();
+	D_SetTexture(RID_TEXTURE_DEFAULT);
 
-	R_SetSurface(rend, gl.targetsurface);
+	R_SetSurface(rend, gd.targetsurface);
 	R_SetSampler(rend, SAMPLER_POINT);
 	R_SetViewportFullScreen(rend);
 	R_SetTopology(rend, TOPO_TRIANGLES);
 	R_SetBlender(rend, BLENDER_ALPHA_BLEND);
 
-	D_LoadIdentity();
 }
+
+
 
 ELF_FUNCTION(L_InitWindow) {
 
@@ -346,17 +336,17 @@ ELF_FUNCTION(L_InitWindow) {
 
 	TRACELOG("Init Renderer...");
 	R_Renderer *rend = R_InitRenderer(WINDOW_MAIN);
-	gl.rend = rend;
-	gl.window = WINDOW_MAIN;
-	gl.targetsurface = TEXTURE_RT_WINDOW;
+	gd.rend = rend;
+	gd.window = WINDOW_MAIN;
+	gd.targetsurface = RID_RENDER_TARGET_WINDOW;
 
 	if (resolution.x > 0 && resolution.y > 0) {
-		gl.targetsurface = TEXTURE_RT_BASE;
-		R_InstallSurface(rend, TEXTURE_RT_BASE, FORMAT_R8G8B8_UNORM, resolution);
+		gd.basesurface = R_InstallSurface(rend, FORMAT_R8G8B8_UNORM, resolution);
+		gd.targetsurface = gd.basesurface;
 	}
 
-	gl.target_seconds_to_sleep = 1.0 / 60.0;
-	gl.begin_cycle_clock = OS_GetTickCounter();
+	gd.target_seconds_to_sleep = 1.0 / 60.0;
+	gd.begin_cycle_clock = OS_GetTickCounter();
 
 	// OS_PollWindow(window);
 	BeginDrawing(rend);
@@ -365,14 +355,14 @@ ELF_FUNCTION(L_InitWindow) {
 
 ELF_FUNCTION(L_PollWindow) {
 
-	R_Renderer *rend = gl.rend;
-	OS_WindowId window = gl.window;
+	R_Renderer *rend = gd.rend;
+	OS_WindowId window = gd.window;
 
 	b32 open = OS_PollWindow(window);
 
 	{
-		if (gl.targetsurface != TEXTURE_RT_WINDOW) {
-			R_Blit(rend, TEXTURE_RT_WINDOW, gl.targetsurface);
+		if (gd.targetsurface != RID_RENDER_TARGET_WINDOW) {
+			R_Blit(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
 		}
 		R_EndFrame(rend);
 	}
@@ -385,27 +375,27 @@ ELF_FUNCTION(L_PollWindow) {
 	// begin a new frame
 	BeginDrawing(rend);
 
-	iRect rect = R_GetBlitRect(rend, TEXTURE_RT_WINDOW, gl.targetsurface);
+	iRect rect = R_GetBlitRect(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
 	vec2i mouse = OS_GetWindowMouse(window);
 
 	// can be negative
-	gl.mouse.x = 0 + (mouse.x - rect.x) / (f32) rect.w;
-	gl.mouse.y = 1 - (mouse.y - rect.y) / (f32) rect.h;
+	gd.mouse.x = 0 + (mouse.x - rect.x) / (f32) rect.w;
+	gd.mouse.y = 1 - (mouse.y - rect.y) / (f32) rect.h;
 
 	// todo: fix this thing, it works too well
 	i64 end_cycle_clock = OS_GetTickCounter();
-	i64 elapsed_clocks = end_cycle_clock - gl.begin_cycle_clock;
+	i64 elapsed_clocks = end_cycle_clock - gd.begin_cycle_clock;
 	f64 elapsed_seconds = elapsed_clocks * OS_GetClocksToSeconds();
-	gl.pending_seconds_to_sleep += gl.target_seconds_to_sleep - elapsed_seconds;
+	gd.pending_seconds_to_sleep += gd.target_seconds_to_sleep - elapsed_seconds;
 
 	// todo: instead of making this logic work in seconds
 	// make it work in clock cycles directly
 	f64 clock_accuracy = 1.0 / 1000.0;
-	gl.begin_cycle_clock = OS_GetTickCounter();
-	while (gl.pending_seconds_to_sleep > clock_accuracy) {
-		OS_Sleep(gl.pending_seconds_to_sleep * 1000);
-		gl.begin_cycle_clock = OS_GetTickCounter();
-		gl.pending_seconds_to_sleep -= (gl.begin_cycle_clock - end_cycle_clock) * OS_GetClocksToSeconds();
+	gd.begin_cycle_clock = OS_GetTickCounter();
+	while (gd.pending_seconds_to_sleep > clock_accuracy) {
+		OS_Sleep(gd.pending_seconds_to_sleep * 1000);
+		gd.begin_cycle_clock = OS_GetTickCounter();
+		gd.pending_seconds_to_sleep -= (gd.begin_cycle_clock - end_cycle_clock) * OS_GetClocksToSeconds();
 	}
 
 	esc:
@@ -413,46 +403,59 @@ ELF_FUNCTION(L_PollWindow) {
 	return 1;
 }
 
+
+
 ELF_FUNCTION(L_SetFont) {
-	D_SetFont(elf_loadint(S, 1));
+	D_SetFont((FONT_HANDLE) elf_loadsys(S, 1));
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_LoadFont) {
 
-	R_Renderer *rend = gl.rend;
+	R_Renderer *rend = gd.rend;
 
-	int slot = elf_loadint(S, 1);
-	const char *name = elf_loadtext(S, 2);
-	int size = elf_loadint(S, 3);
+	const char *name = elf_loadtext(S, 1);
+	int size = elf_loadint(S, 2);
 
-	int id = InstallFont(rend, slot, (char *) name, size);
-	elf_pushint(S, id);
+	D_FONT *font = InstallFont((char *) name, size);
+	if (font) {
+		elf_pushsys(S, (elf_Handle) font);
+	} else {
+		elf_pushnil(S);
+	}
 	return 1;
 }
+
+
 
 ELF_FUNCTION(L_MeasureText) {
 	const char *text = elf_loadtext(S, 1);
 
-	f32 w = D_MeasureText(text);
+	f32 w = MeasureText(text);
 	elf_pushnum(S, w);
 	return 1;
 }
 
+
+
 ELF_FUNCTION(L_DrawText) {
-	R_Renderer *rend = gl.rend;
+	R_Renderer *rend = gd.rend;
 
 	f32 x = elf_loadnum(S, 1);
 	f32 y = elf_loadnum(S, 2);
 	const char *text = elf_loadtext(S, 3);
 
-	D_DrawText(rend, x, y, text);
+	D_DrawText(x, y, text);
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_GetFileDrop) {
 
-	OS_WindowId window = gl.window;
+	OS_WindowId window = gd.window;
 	i32 index = elf_loadint(S, 1);
 	elf_pushtext(S, OS_GetFileDrop(index));
 	return 1;
@@ -460,7 +463,7 @@ ELF_FUNCTION(L_GetFileDrop) {
 
 ELF_FUNCTION(L_GetNumFileDrops) {
 
-	OS_WindowId window = gl.window;
+	OS_WindowId window = gd.window;
 	elf_pushint(S, OS_GetNumFileDrops());
 	return 1;
 }
@@ -525,7 +528,7 @@ ELF_FUNCTION(L_StopVoice) {
 }
 
 
-static const elf_Binding g_lib[] = {
+static const elf_Binding l_state[] = {
 	{ "InitWindow"                       , L_InitWindow                           },
 	{ "PollWindow"                       , L_PollWindow                           },
 	{ "LoadTexture"                      , L_LoadTexture                          },
@@ -544,6 +547,8 @@ static const elf_Binding g_lib[] = {
 	{ "SetTexture"                       , L_SetTexture                           },
 	{ "SetRegion"                        , L_SetRegion                            },
 	{ "SetCenter"                        , L_SetCenter                            },
+	{ "SetLayerColor"                    , L_SetLayerColor                        },
+	{ "SetLayerAlpha"                    , L_SetLayerAlpha                        },
 	{ "SetAlpha"                         , L_SetAlpha                             },
 	{ "SetColorP"                        , L_SetColorP                            },
 	{ "SetColor"                         , L_SetColor                             },

@@ -1,3 +1,5 @@
+#define USE_FREETYPE
+
 #if defined(USE_FREETYPE)
 #define _CRT_SECURE_NO_WARNINGS
 #include "ft2build.h"
@@ -23,16 +25,8 @@
 
 #include "elements.h"
 #include "platform.h"
-#include "draw_2d.h"
 #include "renderer.h"
-// #include "include\elf.h"
-// #include "src\string_builder.c"
-// #include "src\path_builder.c"
-// #include "src\platform\system.h"
-
-
-#include "baked_fonts.h"
-
+#include "drawstate.h"
 
 
 typedef struct {
@@ -52,15 +46,10 @@ enum {
 
 typedef struct D_FONT D_FONT;
 struct D_FONT {
-	TextureId  texture;
+	RID        texture;
 	char       name[FONT_NAME_CAPACITY];
 	BF_Glyph   glyphs[FONT_GLYPHS_CAPACITY];
 };
-
-
-
-global D_FONT g_fonts[FONTS_CAPACITY];
-
 
 
 enum {
@@ -105,9 +94,9 @@ static int RunSimplePacker(BF_Glyph *glyphs, int num_glyphs, int padding, int at
 }
 
 
-int InstallFont(R_Renderer *rend, int id, char *path, int font_size)
+D_FONT *InstallFont(char *path, int font_size)
 {
-	D_FONT *font = & g_fonts[id];
+	D_FONT *font = calloc(1, sizeof(*font));
 
 	int padding = 1;
 
@@ -218,19 +207,18 @@ int InstallFont(R_Renderer *rend, int id, char *path, int font_size)
 	}
 #endif
 
-	TextureId texture_id = TEXTURE_CAPACITY - 1 - id;
-	R_InstallTexture(rend, texture_id, FORMAT_R8_UNORM, (vec2i){ atlas_width, atlas_height }, temp_atlas);
-	font->texture = texture_id;
-	return id;
+	font->texture = R_InstallTexture(gd.rend, FORMAT_R8_UNORM, (vec2i){ atlas_width, atlas_height }, temp_atlas);
+	return font;
 }
 
 
 
 
-f32 D_MeasureText(const char *text) {
+f32 MeasureText(const char *text) {
 	f32 width = 0.0;
 
-	D_FONT *font = & g_fonts[D_GetFont()];
+	D_FONT *font = D_GetFont();
+
 	while (*text) {
 		i32 token = *text ++;
 		i32 index = token - 32;
@@ -242,22 +230,23 @@ f32 D_MeasureText(const char *text) {
 	return width * D_GetScale().x;
 }
 
+
 //
 // todo: proper text rendering...
 //
-void D_DrawText(R_Renderer *rend, f32 x, f32 y, const char *text) {
+void D_DrawText(f32 x, f32 y, const char *text) {
 	// why would you even call
 	assert(text);
 
-	D_FONT *font = & g_fonts[D_GetFont()];
+	D_FONT *font = D_GetFont();
 
-	Color color = D_GetColor0();
+	Color color = D_GetColor();
 
 
-	TextureId texture_prev = R_GetTexture(rend);
+	RID restore_texture = R_GetTexture(gd.rend);
 
-	D_SetTexture(rend, font->texture);
-	D_BeginQuads(rend);
+	D_SetTexture(font->texture);
+	D_BeginQuads();
 
 	while (*text) {
 		i32 token = *text ++;
@@ -274,11 +263,11 @@ void D_DrawText(R_Renderer *rend, f32 x, f32 y, const char *text) {
 			Rect dst_r = { x + glyph.x_bearing, y + (glyph.y_bearing - glyph.h), src_r.w, src_r.h };
 
 
-			D_PushQuad(rend, dst_r, src_r);
+			D_PushQuad(dst_r, src_r);
 		}
 		x += glyph.x_advance * D_GetScale().x;
 	}
-	D_EndQuads(rend);
+	D_EndQuads();
 
-	D_SetTexture(rend, texture_prev);
+	D_SetTexture(restore_texture);
 }

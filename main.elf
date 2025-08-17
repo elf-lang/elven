@@ -1,5 +1,7 @@
-elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
-load "main.elf"
+load "tests.elf"
+
+elf.change_work_dir("W:\\MicroRJ\\game2")
+load "archive.elf"
 
 #eof
 

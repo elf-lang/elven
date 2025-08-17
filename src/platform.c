@@ -98,19 +98,20 @@ int OS_GetNumFileDrops() {
 
 void OS_ForgetFileDrops() {
 	g.dropindex = 0;
+
 }
 
 int OS_GetNextFileDrop(OS_WindowId id) {
 	MWINDOW *window = & g.windows[id];
-	int index = -1;
-	for (int i = index; i < g.dropindex; i ++) {
-		if (g.filedrops[i].window == id) {
-			index = i;
-			break;
+	if (window->nextdropindex>g.dropindex){
+		window->nextdropindex=0;
+	}
+	for (; window->nextdropindex<g.dropindex; ++window->nextdropindex) {
+		if (g.filedrops[window->nextdropindex].window == id) {
+			return window->nextdropindex;
 		}
 	}
-	window->nextdropindex = index;
-	return index;
+	return -1;
 }
 
 
@@ -146,34 +147,6 @@ void OS_EndPlatform() {
 	timeEndPeriod(1);
 }
 
-
-i32 OS_ReadEntireFile(char *name, void *memory, i32 max_bytes_to_read) {
-
-	HANDLE file = INVALID_HANDLE_VALUE;
-	do {
-		file = CreateFileA(name, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
-		if (file == INVALID_HANDLE_VALUE) {
-			DWORD error = GetLastError();
-			if (error == ERROR_SHARING_VIOLATION) {
-				Sleep(100);
-			} else {
-				OS_ShowErrorMessage(0);
-				return 0;
-			}
-		}
-	} while(file == INVALID_HANDLE_VALUE);
-
-	DWORD num_bytes_to_read = GetFileSize(file, NULL);
-	num_bytes_to_read = MIN(num_bytes_to_read, max_bytes_to_read);
-
-	DWORD bytes_read = 0;
-	ReadFile(file, memory, num_bytes_to_read, &bytes_read, NULL);
-	ASSERT(bytes_read == num_bytes_to_read);
-
-	CloseHandle(file);
-
-	return bytes_read;
-}
 
 
 static LRESULT Win32_WindowProcedure(HWND window, UINT msg, WPARAM w, LPARAM l);

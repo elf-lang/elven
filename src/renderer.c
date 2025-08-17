@@ -17,7 +17,6 @@
 #define _WIN32_API
 #include "elements.h"
 #include "platform.h"
-#include "draw_2d.h"
 #include "renderer.h"
 
 #define DX_RELEASE(I) ((I)->lpVtbl->Release(I))
@@ -38,15 +37,14 @@ enum {
 typedef struct R_Draw_State {
 	vec2i            viewport;
 	union {
-		// todo: these don't even have to be 32-bit integers
-		i32           states[STATE_INT_COUNT];
+		i64           states[STATE_INT_COUNT];
 		struct {
-			TextureId  output;
-			TextureId  texture;
-			SamplerId  sampler;
-			Topology   topology;
-			ShaderId   shader;
-			BlenderId  blender;
+			RID  output;
+			RID  texture;
+			i64  sampler;
+			i64  topology;
+			i64  shader;
+			i64  blender;
 		};
 	};
 } R_Draw_State;
@@ -107,8 +105,8 @@ struct R_Renderer {
 	ID3D11BlendState   *blenders[BLENDER_CAPACITY];
 	ID3D11SamplerState *samplers[SAMPLER_CAPACITY];
 	ID3D11PixelShader   *shaders[SHADER_CAPACITY];
-	// todo: track which textures are in use, FindFreeTexture()
-	R_TEXTURE           textures[TEXTURE_CAPACITY];
+	// special textures
+	R_TEXTURE           textures[RID_SPECIAL_RANGE];
 
 	// todo: structure this better!
 	Color       v_color;
@@ -120,9 +118,17 @@ struct R_Renderer {
 
 
 
-static R_TEXTURE *get_texture_by_id(R_Renderer *rend, TextureId id) {
-	return & rend->textures[id];
+
+// NOTE: never cast RID to texture directly, because it could be a special handle
+static inline R_TEXTURE *TextureFromRID(R_Renderer *rend, RID id) {
+	if (id < RID_FIRST_NONSPECIAL) {
+		return & rend->textures[(uintptr_t) id & RID_SPECIAL_MASK];
+	}
+	return (R_TEXTURE *) id;
 }
+
+
+static void R_InitTextureEx(R_Renderer *rend, RID rid, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride);
 
 
 R_Renderer *R_InitRenderer(OS_WindowId window) {
@@ -291,10 +297,8 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 		ID3D11Device_CreateBuffer(rend->device, &config, NULL, &rend->vertices_submission_buffer);
 	}
 
-	STATIC_ASSERT(TEXTURE_DEFAULT == 1);
-
 	Color color = {255, 255, 255, 255};
-	R_InstallTexture(rend, TEXTURE_DEFAULT, FORMAT_R8G8B8_UNORM, (vec2i){1,1}, &color);
+	R_InitTextureEx(rend, RID_TEXTURE_DEFAULT, FORMAT_R8G8B8_UNORM, (vec2i){1,1}, R_BIND_INPUT, &color, 0);
 
 
 	{
@@ -432,20 +436,18 @@ static const i32 g_format_to_size[] = {
 };
 
 
-void
-R_InstallTextureEx(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride)
+static void R_InitTextureEx(R_Renderer *rend, RID rid, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride)
 {
-
 	ASSERT(resolution.x != 0);
 	ASSERT(resolution.y != 0);
-	ASSERT(R_GetSurface(rend) != id);
-	ASSERT(R_GetTexture(rend) != id);
+	ASSERT(R_GetSurface(rend) != rid);
+	ASSERT(R_GetTexture(rend) != rid);
 
-	R_TEXTURE *texture = get_texture_by_id(rend, id);
+	R_TEXTURE *texture = TextureFromRID(rend, rid);
 
-	DX_RELEASE_MAYBE(texture->texture);
-	DX_RELEASE_MAYBE(texture->shader_resource_view);
-	DX_RELEASE_MAYBE(texture->render_target_view);
+	// DX_RELEASE_MAYBE(texture->texture);
+	// DX_RELEASE_MAYBE(texture->shader_resource_view);
+	// DX_RELEASE_MAYBE(texture->render_target_view);
 
 	texture->resolution = resolution;
 	texture->format = format;
@@ -511,13 +513,20 @@ R_InstallTextureEx(R_Renderer *rend, TextureId id, TextureFormat format, vec2i r
 }
 
 
-void R_InstallSurface(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution) {
-	R_InstallTextureEx(rend, id, format, resolution, R_BIND_INPUT|R_BIND_OUTPUT, 0, 0);
+RID R_InstallTextureEx(R_Renderer *rend, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride) {
+	R_TEXTURE *texture = malloc(sizeof(*texture));
+	R_InitTextureEx(rend, (RID) texture, format, resolution, flags, contents, contentsstride);
+	return (RID) texture;
 }
 
 
-void R_InstallTexture(R_Renderer *rend, TextureId id, TextureFormat format, vec2i resolution, void *contents) {
-	R_InstallTextureEx(rend, id, format, resolution, R_BIND_INPUT, contents, 0);
+RID R_InstallSurface(R_Renderer *rend, TextureFormat format, vec2i resolution) {
+	return R_InstallTextureEx(rend, format, resolution, R_BIND_INPUT|R_BIND_OUTPUT, 0, 0);
+}
+
+
+RID R_InstallTexture(R_Renderer *rend, TextureFormat format, vec2i resolution, void *contents) {
+	return R_InstallTextureEx(rend, format, resolution, R_BIND_INPUT, contents, 0);
 }
 
 
@@ -537,7 +546,7 @@ static void R_BeginFrame(R_Renderer *rend) {
 	{
 		vec2i target_resolution = OS_GetWindowResolution(rend->window);
 
-		R_TEXTURE *window = get_texture_by_id(rend, TEXTURE_RT_WINDOW);
+		R_TEXTURE *window = TextureFromRID(rend, RID_RENDER_TARGET_WINDOW);
 
 		b32 resolution_mismatch =
 		window->resolution.x != target_resolution.x ||
@@ -601,7 +610,7 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 	rend->draw_prev = prox;
 
 	ASSERT(prox.topology !=    MODE_NONE);
-	ASSERT(prox.texture  != TEXTURE_NONE);
+	ASSERT(prox.texture  != RID_NONE);
 
 	// check number of vertices matches what we want to draw
 	switch (prox.topology) {
@@ -625,7 +634,7 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 	}
 
 	{
-		R_TEXTURE *output_texture = get_texture_by_id(rend, prox.output);
+		R_TEXTURE *output_texture = TextureFromRID(rend, prox.output);
 		ID3D11RenderTargetView *render_target_view = output_texture->render_target_view;
 
 		if (prev.output != prox.output) {
@@ -656,8 +665,8 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 
 	if (prev.texture != prox.texture)
 	{
-		R_TEXTURE *texture = get_texture_by_id(rend, prox.texture);
-		R_TEXTURE *texture_prev = get_texture_by_id(rend, prev.texture);
+		R_TEXTURE *texture = TextureFromRID(rend, prox.texture);
+		R_TEXTURE *texture_prev = TextureFromRID(rend, prev.texture);
 		if (texture->format != texture_prev->format) {
 			if (texture->format == FORMAT_R8_UNORM) {
 				rend->draw_constants.texture_color_transform[0] = (vec4){ 1, 0, 0, 0 };
@@ -742,6 +751,12 @@ void rInstallShader(R_Renderer *rend, ShaderId id, char *entry, char *contents) 
 }
 
 
+// todo: sometimes you may want to reserve X vertices, but you
+// only end up using Y, so maybe have another function like
+// EndVertices that takes how many vertices you actually used...
+// This will also make the API easier to debug because we can
+// check there that the number of vertices is the valid for the
+// current topology...
 R_Vertex3 *R_QueueVertices(R_Renderer *rend, i32 number) {
 	if (rend->num_vertices + number > rend->max_vertices) {
 		R_FlushVertices(rend);
@@ -750,6 +765,8 @@ R_Vertex3 *R_QueueVertices(R_Renderer *rend, i32 number) {
 	rend->num_vertices += number;
 	return vertices;
 }
+
+
 
 void R_FlushVertices(R_Renderer *rend) {
 	if (rend->num_vertices != 0) {
@@ -761,11 +778,11 @@ void R_FlushVertices(R_Renderer *rend) {
 	}
 }
 
-vec2i R_GetTextureInfo(R_Renderer *rend, TextureId id) {
-	return get_texture_by_id(rend, id)->resolution;
+vec2i R_GetTextureInfo(R_Renderer *rend, RID id) {
+	return TextureFromRID(rend, id)->resolution;
 }
 
-static b32 rSetDrawStateVar(R_Renderer *rend, i32 index, i32 value) {
+static b32 rSetDrawStateVar(R_Renderer *rend, i32 index, i64 value) {
 	b32 changed = rend->draw_prox.states[index] != value;
 
 	if (changed) {
@@ -794,18 +811,18 @@ void R_SetTopology(R_Renderer *rend, Topology value) {
 	rSetDrawStateVar(rend, STATE_TOPOLOGY, value);
 }
 
-TextureId R_GetTexture(R_Renderer *rend) {
+RID R_GetTexture(R_Renderer *rend) {
 	return rend->draw_prox.texture;
 }
 
-TextureId R_GetSurface(R_Renderer *rend) {
+RID R_GetSurface(R_Renderer *rend) {
 	return rend->draw_prox.output;
 }
 
 // todo: this should just be in begin frame?
-void R_SetSurface(R_Renderer *rend, TextureId value) {
+void R_SetSurface(R_Renderer *rend, RID value) {
 
-	R_TEXTURE *texture = get_texture_by_id(rend, value);
+	R_TEXTURE *texture = TextureFromRID(rend, value);
 	ASSERT(texture->render_target_view);
 
 	b32 changed = rSetDrawStateVar(rend, STATE_OUTPUT, value);
@@ -824,9 +841,9 @@ void R_SetSurface(R_Renderer *rend, TextureId value) {
 	}
 }
 
-void R_SetTexture(R_Renderer *rend, TextureId value) {
+void R_SetTexture(R_Renderer *rend, RID value) {
 
-	R_TEXTURE *texture = get_texture_by_id(rend, value);
+	R_TEXTURE *texture = TextureFromRID(rend, value);
 	ASSERT(texture->shader_resource_view);
 
 	rSetDrawStateVar(rend, STATE_INPUT, value);
@@ -849,7 +866,7 @@ void R_SetViewportFullScreen(R_Renderer *rend) {
 
 void R_ClearSurface(R_Renderer *rend, Color color) {
 
-	R_TEXTURE *output_texture = get_texture_by_id(rend, rend->draw_prox.output);
+	R_TEXTURE *output_texture = TextureFromRID(rend, rend->draw_prox.output);
 	ID3D11RenderTargetView *render_target_view = output_texture->render_target_view;
 
 	if (!render_target_view) {
@@ -879,7 +896,7 @@ static void rDrawQuad(R_Renderer *rend, vec2i xy, vec2i wh) {
 	vertices[5] = (R_Vertex3) {p2, {1,1}, WHITE};
 }
 
-iRect R_GetBlitRect(R_Renderer *rend, TextureId output, TextureId input) {
+iRect R_GetBlitRect(R_Renderer *rend, RID output, RID input) {
 	vec2i output_resolution = R_GetTextureInfo(rend, output);
 	vec2i input_resolution = R_GetTextureInfo(rend, input);
 
@@ -898,7 +915,7 @@ iRect R_GetBlitRect(R_Renderer *rend, TextureId output, TextureId input) {
 	return rect;
 }
 
-void R_Blit(R_Renderer *rend, TextureId output, TextureId input) {
+void R_Blit(R_Renderer *rend, RID output, RID input) {
 	R_SetSurface(rend, output);
 	R_SetTexture(rend, input);
 	R_SetViewportFullScreen(rend);
@@ -906,10 +923,10 @@ void R_Blit(R_Renderer *rend, TextureId output, TextureId input) {
 	R_SetBlender(rend, BLEND_DISABLE);
 
 	// todo: we need something this clever
-	// get_texture_by_id(rend, output)->clear_color = get_texture_by_id(rend, input)->clear_color;
+	// TextureFromRID(rend, output)->clear_color = TextureFromRID(rend, input)->clear_color;
 
 	// todo: but we need something this simple
-	R_ClearSurface(rend, get_texture_by_id(rend, input)->clear_color);
+	R_ClearSurface(rend, TextureFromRID(rend, input)->clear_color);
 
 	iRect rect = R_GetBlitRect(rend, output, input);
 	rDrawQuad(rend, rect.xy, rect.wh);

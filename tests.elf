@@ -1,11 +1,20 @@
 // this should be in elf
 
 {
-	t = { x = "x", y = "y", z = "z", w = "w" }
-	#assert t.x == "x"
-	#assert t.y == "y"
-	#assert t.z == "z"
-	#assert t.w == "w"
+	a, b, c := 1, 2, 3
+	a, b, c += 1, ...
+	#assert a == 2
+	#assert b == 3
+	#assert c == 4
+}
+
+
+{
+	global t = { x = "x", y = "y", z = "z", w = "w" }
+	#assert global t.x == "x"
+	#assert global t.y == "y"
+	#assert global t.z == "z"
+	#assert global t.w == "w"
 }
 
 {
@@ -33,26 +42,19 @@
 }
 
 {
-	a, b, c := 1, 2, 3
-	a, b, c += 1, ...
-	#assert a == 2
-	#assert b == 3
-	#assert c == 4
-}
-{
-	a, b, c = 1, 2, 3
-	a, b, c ?= 7, 7, 7
-	#assert a == 1
-	#assert b == 2
-	#assert c == 3
+	global a, global b, global c = 1, 2, 3
+	global a, global b, global c ?= 7, 7, 7
+	#assert global a == 1
+	#assert global b == 2
+	#assert global c == 3
 }
 
 {
-	a, b, c = nil, nil, nil
-	a, b, c ?= 2, 3, 5
-	#assert a == 2
-	#assert b == 3
-	#assert c == 5
+	global a, global b, global c = nil, nil, nil
+	global a, global b, global c ?= 2, 3, 5
+	#assert global a == 2
+	#assert global b == 3
+	#assert global c == 5
 }
 
 {
@@ -64,16 +66,16 @@
 }
 {
 	tb := {}
-	tb.name, a, tb.last = "Dayan", 1, "Rodr"
-	#assert a == 1
+	tb.name, global a, tb.last = "Dayan", 1, "Rodr"
+	#assert global a == 1
 	#assert tb.name == "Dayan"
 	#assert tb.last == "Rodr"
 }
 
 {
-	a, b = 4, 5
-	#assert a == 4
-	#assert b == 5
+	global a, global b = 4, 5
+	#assert global a == 4
+	#assert global b == 5
 }
 {
 	a, b := 0, 0
@@ -94,14 +96,14 @@
 
 
 {
-	foo = fun (x, y, z, w) ? {
+	global foo = fun (x, y, z, w) ? {
 		#assert(elf.nargs() == 3)
 		#assert(elf.nvargs() == 0)
 		#assert(z == nil)
 		#assert(w == nil)
 	}
 
-	foo(1, 2)
+	global foo(1, 2)
 }
 {
 	a := 0
@@ -158,7 +160,7 @@
 
 {
 	// ensure the function doesn't override vargs with 7's
-	foo = fun(...) ? {
+	global foo = fun(...) ? {
 		#assert(elf.nargs() == 5)
 		#assert(elf.nvargs() == 4)
 
@@ -170,7 +172,7 @@
 			#assert(elf.arg(i) == i)
 		}
 	}
-	foo(1, 2, 3, 4)
+	global foo(1, 2, 3, 4)
 }
 
 
@@ -181,7 +183,7 @@
 	// runtime shouldn't do anything to protect them
 	// note that nvargs still just returns the number of additional
 	// arguments
-	foo = fun() ? {
+	global foo = fun() ? {
 		#assert(elf.nargs() == 5)
 		#assert(elf.nvargs() == 4)
 
@@ -193,25 +195,25 @@
 			#assert(elf.arg(i) == 7)
 		}
 	}
-	foo(1, 2, 3, 4)
+	global foo(1, 2, 3, 4)
 }
 
 
 {
-	foo = fun(...) ? {
+	global foo = fun(...) ? {
 		#assert(elf.nargs() == 1)
 		#assert(elf.nvargs() == 0)
 	}
-	foo()
+	global foo()
 }
 
 {
-	foo = fun(...) ? {
+	global foo = fun(...) ? {
 		#assert(elf.nargs() == 6)
 		// 6 - 1 because 'this'
 		#assert(elf.nvargs() == 5)
 	}
-	foo(1, 2, 3, 4, 5)
+	global foo(1, 2, 3, 4, 5)
 }
 
 
