@@ -94,6 +94,7 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number);
 void R_FlushVertices(R_Renderer *rend);
 void R_BeginFrame(R_Renderer *rend);
 void R_EndFrame(R_Renderer *rend);
+void R_Synchronize(R_Renderer *rend);
 
 void R_ClearSurface(R_Renderer *rend, Color color);
 

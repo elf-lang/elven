@@ -1,7 +1,17 @@
 load "tests.elf"
 
-elf.change_work_dir("W:\\MicroRJ\\game2")
-load "archive.elf"
+// things := {"a", "b", "c"}
+// for t = things[...] ? {
+// 	elf.pf(#index)
+// }
+// #eof
+
+// elf.change_work_dir("W:\\MicroRJ\\game2")
+elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
+// load "archive.elf"
+// load "tseteditor.elf"
+// load "tmapeditor.elf"
+load "main.elf"
 
 #eof
 

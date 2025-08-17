@@ -2,7 +2,7 @@
 // allows the user to write a script to package
 // all their files into one single archive.
 //
-// todo: why is this bugging!
+// todo: additional safety checks!
 //
 
 typedef struct {
@@ -37,6 +37,7 @@ ELF_FUNCTION(L_BeginArchive) {
 
 
 ELF_FUNCTION(L_CloseArchive) {
+	sys_flush_file(g_farch);
 	sys_close_file(g_farch);
 	g_farch = 0;
 	return 0;
@@ -49,19 +50,49 @@ ELF_FUNCTION(L_GetChunkSize) { elf_pushint(S, g_chunk.size); return 1; }
 
 
 ELF_FUNCTION(L_SkipChunk) {
-	elf_i64 cursor = sys_move_file_cursor(g_farch, SYS_CURRENT, 0);
-	elf_i64 size = sys_size_file(g_farch);
-	elf_i64 rem = size - cursor;
-	elf_i64 move = MIN(rem, g_chunk.size);
-	sys_move_file_cursor(g_farch, SYS_CURRENT, move);
+	i64 cursor = sys_move_file_cursor(g_farch, SYS_CURRENT, 0);
+	i64 size = sys_size_file(g_farch);
+	i64 rem = size - cursor;
+	if (rem >= g_chunk.size) {
+		sys_move_file_cursor(g_farch, SYS_CURRENT, g_chunk.size);
+	} else {
+		sys_move_file_cursor(g_farch, SYS_END, 0);
+	}
+	return 0;
+}
+
+
+ELF_FUNCTION(L_ExtractFile) {
+
+	const char *name = elf_loadtext(S, 1);
+
+	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_WRITE, SYS_OPEN_ALWAYS);
+	if (file != ELF_HINVALID) {
+
+		i64 remain = sys_size_file(g_farch) - sys_move_file_cursor(g_farch, SYS_CURRENT, 0);
+		i64 size = MIN(remain, g_chunk.size);
+
+		char *buf = malloc(size);
+
+		i64 read = sys_read_file(g_farch, buf, size);
+		assert(read == size);
+
+		i64 wrote = sys_write_file(file, buf, size);
+		assert(wrote == size);
+
+		sys_close_file(file);
+
+		free(buf);
+	}
+
 	return 0;
 }
 
 
 ELF_FUNCTION(L_ReadNextChunk) {
-	elf_i64 cursor = sys_move_file_cursor(g_farch, SYS_CURRENT, 0);
-	elf_i64 size = sys_size_file(g_farch);
-	elf_i64 rem = size - cursor;
+	i64 cursor = sys_move_file_cursor(g_farch, SYS_CURRENT, 0);
+	i64 size = sys_size_file(g_farch);
+	i64 rem = size - cursor;
 	if (rem >= sizeof(g_chunk)) {
 		int read = sys_read_file(g_farch, &g_chunk, sizeof(g_chunk));
 		assert(read == sizeof(g_chunk));
@@ -82,11 +113,11 @@ ELF_FUNCTION(L_ArchiveFile) {
 
 	FILE_HANDLE file = sys_open_file(file_name, SYS_OPEN_READ, SYS_OPEN);
 	if (file != ELF_HINVALID) {
-		elf_i64 size = sys_size_file(file);
+		i64 size = sys_size_file(file);
 		assert(size <= UINT_MAX);
 
 		char *bread = malloc(size);
-		elf_i64 zread = sys_read_file(file, bread, size);
+		i64 zread = sys_read_file(file, bread, size);
 		assert(zread == size);
 
 		sys_close_file(file);
@@ -95,7 +126,7 @@ ELF_FUNCTION(L_ArchiveFile) {
 			.size = size,
 		};
 		strcpy(chunk.name, chunk_name);
-		elf_i64 wrote;
+		i64 wrote;
 		wrote = sys_write_file(g_farch, &chunk, sizeof(chunk));
 		assert(wrote == sizeof(chunk));
 		wrote = sys_write_file(g_farch, bread, size);
@@ -111,6 +142,7 @@ ELF_FUNCTION(L_ArchiveFile) {
 
 
 elf_Binding l_arch[] = {
+	{"ExtractFile", L_ExtractFile},
 	{"GetChunkName", L_GetChunkName},
 	{"GetChunkType", L_GetChunkType},
 	{"GetChunkSize", L_GetChunkSize},

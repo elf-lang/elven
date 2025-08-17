@@ -8,6 +8,9 @@
 #pragma comment(lib,  "d3dcompiler")
 
 
+// todo:
+#define FLUSHHACK
+
 #include <d3dcompiler.h>
 #include   <dxgidebug.h>
 #include        <dxgi.h>
@@ -84,6 +87,9 @@ struct R_Renderer {
 
 	ID3D11Query            *time_frame_start_query;
 	ID3D11Query            *time_frame_end_query;
+	ID3D11Query            *event_query;
+	int                     latency_cycles;
+	int                     disable_event_query;
 
 	IDXGISwapChain2          *window_present_mechanism;
 
@@ -109,8 +115,6 @@ struct R_Renderer {
 	R_TEXTURE           textures[RID_SPECIAL_RANGE];
 
 	// todo: structure this better!
-	Color       v_color;
-	vec2        v_texcoords;
 	R_Vertex3  *mem_vertices;
 	i32         num_vertices;
 	i32         max_vertices;
@@ -170,6 +174,9 @@ R_Renderer *R_InitRenderer(OS_WindowId window) {
 		};
 		ID3D11Device_CreateQuery(rend->device, &info, &rend->time_frame_start_query);
 		ID3D11Device_CreateQuery(rend->device, &info, &rend->time_frame_end_query);
+
+		info.Query = D3D11_QUERY_EVENT;
+		ID3D11Device_CreateQuery(rend->device, &info, &rend->event_query);
 	} else {
 		MessageBoxA(NULL, "failed to acquire graphics device", "Error", MB_OK | MB_ICONERROR);
 	}
@@ -568,6 +575,8 @@ static void R_BeginFrame(R_Renderer *rend) {
 	}
 }
 
+
+
 static void R_EndFrame(R_Renderer *rend) {
 
 	// issue draw call for any remaining vertices
@@ -580,27 +589,36 @@ static void R_EndFrame(R_Renderer *rend) {
 }
 
 
-R_SubmissionTicket R_SubmitVertices(R_Renderer *renderer, R_Vertex3 *vertices, i32 number) {
 
-	i32 vertices_in_buffer = renderer->vertices_submission_buffer_offset + number;
-	if (vertices_in_buffer * sizeof(*vertices) > renderer->vertices_submission_buffer_capacity) {
-		renderer->vertices_submission_buffer_offset = 0;
+void R_Synchronize(R_Renderer *rend) {
+	ID3D11DeviceContext_Flush(rend->context);
+}
+
+
+
+R_SubmissionTicket R_SubmitVertices(R_Renderer *rend, R_Vertex3 *vertices, i32 number) {
+
+	i32 vertices_in_buffer = rend->vertices_submission_buffer_offset + number;
+	if (vertices_in_buffer * sizeof(*vertices) > rend->vertices_submission_buffer_capacity) {
+		rend->vertices_submission_buffer_offset = 0;
 	}
 
-	i32 offset = renderer->vertices_submission_buffer_offset;
+	i32 offset = rend->vertices_submission_buffer_offset;
 
 	D3D11_MAPPED_SUBRESOURCE subresource;
-	ID3D11DeviceContext_Map(renderer->context, (ID3D11Resource *) renderer->vertices_submission_buffer, 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &subresource);
+	ID3D11DeviceContext_Map(rend->context, (ID3D11Resource *) rend->vertices_submission_buffer, 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &subresource);
 	R_Vertex3 *vertex_memory = subresource.pData;
 
-	R_Vertex3 *write_pointer = vertex_memory + renderer->vertices_submission_buffer_offset;
+	R_Vertex3 *write_pointer = vertex_memory + rend->vertices_submission_buffer_offset;
 	CopyMemory(write_pointer, vertices, number * sizeof(*vertices));
-	renderer->vertices_submission_buffer_offset += number;
+	rend->vertices_submission_buffer_offset += number;
 
-	ID3D11DeviceContext_Unmap(renderer->context, (ID3D11Resource *) renderer->vertices_submission_buffer, 0);
+	ID3D11DeviceContext_Unmap(rend->context, (ID3D11Resource *) rend->vertices_submission_buffer, 0);
 
 	return (R_SubmissionTicket){ offset };
 }
+
+
 
 void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 	ASSERT(number != 0);
@@ -609,7 +627,7 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 	R_Draw_State prev = rend->draw_prev;
 	rend->draw_prev = prox;
 
-	ASSERT(prox.topology !=    MODE_NONE);
+	ASSERT(prox.topology != MODE_NONE);
 	ASSERT(prox.texture  != RID_NONE);
 
 	// check number of vertices matches what we want to draw
@@ -625,8 +643,6 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 
 	b32 draw_constants_changed = rend->draw_constants_changed;
 	rend->draw_constants_changed = false;
-
-	b32 requires_flush = false;
 
 	if (prev.blender != prox.blender) {
 		ID3D11BlendState *blender = rend->blenders[prox.blender];
@@ -663,6 +679,22 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 	}
 
 
+	if (prev.viewport.x != prox.viewport.x || prev.viewport.y != prox.viewport.y) {
+		D3D11_VIEWPORT viewport = { 0.0f, 0.0f, prox.viewport.x, prox.viewport.y, 0.0f, 1.0f };
+		ID3D11DeviceContext_RSSetViewports(rend->context, 1, &viewport);
+	}
+
+	if (prev.topology != prox.topology) {
+		i32 topo = g_topology_conversion_table[prox.topology];
+		ID3D11DeviceContext_IASetPrimitiveTopology(rend->context, topo);
+	}
+
+	if (prev.shader != prox.shader) {
+		ID3D11PixelShader *shader = rend->shaders[prox.shader];
+		ID3D11DeviceContext_PSSetShader(rend->context, shader, 0, 0);
+	}
+
+
 	if (prev.texture != prox.texture)
 	{
 		R_TEXTURE *texture = TextureFromRID(rend, prox.texture);
@@ -683,42 +715,19 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 		}
 		ID3D11DeviceContext_PSSetShaderResources(rend->context, 0, 1, &texture->shader_resource_view);
 
-
-		requires_flush = true;
+#if defined(FLUSHHACK)
+		ID3D11DeviceContext_Flush(rend->context);
+#endif
 	}
-
-	if (prev.viewport.x != prox.viewport.x || prev.viewport.y != prox.viewport.y) {
-		D3D11_VIEWPORT viewport = { 0.0f, 0.0f, prox.viewport.x, prox.viewport.y, 0.0f, 1.0f };
-		ID3D11DeviceContext_RSSetViewports(rend->context, 1, &viewport);
-	}
-
-	if (prev.topology != prox.topology) {
-		i32 topo = g_topology_conversion_table[prox.topology];
-		ID3D11DeviceContext_IASetPrimitiveTopology(rend->context, topo);
-	}
-
-	if (prev.shader != prox.shader) {
-		ID3D11PixelShader *shader = rend->shaders[prox.shader];
-		ID3D11DeviceContext_PSSetShader(rend->context, shader, 0, 0);
-	}
-
 
 	if (draw_constants_changed) {
 		ID3D11Buffer *constant_buffer = rend->constant_buffer;
 		rCopyMemory(rend, (ID3D11Resource *) constant_buffer, &rend->draw_constants, sizeof(rend->draw_constants));
 	}
 
-	if (requires_flush) {
-		// so apparently this is how you fix the bug that I only
-		// get on my latop, and I have no idea why it happens,
-		// as in, why wouldn't the state be propagated by the
-		// time I issue the draw call? leads me to believe
-		// something else is wrong
-		ID3D11DeviceContext_Flush(rend->context);
-	}
-
 	ID3D11DeviceContext_Draw(rend->context, number, offset.offset);
 }
+
 
 
 void rInstallShader(R_Renderer *rend, ShaderId id, char *entry, char *contents) {

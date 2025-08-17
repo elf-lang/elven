@@ -1,5 +1,8 @@
 #define USE_FREETYPE
 
+// todo: we need a packer
+
+
 #if defined(USE_FREETYPE)
 #define _CRT_SECURE_NO_WARNINGS
 #include "ft2build.h"

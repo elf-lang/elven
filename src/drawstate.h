@@ -67,7 +67,7 @@ typedef struct {
 	FONT_HANDLE font;
 	int         font_size;
 
-	vec2i       fliponce;
+	vec2i       mirrortextureonce;
 	vec2        texture_inv_resolution;
 
 	// quad texture coordinates already pre-multiplied

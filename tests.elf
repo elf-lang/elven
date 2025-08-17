@@ -1,6 +1,21 @@
 // this should be in elf
 
 {
+	#assert sgn(7) == 1
+	#assert sgn(-7) == -1
+	#assert sgn(0) == 0
+
+	#assert abs(7) == 7
+	#assert abs(-7) == 7
+
+	#assert min(7, 8) == 7
+	#assert max(7, 8) == 8
+
+	#assert trim( 7, 0, 1) == 1
+	#assert trim(-7, 0, 1) == 0
+	#assert trim( 1, 0, 7) == 1
+}
+{
 	a, b, c := 1, 2, 3
 	a, b, c += 1, ...
 	#assert a == 2

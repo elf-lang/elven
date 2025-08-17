@@ -15,9 +15,9 @@ void D_PopMatrix() {
 static Matrix ScaleMatrix(vec3 v) {
 	Matrix c = {
 		v.x,   0,   0, 0,
-		  0, v.y,   0, 0,
-		  0,   0, v.z, 0,
-		  0,   0,   0, 1,
+		0, v.y,   0, 0,
+		0,   0, v.z, 0,
+		0,   0,   0, 1,
 	};
 	return c;
 }
@@ -80,6 +80,7 @@ void D_LoadIdentity() {
 
 
 
+// todo: this is so weird!
 static void ApplyTransform(f32 x, f32 y, R_Vertex3 *vertices, int num) {
 	for (int i = 0; i < num; i ++) {
 		vec4 position = { vertices[i].position.x, vertices[i].position.y, vertices[i].position.z, 1.0 };
@@ -92,8 +93,8 @@ static void ApplyTransform(f32 x, f32 y, R_Vertex3 *vertices, int num) {
 
 static void EndDrawCall(f32 x, f32 y, R_Vertex3 *vertices, int num) {
 	ApplyTransform(x, y, vertices, num);
-	gd.fliponce.x = 0;
-	gd.fliponce.y = 0;
+	gd.mirrortextureonce.x = 0;
+	gd.mirrortextureonce.y = 0;
 }
 
 
@@ -215,8 +216,8 @@ void D_SetCenter(f32 x, f32 y) {
 
 
 void D_SetFlipOnce(int x, int y) {
-	gd.fliponce.x = x;
-	gd.fliponce.y = y;
+	gd.mirrortextureonce.x = x;
+	gd.mirrortextureonce.y = y;
 }
 
 
@@ -260,8 +261,8 @@ void D_DrawRectangle(f32 x, f32 y, f32 w, f32 h) {
 	if (h == 0) h = R_GetTextureInfo(gd.rend, R_GetTexture(gd.rend)).y;
 
 	f32 temp;
-	if (gd.fliponce.x) { temp = u0; u0 = u1, u1 = temp; }
-	if (gd.fliponce.y) { temp = v0; v0 = v1, v1 = temp; }
+	if (gd.mirrortextureonce.x) { temp = u0; u0 = u1, u1 = temp; }
+	if (gd.mirrortextureonce.y) { temp = v0; v0 = v1, v1 = temp; }
 
 	R_Vertex3 *vertices = R_QueueVertices(gd.rend, 6);
 	vertices[0]=(R_Vertex3){{ 0, 0 },{ u0, v1 }, gd.color_0 };
@@ -305,16 +306,19 @@ void D_DrawCircle(f32 x, f32 y, f32 r, f32 v) {
 	}
 }
 
+
+
 void D_DrawLine(f32 x0, f32 y0, f32 x1, f32 y1) {
-	R_Renderer *rend = gd.rend;
+	D_SetTexture(RID_TEXTURE_DEFAULT);
+	R_SetTopology(gd.rend, MODE_LINES);
 
-	R_SetTexture(rend, RID_TEXTURE_DEFAULT);
-	R_SetTopology(rend, MODE_LINES);
-
-	R_Vertex3 *vertices = R_QueueVertices(rend, 2);
+	R_Vertex3 *vertices = R_QueueVertices(gd.rend, 2);
 	vertices[0] = (R_Vertex3){{x0,y0},{0,0},gd.color_0};
 	vertices[1] = (R_Vertex3){{x1,y1},{1,1},gd.color_1};
+	EndDrawCall(0, 0, vertices, 2);
 }
+
+
 
 void D_DrawTriangle(f32 x0, f32 y0, f32 x1, f32 y1, f32 x2, f32 y2) {
 	R_Renderer *rend = gd.rend;

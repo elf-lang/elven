@@ -213,6 +213,21 @@ ELF_FUNCTION(L_DrawRectangle) {
 
 
 
+ELF_FUNCTION(L_DrawRectOutline) {
+	f32 x = elf_loadnum(S, 1);
+	f32 y = elf_loadnum(S, 2);
+	f32 w = elf_loadnum(S, 3);
+	f32 h = elf_loadnum(S, 4);
+
+	D_DrawRectangle(x, y-1, w, 1);
+	D_DrawRectangle(x, y+h, w, 1);
+	D_DrawRectangle(x-1, y, 1, h);
+	D_DrawRectangle(x+w, y, 1, h);
+	return 0;
+}
+
+
+
 ELF_FUNCTION(L_GetTextureResolution) {
 	RID id = (RID) elf_loadint(S, 1);
 	vec2i reso = R_GetTextureInfo(gd.rend, id);
@@ -232,20 +247,23 @@ ELF_FUNCTION(L_GetTextureResolution) {
 
 
 ELF_FUNCTION(L_LoadTexture) {
-	R_Renderer *rend = gd.rend;
 	const char *name = elf_loadtext(S, 1);
 
 	vec2i resolution;
 	i32 num_channels;
 	i32 wanted_channels = 4;
-	Color *colors = (Color *) stbi_load(name, &resolution.x, &resolution.y, &num_channels, wanted_channels);
 
-	RID rid = RID_NONE;
+	unsigned char *colors = stbi_load(name, &resolution.x, &resolution.y, &num_channels, wanted_channels);
 	if (colors) {
-		rid = R_InstallTexture(rend, FORMAT_R8G8B8_UNORM, resolution, colors);
+
+		RID rid = R_InstallTexture(gd.rend, FORMAT_R8G8B8_UNORM, resolution, colors);
+		elf_pushsys(S, rid);
+
 		free(colors);
+	} else {
+
+		elf_pushnil(S);
 	}
-	elf_pushsys(S, rid);
 	return 1;
 }
 
@@ -360,12 +378,13 @@ ELF_FUNCTION(L_PollWindow) {
 
 	b32 open = OS_PollWindow(window);
 
-	{
-		if (gd.targetsurface != RID_RENDER_TARGET_WINDOW) {
-			R_Blit(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
-		}
-		R_EndFrame(rend);
+
+	if (gd.targetsurface != RID_RENDER_TARGET_WINDOW) {
+		R_Blit(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
 	}
+	R_Synchronize(rend);
+	R_EndFrame(rend);
+
 
 	if (!open) goto esc;
 
@@ -375,6 +394,7 @@ ELF_FUNCTION(L_PollWindow) {
 	// begin a new frame
 	BeginDrawing(rend);
 
+	// todo: remove this from the renderer!
 	iRect rect = R_GetBlitRect(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
 	vec2i mouse = OS_GetWindowMouse(window);
 
@@ -557,7 +577,9 @@ static const elf_Binding l_state[] = {
 	{ "SetColor2"                        , L_SetColor2                            },
 	{ "SetColor3"                        , L_SetColor3                            },
 	{ "SolidFill"                        , L_SolidFill                            },
+
 	{ "DrawRectangle"                    , L_DrawRectangle                        },
+	{ "DrawRectOutline"                  , L_DrawRectOutline                      },
 	{ "DrawTriangle"                     , L_DrawTriangle                         },
 	{ "DrawLine"                         , L_DrawLine                             },
 	{ "DrawCircle"                       , L_DrawCircle                           },

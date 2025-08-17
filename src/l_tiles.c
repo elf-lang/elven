@@ -1,4 +1,6 @@
 //
+// Where to put this?
+//
 //	== LONG TERM DATA STORAGE ==
 //
 //
@@ -151,13 +153,13 @@ ELF_FUNCTION(L_NewTileSet) {
 	ASSERT(ISPOW2(tile_size));
 	ASSERT(ISPOW2(num_tiles));
 
-	TileSet *tset = calloc(1, sizeof(*tset) + sizeof(tset->coords[0]) * num_tiles);
-	tset->resource = resource;
-	tset->tile_size_log2 = unshift(tile_size);
-	tset->num_tiles = num_tiles;
+	TileSet *tileset = calloc(1, sizeof(*tileset) + sizeof(tileset->coords[0]) * num_tiles);
+	tileset->resource = resource;
+	tileset->tile_size_log2 = unshift(tile_size);
+	tileset->num_tiles = num_tiles;
 
 	// todo: integer as pointer
-	elf_pushint(S, (elf_Integer) tset);
+	elf_pushint(S, (elf_Integer) tileset);
 	return 1;
 }
 
@@ -204,14 +206,15 @@ ELF_FUNCTION(L_LoadTileMap) {
 
 	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_READ, SYS_OPEN);
 
-	TileMap *tmap = malloc(sys_size_file(file));
-	sys_read_file(file, tmap, sys_size_file(file));
+	TileMap *tilemap = malloc(sys_size_file(file));
+	sys_read_file(file, tilemap, sys_size_file(file));
 
 	sys_close_file(file);
 
-	elf_pushint(S, (elf_Integer) tmap);
+	elf_pushint(S, (elf_Integer) tilemap);
 	return 1;
 }
+
 
 
 ELF_FUNCTION(L_NewTileMap) {
@@ -221,15 +224,14 @@ ELF_FUNCTION(L_NewTileMap) {
 	ASSERT(ISPOW2(w));
 	ASSERT(ISPOW2(h));
 
-	TileMap *tmap = calloc(1, sizeof(*tmap) + sizeof(tmap->tiles[0]) * (w * h));
-	tmap->w_log2 = unshift(w);
-	tmap->h_log2 = unshift(h);
+	TileMap *tilemap = calloc(1, sizeof(*tilemap) + sizeof(tilemap->tiles[0]) * (w * h));
+	tilemap->w_log2 = unshift(w);
+	tilemap->h_log2 = unshift(h);
 
 	// todo: integer as pointer
-	elf_pushint(S, (elf_Integer) tmap);
+	elf_pushint(S, (elf_Integer) tilemap);
 	return 1;
 }
-
 
 
 
@@ -238,6 +240,8 @@ ELF_FUNCTION(L_SetTileMap) {
 	gd.tilemap = (TileMap *) elf_loadint(S, 1);
 	return 0;
 }
+
+
 
 ELF_FUNCTION(L_SetTileSet) {
 	// todo: integers as pointers
@@ -265,6 +269,7 @@ ELF_FUNCTION(L_SetTileCoords) {
 }
 
 
+
 ELF_FUNCTION(L_SetTileTags) {
 	int tile = elf_loadint(S, 1);
 	int tags = elf_loadint(S, 2);
@@ -274,12 +279,14 @@ ELF_FUNCTION(L_SetTileTags) {
 }
 
 
+
 ELF_FUNCTION(L_GetTileTags) {
 	int tile = elf_loadint(S, 1);
 	assert(tile < gd.tileset->num_tiles);
 	elf_pushint(S, gd.tileset->coords[tile].tags);
 	return 1;
 }
+
 
 
 static inline int accesstile(int x, int y, int z, int write, int data) {
@@ -307,6 +314,7 @@ ELF_FUNCTION(L_GetMapTags) {
 }
 
 
+
 ELF_FUNCTION(L_GetMapTile) {
 	int x = elf_loadint(S, 1);
 	int y = elf_loadint(S, 2);
@@ -316,6 +324,7 @@ ELF_FUNCTION(L_GetMapTile) {
 	elf_pushint(S, tile);
 	return 1;
 }
+
 
 
 ELF_FUNCTION(L_SetMapTile) {
