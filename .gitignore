@@ -1,24 +1,6 @@
 # Windows shortcut files
 *.lnk
 
-# Build generated files
-*.obj
-*.exe
-*.dll
-*.pdb
-*.ilk
-*.lib
-*.tlb
-*.tlg
-*.bak
-*.old
-*.sbr
-*.suo
-*.user
-*.opt
-*.ncb
-*.log
-
 # Visual Studio generated files
 .vs/
 *.vcxproj.user
