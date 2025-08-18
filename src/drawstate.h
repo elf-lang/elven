@@ -45,6 +45,7 @@ typedef struct {
 
 	RID          targetsurface;
 	RID          basesurface;
+	vec2i        vreso;
 
 	// tiles lib
 	struct {

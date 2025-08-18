@@ -835,7 +835,7 @@ void R_SetSurface(R_Renderer *rend, RID value) {
 	ASSERT(texture->render_target_view);
 
 	b32 changed = rSetDrawStateVar(rend, STATE_OUTPUT, value);
-
+#if 0
 	if (changed) {
 		// todo:
 		vec2i resolution = R_GetTextureInfo(rend, R_GetSurface(rend));
@@ -848,6 +848,7 @@ void R_SetSurface(R_Renderer *rend, RID value) {
 		rend->draw_constants.transform[3] = (vec4){0, 0, 0, 1};
 		rend->draw_constants_changed = true;
 	}
+#endif
 }
 
 void R_SetTexture(R_Renderer *rend, RID value) {
@@ -859,6 +860,7 @@ void R_SetTexture(R_Renderer *rend, RID value) {
 }
 
 
+
 void R_SetViewport(R_Renderer *rend, vec2i viewport) {
 	if (rend->draw_prox.viewport.x != viewport.x || rend->draw_prox.viewport.y != viewport.y) {
 
@@ -868,9 +870,24 @@ void R_SetViewport(R_Renderer *rend, vec2i viewport) {
 	}
 }
 
+
 void R_SetViewportFullScreen(R_Renderer *rend) {
 	R_SetViewport(rend, R_GetTextureInfo(rend, R_GetSurface(rend)));
 }
+
+
+
+void R_SetVirtualReso(R_Renderer *rend, vec2i reso) {
+	vec2 scale = { 2.0 / reso.x, 2.0 / reso.y };
+	vec2 offset = { -1.0, -1.0 };
+
+	rend->draw_constants.transform[0] = (vec4){scale.x, 0, 0, offset.x};
+	rend->draw_constants.transform[1] = (vec4){0, scale.y, 0, offset.y};
+	rend->draw_constants.transform[2] = (vec4){0, 0, 1, 0};
+	rend->draw_constants.transform[3] = (vec4){0, 0, 0, 1};
+	rend->draw_constants_changed = true;
+}
+
 
 
 void R_ClearSurface(R_Renderer *rend, Color color) {
@@ -938,6 +955,7 @@ void R_Blit(R_Renderer *rend, RID output, RID input) {
 	R_ClearSurface(rend, TextureFromRID(rend, input)->clear_color);
 
 	iRect rect = R_GetBlitRect(rend, output, input);
+	R_SetVirtualReso(rend, rect.wh);
 	rDrawQuad(rend, rect.xy, rect.wh);
 }
 

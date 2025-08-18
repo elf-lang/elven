@@ -1,5 +1,7 @@
 load "tests.elf"
-load "play\\rect_packer.elf"
+
+elf.change_work_dir("W:\\MicroRJ\\game2")
+load "main.elf"
 
 // things := {"a", "b", "c"}
 // for t = things[...] ? {
@@ -7,12 +9,10 @@ load "play\\rect_packer.elf"
 // }
 // #eof
 
-// elf.change_work_dir("W:\\MicroRJ\\game2")
 // elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
 // load "archive.elf"
 // load "tseteditor.elf"
 // load "tmapeditor.elf"
-load "main.elf"
 
 #eof
 

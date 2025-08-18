@@ -104,7 +104,8 @@ void R_SetShader(R_Renderer *rend, ShaderId id);
 void R_SetTopology(R_Renderer *rend, Topology id);
 void R_SetSampler(R_Renderer *rend, SamplerId id);
 void R_SetBlender(R_Renderer *rend, BlenderId id);
-void R_SetViewport(R_Renderer *rend, vec2i resolution);
+void R_SetViewport(R_Renderer *rend, vec2i size);
+void R_SetVirtualReso(R_Renderer *rend, vec2i reso);
 void R_SetViewportFullScreen(R_Renderer *rend);
 
 RID R_GetTexture(R_Renderer *rend);

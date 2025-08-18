@@ -37,6 +37,17 @@ ELF_FUNCTION(L_SetColor3) { D_SetColor3(_get_color_arg(S, nargs)); return 0; }
 
 ELF_FUNCTION(L_SetColor)  { D_SetColor(_get_color_arg(S, nargs)); return 0; }
 
+
+
+ELF_FUNCTION(L_SetViewport) {
+	vec2i reso;
+	reso.x = elf_loadint(S, 1);
+	reso.y = elf_loadint(S, 2);
+	R_SetViewport(gd.rend, reso);
+	return 0;
+}
+
+
 ELF_FUNCTION(L_SetLayerColor)  {
 	D_SetLayerColor(elf_loadint(S, 1), _get_color_args2(S, 2, nargs));
 	return 0;
@@ -311,8 +322,8 @@ ELF_FUNCTION(L_GetMouseY) {
 
 
 
-static void BeginDrawing(R_Renderer *rend) {
-	R_BeginFrame(rend);
+static void BeginDrawing() {
+	R_BeginFrame(gd.rend);
 
 	D_SetScale(1, 1);
 	D_SetOffset(0, 0);
@@ -320,11 +331,12 @@ static void BeginDrawing(R_Renderer *rend) {
 	D_LoadIdentity();
 	D_SetTexture(RID_TEXTURE_DEFAULT);
 
-	R_SetSurface(rend, gd.targetsurface);
-	R_SetSampler(rend, SAMPLER_POINT);
-	R_SetViewportFullScreen(rend);
-	R_SetTopology(rend, TOPO_TRIANGLES);
-	R_SetBlender(rend, BLENDER_ALPHA_BLEND);
+	R_SetSurface(gd.rend, gd.targetsurface);
+	R_SetVirtualReso(gd.rend, gd.vreso);
+	R_SetSampler(gd.rend, SAMPLER_POINT);
+	R_SetViewportFullScreen(gd.rend);
+	R_SetTopology(gd.rend, TOPO_TRIANGLES);
+	R_SetBlender(gd.rend, BLENDER_ALPHA_BLEND);
 
 }
 
@@ -334,40 +346,42 @@ ELF_FUNCTION(L_InitWindow) {
 
 	const char *name = elf_loadtext(S, 1);
 
-	vec2i resolution = { 0 };
-	vec2i windowreso = { 0 };
+	vec2i vreso = { 0 };
+	vec2i wreso = { 0 };
 
 
 	if (nargs >= 4) {
-		resolution.x = windowreso.x = elf_loadint(S, 2);
-		resolution.y = windowreso.y = elf_loadint(S, 3);
+		vreso.x = wreso.x = elf_loadint(S, 2);
+		vreso.y = wreso.y = elf_loadint(S, 3);
+
 		if (nargs >= 5) {
 			int windowscale = elf_loadint(S, 4);
-			windowreso.x *= windowscale;
-			windowreso.y *= windowscale;
+			wreso.x *= windowscale;
+			wreso.y *= windowscale;
 		}
 	}
 
-	TRACELOG("Init Window... %ix%i", windowreso.x, windowreso.y);
 
-	OS_InstallWindow(WINDOW_MAIN, name, windowreso);
+	OS_InstallWindow(WINDOW_MAIN, name, wreso);
+	TRACELOG("Init Window... %ix%i", wreso.x, wreso.y);
 
-	TRACELOG("Init Renderer...");
 	R_Renderer *rend = R_InitRenderer(WINDOW_MAIN);
 	gd.rend = rend;
 	gd.window = WINDOW_MAIN;
 	gd.targetsurface = RID_RENDER_TARGET_WINDOW;
-
-	if (resolution.x > 0 && resolution.y > 0) {
-		gd.basesurface = R_InstallSurface(rend, FORMAT_R8G8B8_UNORM, resolution);
+	gd.vreso = vreso;
+	TRACELOG("Init Renderer... %ix%i", vreso.x, vreso.y);
+	if (vreso.x > 0 && vreso.y > 0) {
+		gd.basesurface = R_InstallSurface(rend, FORMAT_R8G8B8_UNORM, vreso);
 		gd.targetsurface = gd.basesurface;
 	}
+
 
 	gd.target_seconds_to_sleep = 1.0 / 60.0;
 	gd.begin_cycle_clock = OS_GetTickCounter();
 
 	// OS_PollWindow(window);
-	BeginDrawing(rend);
+	BeginDrawing();
 	return 0;
 }
 
@@ -392,7 +406,7 @@ ELF_FUNCTION(L_PollWindow) {
 	OS_ForgetFileDrops();
 
 	// begin a new frame
-	BeginDrawing(rend);
+	BeginDrawing();
 
 	// todo: remove this from the renderer!
 	iRect rect = R_GetBlitRect(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
@@ -553,6 +567,8 @@ static const elf_Binding l_state[] = {
 	{ "PollWindow"                       , L_PollWindow                           },
 	{ "LoadTexture"                      , L_LoadTexture                          },
 	{ "GetTextureResolution"             , L_GetTextureResolution                 },
+	{ "SetViewport"                      , L_SetViewport                          },
+
 	{ "Button"                           , L_Button                               },
 	{ "MouseButton"                      , L_MouseButton                          },
 	{ "Clear"                            , L_Clear                                },
