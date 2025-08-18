@@ -36,16 +36,14 @@ typedef struct R_Renderer R_Renderer;
 typedef struct {
 	R_Renderer *rend;
 
-	OS_WindowId  window;
+	WID  window;
 	i64          begin_cycle_clock;
 	f64          clocks_to_seconds;
 	f64          target_seconds_to_sleep;
 	f64          pending_seconds_to_sleep;
 	vec2         mouse;
 
-	RID          targetsurface;
-	RID          basesurface;
-	vec2i        vreso;
+	vec2i        output_reso;
 
 	// tiles lib
 	struct {

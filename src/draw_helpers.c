@@ -91,6 +91,8 @@ static void ApplyTransform(f32 x, f32 y, R_Vertex3 *vertices, int num) {
 	}
 }
 
+
+
 static void EndDrawCall(f32 x, f32 y, R_Vertex3 *vertices, int num) {
 	ApplyTransform(x, y, vertices, num);
 	gd.mirrortextureonce.x = 0;
@@ -189,13 +191,18 @@ void D_SetAlpha(int alpha) {
 
 
 
-void D_SetScale(f32 x, f32 y) {
-	gd.transform = MultiplyMatrices(gd.transform, ScaleMatrix((vec3){ x, y, 1 }));
-}
-
 vec3 D_GetScale() {
 	return (vec3) { gd.transform.rows[0].x, gd.transform.rows[1].y, gd.transform.rows[2].z };
 }
+
+
+
+void D_SetScale(f32 x, f32 y) {
+	// gd.transform = MultiplyMatrices(gd.transform, ScaleMatrix((vec3){ x, y, 1 }));
+	gd.transform.rows[0].x = x;
+	gd.transform.rows[1].y = y;
+}
+
 
 void D_Translate(f32 x, f32 y) {
 	gd.transform.rows[0].w += x;

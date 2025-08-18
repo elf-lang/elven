@@ -4,17 +4,19 @@
 #include <malloc.h>
 
 
-
 #define WIN32_LEAN_AND_MEAN
 #include     <windows.h>
 #include     <timeapi.h>
 #include     <shellapi.h>
 #include     <commdlg.h>
 
+
 enum {
 	MAX_WINDOWS   = 8,
 	MAX_FILEDROPS = 8,
 };
+
+
 typedef struct {
 	HWND             window;
 	vec2i            resolution;
@@ -25,19 +27,26 @@ typedef struct {
 	int              nextdropindex;
 } MWINDOW;
 
+
+
 typedef struct {
-	OS_WindowId window;
-	char        name[256];
+	WID window;
+	char      name[256];
 } MFILEDROP;
 
+
+
 struct {
-	MWINDOW windows[MAX_WINDOWS];
-	f64     clocks_to_seconds;
-	u8      key_remapper[256];
+	f64       clocks_to_seconds;
+	u8        key_remapper[256];
 	// todo:
 	MFILEDROP filedrops[MAX_FILEDROPS];
 	int       dropindex;
 } global g;
+
+
+
+static LRESULT Win32_WindowProcedure(HWND window, UINT msg, WPARAM w, LPARAM l);
 
 
 typedef BOOL win32_SetProcessDPIAwarenessContext(void* value);
@@ -60,49 +69,66 @@ _(VK_RIGHT          , KEY_RIGHT        ,   1) \
 _(VK_ESCAPE         , KEY_ESCAPE       ,   1) \
 /* end */
 
-int OS_GetWindowKey(OS_WindowId id, int index) {
-	return g.windows[id].perpollkeys[index].u;
+
+
+MWINDOW *WindowFromWID(WID id) {
+	return (MWINDOW *) id;
 }
 
-vec2i OS_GetWindowMouseWheel(OS_WindowId id) {
-	return g.windows[id].mouse_wheel;
-}
 
-vec2i OS_GetWindowMouse(OS_WindowId id) {
-	return g.windows[id].mouse;
-}
-
-vec2i OS_GetWindowResolution(OS_WindowId id) {
-	return g.windows[id].resolution;
-}
-
-HWND OS_GetWindowHandle(OS_WindowId id) {
-	return g.windows[id].window;
-}
 
 f64 OS_GetClocksToSeconds() {
 	return g.clocks_to_seconds;
 }
 
+
+int OS_GetWindowKey(WID id, int index) {
+	return WindowFromWID(id)->perpollkeys[index].u;
+}
+
+
+vec2i OS_GetWindowMouseWheel(WID id) {
+	return WindowFromWID(id)->mouse_wheel;
+}
+
+
+vec2i OS_GetWindowMouse(WID id) {
+	return WindowFromWID(id)->mouse;
+}
+
+
+vec2i OS_GetWindowResolution(WID id) {
+	return WindowFromWID(id)->resolution;
+}
+
+
+HWND OS_GetWindowHandle(WID id) {
+	return WindowFromWID(id)->window;
+}
+
+
 void OS_Sleep(int ms) {
 	Sleep(ms);
 }
+
 
 char *OS_GetFileDrop(int index) {
 	return g.filedrops[index].name;
 }
 
+
 int OS_GetNumFileDrops() {
 	return g.dropindex;
 }
 
+
 void OS_ForgetFileDrops() {
 	g.dropindex = 0;
-
 }
 
-int OS_GetNextFileDrop(OS_WindowId id) {
-	MWINDOW *window = & g.windows[id];
+
+int OS_GetNextFileDrop(WID id) {
+	MWINDOW *window = WindowFromWID(id);
 	if (window->nextdropindex>g.dropindex){
 		window->nextdropindex=0;
 	}
@@ -116,11 +142,9 @@ int OS_GetNextFileDrop(OS_WindowId id) {
 
 
 void OS_InitPlatform() {
-
 #define MAPPER(VKEY, MYKEY, RANGE) for (i32 i = 0; i < RANGE; i += 1) { g.key_remapper[VKEY + i] = MYKEY + i; }
 	KEYMAPDEF(MAPPER)
 #undef MAPPER
-
 
 	timeBeginPeriod(1);
 
@@ -141,7 +165,22 @@ void OS_InitPlatform() {
 			FreeLibrary(user32);
 		}
 	}
+
+	{
+		WNDCLASSEXW window_class = {
+			.cbSize = sizeof(window_class),
+			.lpfnWndProc = Win32_WindowProcedure,
+			.hInstance = GetModuleHandle(0),
+			.lpszClassName = WIN32_WINDOW_CLASS_NAME,
+			.hCursor = LoadCursorA(NULL, IDC_ARROW),
+			.hIcon = LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(1)),
+		};
+		if (!RegisterClassExW(&window_class)) {
+			OS_ShowErrorMessage(0);
+		}
+	}
 }
+
 
 void OS_EndPlatform() {
 	timeEndPeriod(1);
@@ -149,13 +188,10 @@ void OS_EndPlatform() {
 
 
 
-static LRESULT Win32_WindowProcedure(HWND window, UINT msg, WPARAM w, LPARAM l);
 
-
-b32 OS_PollWindow(OS_WindowId id) {
-	MWINDOW *window = & g.windows[id];
-	HWND hwnd = window->window;
-
+b32 OS_PollWindow(WID id) {
+	MWINDOW *window = WindowFromWID(id);
+	HWND hWindow = window->window;
 
 	window->nextdropindex = 0;
 
@@ -168,13 +204,13 @@ b32 OS_PollWindow(OS_WindowId id) {
 	}
 
 	MSG msg = {};
-	while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+	while (PeekMessage(&msg, hWindow, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
 
 	RECT window_r;
-	GetClientRect(hwnd, &window_r);
+	GetClientRect(hWindow, &window_r);
 
 	window->resolution.x = window_r.right - window_r.left;
 	window->resolution.y = window_r.bottom - window_r.top;
@@ -182,24 +218,11 @@ b32 OS_PollWindow(OS_WindowId id) {
 	return ! window->closed;
 }
 
-void OS_InstallWindow(OS_WindowId id, const char *name, vec2i resolution) {
-	MWINDOW *window = &g.windows[id];
-	window->resolution = resolution;
 
-	// todo: this only has to be done once
-	{
-		WNDCLASSEXW windowclass = {
-			.cbSize = sizeof(windowclass),
-			.lpfnWndProc = Win32_WindowProcedure,
-			.hInstance = GetModuleHandle(0),
-			.lpszClassName = WIN32_WINDOW_CLASS_NAME,
-			.hCursor = LoadCursorA(NULL, IDC_ARROW),
-			.hIcon = LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(1)),
-		};
-		if (!RegisterClassExW(&windowclass)) {
-			OS_ShowErrorMessage(0);
-		}
-	}
+
+WID OS_InstallWindow(const char *name, vec2i resolution) {
+	MWINDOW *window = calloc(1, sizeof(*window));
+
 
 	i32 monitorw = GetSystemMetrics(SM_CXSCREEN);
 	i32 monitorh = GetSystemMetrics(SM_CYSCREEN);
@@ -217,37 +240,44 @@ void OS_InstallWindow(OS_WindowId id, const char *name, vec2i resolution) {
 	b32 error = AdjustWindowRect(&window_rect, WS_OVERLAPPEDWINDOW, FALSE);
 	ASSERT(error != 0);
 
-	i32 windoww = window_rect.right - window_rect.left;
-	i32 windowh = window_rect.bottom - window_rect.top;
+	resolution.x = window_rect.right - window_rect.left;
+	resolution.y = window_rect.bottom - window_rect.top;
 
-	i32 windowx = (monitorw - windoww) * 0.5;
-	i32 windowy = (monitorh - windowh) * 0.5;
+	i32 windowx = (monitorw - resolution.x) * 0.5;
+	i32 windowy = (monitorh - resolution.y) * 0.5;
+
+	window->resolution = resolution;
 
 
-	HWND hwnd;
+	HWND hWindow;
 
 	{
 		wchar_t window_title[256] = {};
 		MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,name,-1,window_title,sizeof(window_title));
 
-		hwnd = CreateWindowExW(0
+		hWindow = CreateWindowExW(0
 		, WIN32_WINDOW_CLASS_NAME, window_title
-		, WS_OVERLAPPEDWINDOW, windowx, windowy, windoww, windowh
+		, WS_OVERLAPPEDWINDOW, windowx, windowy, resolution.x, resolution.y
 		, NULL, NULL, GetModuleHandle(0), NULL);
 
-		SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR) window);
+		SetWindowLongPtrA(hWindow, GWLP_USERDATA, (LONG_PTR) window);
 	}
 
-	if (IsWindow(hwnd)) {
+	if (IsWindow(hWindow)) {
 		// todo: only show the window once we've got something to render!?
-		ShowWindow(hwnd, SW_SHOW);
+		ShowWindow(hWindow, SW_SHOW);
+		DragAcceptFiles(hWindow, TRUE);
 
-		window->window = hwnd;
+		window->window = hWindow;
 
-		DragAcceptFiles(hwnd, TRUE);
+		TRACELOG("Install Window... %ix%i", resolution.x, resolution.y);
 	} else {
+		TRACELOG("Install Window... Failed");
+
 		OS_ShowErrorMessage(0);
 	}
+
+	return (WID) window;
 }
 
 
@@ -311,8 +341,7 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 			int nFiles = DragQueryFileA(hDrop, 0xFFFFFFFF, NULL, 0);
 
 			for (int i = g.dropindex; i < nFiles; i ++) {
-				// todo: should have just taken the id instead?
-				g.filedrops[i].window = window - g.windows;
+				g.filedrops[i].window = (WID) window;
 				DragQueryFileA(hDrop, i, g.filedrops[i].name, sizeof(g.filedrops[i].name));
 				printf("Droppped File: %s\n", g.filedrops[i].name);
 			}

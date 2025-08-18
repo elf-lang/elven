@@ -322,22 +322,138 @@ ELF_FUNCTION(L_GetMouseY) {
 
 
 
-static void BeginDrawing() {
+
+ELF_FUNCTION(L_SetVirtualRes) {
+	vec2i reso;
+	reso.x = elf_loadint(S, 1);
+	reso.y = elf_loadint(S, 2);
+	R_SetVirtualReso(gd.rend, reso);
+	return 0;
+}
+
+
+
+ELF_FUNCTION(L_SetOutput) {
+
+	RID rid = (RID) elf_loadsys(S, 1);
+	R_SetOutput(gd.rend, rid);
+	return 0;
+}
+
+
+
+ELF_FUNCTION(L_SetOutputWindow) {
+	R_SetOutput(gd.rend, RID_WINDOW_OT);
+	return 0;
+}
+
+
+
+ELF_FUNCTION(L_NewOutputTexture) {
+	vec2i reso;
+	reso.x = elf_loadint(S, 1);
+	reso.y = elf_loadint(S, 2);
+
+	RID rid = R_InstallSurface(gd.rend, FORMAT_R8G8B8_UNORM, reso);
+	elf_pushsys(S, rid);
+	return 1;
+}
+
+
+
+static iRect calc_rect_for_blitting(R_Renderer *rend, vec2i dst_r, vec2i src_r) {
+	i32 max_scale = MIN(dst_r.x / (f32) src_r.x, dst_r.y / (f32) src_r.y);
+
+	iRect rect;
+	rect.w = src_r.x * max_scale;
+	rect.h = src_r.y * max_scale;
+	rect.x = (dst_r.x - rect.w) * 0.5;
+	rect.y = (dst_r.y - rect.h) * 0.5;
+	return rect;
+}
+
+
+
+ELF_FUNCTION(L_GetScreenW) {
+	elf_pushint(S, OS_GetWindowResolution(gd.window).x);
+	return 1;
+}
+
+
+
+ELF_FUNCTION(L_GetScreenH) {
+	elf_pushint(S, OS_GetWindowResolution(gd.window).y);
+	return 1;
+}
+
+
+
+ELF_FUNCTION(L_BlitToWindow) {
+	RID src = (RID) elf_loadsys(S, 1);
+	RID dst = RID_WINDOW_OT;
+
+
+	vec2i dst_r = R_GetTextureInfo(gd.rend, dst);
+	vec2i src_r = R_GetTextureInfo(gd.rend, src);
+	iRect rect = calc_rect_for_blitting(gd.rend, dst_r, src_r);
+
+
+	R_SetBlender(gd.rend, BLEND_DISABLE);
+	R_SetTexture(gd.rend, src);
+	R_SetOutput(gd.rend, dst);
+
+	// R_ClearSurface(gd.rend, TextureFromRID(gd.rend, src)->clear_color);
+
+
+	vec2i xy = rect.xy;
+	vec2i wh = rect.wh;
+	vec3 p0 = { xy.x + wh.x * 0, xy.y + wh.y * 0, 0 };
+	vec3 p1 = { xy.x + wh.x * 0, xy.y + wh.y * 1, 0 };
+	vec3 p2 = { xy.x + wh.x * 1, xy.y + wh.y * 0, 0 };
+	vec3 p3 = { xy.x + wh.x * 1, xy.y + wh.y * 1, 0 };
+
+	R_SetTopology(gd.rend, TOPO_TRIANGLES);
+	R_Vertex3 *vertices = R_QueueVertices(gd.rend, 6);
+	vertices[0] = (R_Vertex3) {p0, {0,1}, WHITE};
+	vertices[1] = (R_Vertex3) {p1, {0,0}, WHITE};
+	vertices[2] = (R_Vertex3) {p3, {1,0}, WHITE};
+	vertices[3] = (R_Vertex3) {p0, {0,1}, WHITE};
+	vertices[4] = (R_Vertex3) {p3, {1,0}, WHITE};
+	vertices[5] = (R_Vertex3) {p2, {1,1}, WHITE};
+	return 0;
+}
+
+
+
+ELF_FUNCTION(L_EndDrawing) {
+	R_EndFrame(gd.rend);
+	return 0;
+}
+
+
+
+ELF_FUNCTION(L_BeginDrawing) {
 	R_BeginFrame(gd.rend);
 
+	// todo: load identity will do this
 	D_SetScale(1, 1);
 	D_SetOffset(0, 0);
 	D_SetCenter(0, 0);
+
 	D_LoadIdentity();
 	D_SetTexture(RID_TEXTURE_DEFAULT);
 
-	R_SetSurface(gd.rend, gd.targetsurface);
-	R_SetVirtualReso(gd.rend, gd.vreso);
+	RID output = RID_WINDOW_OT;
+	vec2i output_r = R_GetTextureInfo(gd.rend, output);
+	R_SetOutput(gd.rend, RID_WINDOW_OT);
+	R_SetVirtualReso(gd.rend, output_r);
+
+	R_SetViewport(gd.rend, output_r);
+
 	R_SetSampler(gd.rend, SAMPLER_POINT);
-	R_SetViewportFullScreen(gd.rend);
 	R_SetTopology(gd.rend, TOPO_TRIANGLES);
 	R_SetBlender(gd.rend, BLENDER_ALPHA_BLEND);
-
+	return 0;
 }
 
 
@@ -346,75 +462,57 @@ ELF_FUNCTION(L_InitWindow) {
 
 	const char *name = elf_loadtext(S, 1);
 
-	vec2i vreso = { 0 };
-	vec2i wreso = { 0 };
-
-
+	vec2i windowreso = { 0 };
 	if (nargs >= 4) {
-		vreso.x = wreso.x = elf_loadint(S, 2);
-		vreso.y = wreso.y = elf_loadint(S, 3);
+		gd.output_reso.x = windowreso.x = elf_loadint(S, 2);
+		gd.output_reso.y = windowreso.y = elf_loadint(S, 3);
 
 		if (nargs >= 5) {
 			int windowscale = elf_loadint(S, 4);
-			wreso.x *= windowscale;
-			wreso.y *= windowscale;
+			windowreso.x *= windowscale;
+			windowreso.y *= windowscale;
 		}
 	}
 
+	gd.window = OS_InstallWindow(name, windowreso);
+	gd.rend = R_InitRenderer(gd.window);
 
-	OS_InstallWindow(WINDOW_MAIN, name, wreso);
-	TRACELOG("Init Window... %ix%i", wreso.x, wreso.y);
-
-	R_Renderer *rend = R_InitRenderer(WINDOW_MAIN);
-	gd.rend = rend;
-	gd.window = WINDOW_MAIN;
-	gd.targetsurface = RID_RENDER_TARGET_WINDOW;
-	gd.vreso = vreso;
-	TRACELOG("Init Renderer... %ix%i", vreso.x, vreso.y);
-	if (vreso.x > 0 && vreso.y > 0) {
-		gd.basesurface = R_InstallSurface(rend, FORMAT_R8G8B8_UNORM, vreso);
-		gd.targetsurface = gd.basesurface;
+	if (nargs < 4) {
+		gd.output_reso = OS_GetWindowResolution(gd.window);
 	}
+
+	TRACELOG("Init Renderer... %ix%i", gd.output_reso.x, gd.output_reso.y);
 
 
 	gd.target_seconds_to_sleep = 1.0 / 60.0;
 	gd.begin_cycle_clock = OS_GetTickCounter();
-
-	// OS_PollWindow(window);
-	BeginDrawing();
 	return 0;
 }
 
+
+
 ELF_FUNCTION(L_PollWindow) {
 
-	R_Renderer *rend = gd.rend;
-	OS_WindowId window = gd.window;
-
-	b32 open = OS_PollWindow(window);
-
-
-	if (gd.targetsurface != RID_RENDER_TARGET_WINDOW) {
-		R_Blit(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
-	}
-	R_Synchronize(rend);
-	R_EndFrame(rend);
-
-
+	b32 open = OS_PollWindow(gd.window);
 	if (!open) goto esc;
+
+
+	vec2i window_r = OS_GetWindowResolution(gd.window);
+
+	iRect rect = { .xy = (vec2i) {0, 0}, .wh = window_r };
+
+	if (gd.output_reso.x != 0 && gd.output_reso.y != 0) {
+		rect = calc_rect_for_blitting(gd.rend, window_r, gd.output_reso);
+	}
+
+	vec2i mouse = OS_GetWindowMouse(gd.window);
+	gd.mouse.x = 0 + (mouse.x - rect.x) / (f32) rect.w;
+	gd.mouse.y = 1 - (mouse.y - rect.y) / (f32) rect.h;
+
 
 	// because we only have one window
 	OS_ForgetFileDrops();
 
-	// begin a new frame
-	BeginDrawing();
-
-	// todo: remove this from the renderer!
-	iRect rect = R_GetBlitRect(rend, RID_RENDER_TARGET_WINDOW, gd.targetsurface);
-	vec2i mouse = OS_GetWindowMouse(window);
-
-	// can be negative
-	gd.mouse.x = 0 + (mouse.x - rect.x) / (f32) rect.w;
-	gd.mouse.y = 1 - (mouse.y - rect.y) / (f32) rect.h;
 
 	// todo: fix this thing, it works too well
 	i64 end_cycle_clock = OS_GetTickCounter();
@@ -489,7 +587,7 @@ ELF_FUNCTION(L_DrawText) {
 
 ELF_FUNCTION(L_GetFileDrop) {
 
-	OS_WindowId window = gd.window;
+	WID window = gd.window;
 	i32 index = elf_loadint(S, 1);
 	elf_pushtext(S, OS_GetFileDrop(index));
 	return 1;
@@ -497,7 +595,7 @@ ELF_FUNCTION(L_GetFileDrop) {
 
 ELF_FUNCTION(L_GetNumFileDrops) {
 
-	OS_WindowId window = gd.window;
+	WID window = gd.window;
 	elf_pushint(S, OS_GetNumFileDrops());
 	return 1;
 }
@@ -565,24 +663,42 @@ ELF_FUNCTION(L_StopVoice) {
 static const elf_Binding l_state[] = {
 	{ "InitWindow"                       , L_InitWindow                           },
 	{ "PollWindow"                       , L_PollWindow                           },
+
+	{ "BlitToWindow"                     , L_BlitToWindow                         },
+	{ "EndDrawing"                       , L_EndDrawing                           },
+	{ "BeginDrawing"                     , L_BeginDrawing                         },
+	{ "GetScreenW"                       , L_GetScreenW                           },
+	{ "GetScreenH"                       , L_GetScreenH                           },
+
+
+	{ "NewOutputTexture"                 , L_NewOutputTexture                     },
+	{ "SetVirtualRes"                    , L_SetVirtualRes                        },
+	{ "SetOutput"                        , L_SetOutput                            },
+	{ "SetOutputWindow"                  , L_SetOutputWindow                      },
+
 	{ "LoadTexture"                      , L_LoadTexture                          },
 	{ "GetTextureResolution"             , L_GetTextureResolution                 },
-	{ "SetViewport"                      , L_SetViewport                          },
 
+
+	{ "Translate"                        , L_Translate                            },
+	{ "GetTranslation"                   , L_GetTranslation                       },
+	{ "SetScale"                         , L_SetScale                             },
+	{ "SetOffset"                        , L_SetOffset                            },
+	{ "SetRotation"                      , L_SetRotation                          },
+	{ "SetCenter"                        , L_SetCenter                            },
+
+
+
+	{ "SetViewport"                      , L_SetViewport                          },
 	{ "Button"                           , L_Button                               },
 	{ "MouseButton"                      , L_MouseButton                          },
 	{ "Clear"                            , L_Clear                                },
 	{ "GetMouseWheel"                    , L_GetMouseWheel                        },
 	{ "GetMouseX"                        , L_GetMouseX                            },
 	{ "GetMouseY"                        , L_GetMouseY                            },
-	{ "Translate"                        , L_Translate                            },
-	{ "GetTranslation"                   , L_GetTranslation                       },
-	{ "SetScale"                         , L_SetScale                             },
-	{ "SetOffset"                        , L_SetOffset                            },
-	{ "SetRotation"                      , L_SetRotation                          },
+
 	{ "SetTexture"                       , L_SetTexture                           },
 	{ "SetRegion"                        , L_SetRegion                            },
-	{ "SetCenter"                        , L_SetCenter                            },
 	{ "SetLayerColor"                    , L_SetLayerColor                        },
 	{ "SetLayerAlpha"                    , L_SetLayerAlpha                        },
 	{ "SetAlpha"                         , L_SetAlpha                             },

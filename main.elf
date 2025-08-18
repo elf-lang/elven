@@ -1,7 +1,8 @@
 load "tests.elf"
 
-elf.change_work_dir("W:\\MicroRJ\\game2")
-load "main.elf"
+elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
+// load "main.elf"
+load "tmapeditor.elf"
 
 // things := {"a", "b", "c"}
 // for t = things[...] ? {

@@ -79,7 +79,7 @@ STATIC_ASSERT(!(sizeof(R_CONSTANTS) & 15) && sizeof(R_CONSTANTS) >= 64 && sizeof
 
 
 struct R_Renderer {
-	OS_WindowId             window;
+	WID             window;
 	ID3D11InfoQueue        *info_queue;
 
 	ID3D11Device           *device;
@@ -135,12 +135,13 @@ static inline R_TEXTURE *TextureFromRID(R_Renderer *rend, RID id) {
 static void R_InitTextureEx(R_Renderer *rend, RID rid, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride);
 
 
-R_Renderer *R_InitRenderer(OS_WindowId window) {
+R_Renderer *R_InitRenderer(WID window) {
 
 	R_Renderer *rend = calloc(1, sizeof(*rend));
 	rend->window = window;
 
 	HWND hwnd = OS_GetWindowHandle(window);
+	ASSERT(IsWindow(hwnd));
 
 	rend->mem_vertices = VirtualAlloc(0, MEGABYTES(128), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	rend->max_vertices = MEGABYTES(128) / sizeof(*rend->mem_vertices);
@@ -553,7 +554,7 @@ static void R_BeginFrame(R_Renderer *rend) {
 	{
 		vec2i target_resolution = OS_GetWindowResolution(rend->window);
 
-		R_TEXTURE *window = TextureFromRID(rend, RID_RENDER_TARGET_WINDOW);
+		R_TEXTURE *window = TextureFromRID(rend, RID_WINDOW_OT);
 
 		b32 resolution_mismatch =
 		window->resolution.x != target_resolution.x ||
@@ -829,26 +830,16 @@ RID R_GetSurface(R_Renderer *rend) {
 }
 
 // todo: this should just be in begin frame?
-void R_SetSurface(R_Renderer *rend, RID value) {
+void R_SetOutput(R_Renderer *rend, RID value) {
 
 	R_TEXTURE *texture = TextureFromRID(rend, value);
 	ASSERT(texture->render_target_view);
 
 	b32 changed = rSetDrawStateVar(rend, STATE_OUTPUT, value);
-#if 0
 	if (changed) {
-		// todo:
-		vec2i resolution = R_GetTextureInfo(rend, R_GetSurface(rend));
-		vec2 scale = { 2.0 / resolution.x, 2.0 / resolution.y };
-		vec2 offset = { -1.0, -1.0 };
-
-		rend->draw_constants.transform[0] = (vec4){scale.x, 0, 0, offset.x};
-		rend->draw_constants.transform[1] = (vec4){0, scale.y, 0, offset.y};
-		rend->draw_constants.transform[2] = (vec4){0, 0, 1, 0};
-		rend->draw_constants.transform[3] = (vec4){0, 0, 0, 1};
-		rend->draw_constants_changed = true;
+		R_SetViewport(rend, texture->resolution);
+		R_SetVirtualReso(rend, texture->resolution);
 	}
-#endif
 }
 
 void R_SetTexture(R_Renderer *rend, RID value) {
@@ -868,11 +859,6 @@ void R_SetViewport(R_Renderer *rend, vec2i viewport) {
 
 		rend->draw_prox.viewport = viewport;
 	}
-}
-
-
-void R_SetViewportFullScreen(R_Renderer *rend) {
-	R_SetViewport(rend, R_GetTextureInfo(rend, R_GetSurface(rend)));
 }
 
 
@@ -904,59 +890,6 @@ void R_ClearSurface(R_Renderer *rend, Color color) {
 	//
 	output_texture->requires_clear = true;
 	output_texture->clear_color = color;
-}
-
-
-static void rDrawQuad(R_Renderer *rend, vec2i xy, vec2i wh) {
-	R_SetTopology(rend, TOPO_TRIANGLES);
-	vec3 p0 = { xy.x + wh.x * 0, xy.y + wh.y * 0, 0 };
-	vec3 p1 = { xy.x + wh.x * 0, xy.y + wh.y * 1, 0 };
-	vec3 p2 = { xy.x + wh.x * 1, xy.y + wh.y * 0, 0 };
-	vec3 p3 = { xy.x + wh.x * 1, xy.y + wh.y * 1, 0 };
-	R_Vertex3 *vertices = R_QueueVertices(rend, 6);
-	vertices[0] = (R_Vertex3) {p0, {0,1}, WHITE};
-	vertices[1] = (R_Vertex3) {p1, {0,0}, WHITE};
-	vertices[2] = (R_Vertex3) {p3, {1,0}, WHITE};
-	vertices[3] = (R_Vertex3) {p0, {0,1}, WHITE};
-	vertices[4] = (R_Vertex3) {p3, {1,0}, WHITE};
-	vertices[5] = (R_Vertex3) {p2, {1,1}, WHITE};
-}
-
-iRect R_GetBlitRect(R_Renderer *rend, RID output, RID input) {
-	vec2i output_resolution = R_GetTextureInfo(rend, output);
-	vec2i input_resolution = R_GetTextureInfo(rend, input);
-
-	if (output == input) {
-		return (iRect) { 0, 0, output_resolution.x, output_resolution.y };
-	}
-
-	// integer
-	i32 max_scale = MIN(output_resolution.x / (f32) input_resolution.x, output_resolution.y / (f32) input_resolution.y);
-
-	iRect rect;
-	rect.w = input_resolution.x * max_scale;
-	rect.h = input_resolution.y * max_scale;
-	rect.x = (output_resolution.x - rect.w) * 0.5;
-	rect.y = (output_resolution.y - rect.h) * 0.5;
-	return rect;
-}
-
-void R_Blit(R_Renderer *rend, RID output, RID input) {
-	R_SetSurface(rend, output);
-	R_SetTexture(rend, input);
-	R_SetViewportFullScreen(rend);
-	// R_ClearSurface(rend, BLACK);
-	R_SetBlender(rend, BLEND_DISABLE);
-
-	// todo: we need something this clever
-	// TextureFromRID(rend, output)->clear_color = TextureFromRID(rend, input)->clear_color;
-
-	// todo: but we need something this simple
-	R_ClearSurface(rend, TextureFromRID(rend, input)->clear_color);
-
-	iRect rect = R_GetBlitRect(rend, output, input);
-	R_SetVirtualReso(rend, rect.wh);
-	rDrawQuad(rend, rect.xy, rect.wh);
 }
 
 

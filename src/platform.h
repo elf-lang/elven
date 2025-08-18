@@ -34,9 +34,10 @@ enum {
 	KEY_COUNT = 256,
 };
 
-typedef enum {
-	WINDOW_MAIN = 0,
-} OS_WindowId;
+
+
+typedef u64 WID;
+
 
 
 typedef struct Controller_State Controller_State;
@@ -52,36 +53,43 @@ struct Controller_State {
 };
 
 
-void OS_Sleep(int ms);
-
-void OS_ShowErrorMessage(char *msg);
-b32 OS_OpenFileDialog(char *path, char *buffer, int bufsize);
-
 // todo: elf already has this!
 i64 OS_GetTickCounter();
 f64 OS_GetClocksToSeconds();
+
+
+void OS_Sleep(int ms);
+
+
+void OS_ShowErrorMessage(char *text);
+b32 OS_OpenFileDialog(char *path, char *buf, int zbuf);
+
 
 void OS_InitPlatform();
 void OS_EndPlatform();
 
 
-void OS_InstallWindow(OS_WindowId id, const char *name, vec2i resolution);
+WID OS_InstallWindow(const char *name, vec2i resolution);
+
+
 
 #if defined(_WIN32_API)
-// so expose this for win32 builds
-HWND OS_GetWindowHandle(OS_WindowId window);
+// expose this for the renderer
+HWND OS_GetWindowHandle(WID window);
 #endif
 
 
-b32 OS_PollWindow(OS_WindowId window);
+
+
+b32 OS_PollWindow(WID window);
 // the following functions return state that is updated
 // once the window is polled
-b32 OS_ShouldWindowClose(OS_WindowId window);
-vec2i OS_GetWindowResolution(OS_WindowId window);
-int OS_GetWindowKey(OS_WindowId window, int index);
-vec2i OS_GetWindowMouse(OS_WindowId window);
-vec2i OS_GetWindowMouseWheel(OS_WindowId window);
-int OS_GetNextFileDrop(OS_WindowId id);
+b32 OS_ShouldWindowClose(WID window);
+vec2i OS_GetWindowResolution(WID window);
+int OS_GetWindowKey(WID window, int index);
+vec2i OS_GetWindowMouse(WID window);
+vec2i OS_GetWindowMouseWheel(WID window);
+int OS_GetNextFileDrop(WID id);
 
 
 

@@ -31,7 +31,7 @@ typedef u64 RID;
 // into a renderer function that takes a handle
 #define RID_NONE                 ((RID) 0)
 #define RID_TEXTURE_DEFAULT      ((RID) 1)
-#define RID_RENDER_TARGET_WINDOW ((RID) 2)
+#define RID_WINDOW_OT ((RID) 2)
 
 // we only use 3
 #define RID_SPECIAL_RANGE        (4)
@@ -69,7 +69,7 @@ STATIC_ASSERT(sizeof(R_Vertex3) == 32);
 
 typedef struct R_Renderer R_Renderer;
 
-R_Renderer *R_InitRenderer(OS_WindowId window);
+R_Renderer *R_InitRenderer(WID window);
 vec2i R_GetTextureInfo(R_Renderer *rend, RID id);
 
 enum {
@@ -98,7 +98,7 @@ void R_Synchronize(R_Renderer *rend);
 
 void R_ClearSurface(R_Renderer *rend, Color color);
 
-void R_SetSurface(R_Renderer *rend, RID id);
+void R_SetOutput(R_Renderer *rend, RID id);
 void R_SetTexture(R_Renderer *rend, RID id);
 void R_SetShader(R_Renderer *rend, ShaderId id);
 void R_SetTopology(R_Renderer *rend, Topology id);
@@ -106,13 +106,6 @@ void R_SetSampler(R_Renderer *rend, SamplerId id);
 void R_SetBlender(R_Renderer *rend, BlenderId id);
 void R_SetViewport(R_Renderer *rend, vec2i size);
 void R_SetVirtualReso(R_Renderer *rend, vec2i reso);
-void R_SetViewportFullScreen(R_Renderer *rend);
 
 RID R_GetTexture(R_Renderer *rend);
 RID R_GetSurface(R_Renderer *rend);
-
-// todo: weird! remove this from here, the renderer should't
-// even be the one to determine how to blit the rect with proper
-// aspect ratio!
-iRect R_GetBlitRect(R_Renderer *rend, RID dest, RID src);
-void R_Blit(R_Renderer *rend, RID dest, RID src);

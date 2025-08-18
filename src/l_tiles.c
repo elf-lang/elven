@@ -348,14 +348,14 @@ ELF_FUNCTION(L_ToggleLayer) {
 
 
 ELF_FUNCTION(L_DrawTileMap) {
-	int px   = elf_loadint(S, 1);
-	int py   = elf_loadint(S, 2);
-	int x    = elf_loadint(S, 3);
-	int y    = elf_loadint(S, 4);
-	int z    = elf_loadint(S, 5);
-	int nx   = elf_loadint(S, 6);
-	int ny   = elf_loadint(S, 7);
-	int nz   = elf_loadint(S, 8);
+	f32 px       = elf_loadnum(S, 1);
+	f32 py       = elf_loadnum(S, 2);
+	int map_x    = elf_loadint(S, 3);
+	int map_y    = elf_loadint(S, 4);
+	int map_z    = elf_loadint(S, 5);
+	int map_nx   = elf_loadint(S, 6);
+	int map_ny   = elf_loadint(S, 7);
+	int map_nz   = elf_loadint(S, 8);
 
 	vec2 inv_resolution = gd.texture_inv_resolution;
 
@@ -366,34 +366,37 @@ ELF_FUNCTION(L_DrawTileMap) {
 	// backend could do this more optimally if it had a special
 	// shader or something
 	// or maybe we can just create vertex buffers per tilemap
-	int num_vertices = nx * ny * nz * 6;
+	int num_vertices = map_nx * map_ny * map_nz * 6;
 	R_Vertex3 *vertices = R_QueueVertices(gd.rend, num_vertices);
 	R_Vertex3 *cursor = vertices;
 
 
-	for (int map_z=z; map_z<z+nz; ++map_z){
-		Color color = gd.colors[map_z];
+	int ix, iy, iz;
+	for (iz=0; iz<map_nz; ++iz){
+		int map_tile_z = map_z + iz & 3;
+
+		Color color = gd.colors[map_tile_z];
 		// todo: once we implement *1
-		if (gd.layers_off & 1 << map_z) {
+		if (gd.layers_off & 1 << map_tile_z) {
 			color.a = 0;
 		}
 
-		for (int iy=0; iy<ny; ++iy){
-			for (int ix=0; ix<nx; ++ix){
+		for (iy=0; iy<map_ny; ++iy){
+			for (ix=0; ix<map_nx; ++ix){
 
-				int map_tile_x = ((x >> 3) + ix) & L2MASK(w_log2);
-				int map_tile_y = ((y >> 3) + iy) & L2MASK(h_log2);
+				int map_tile_x = (map_x + ix) & L2MASK(w_log2);
+				int map_tile_y = (map_y + iy) & L2MASK(h_log2);
 
-				int tile = gd.tilemap->tiles[map_tile_x | map_tile_y << w_log2].e[map_z];
+				int tile = gd.tilemap->tiles[map_tile_x | map_tile_y << w_log2].e[map_tile_z];
 
 				// todo: *1 we can't do this because we've already reserved the vertices!
 				// if (!tile) continue;
 
 				Rect dst = {
-					px + (x & L2MASK(tz_log2)) + (ix << tz_log2),
-					py + (y & L2MASK(tz_log2)) + (iy << tz_log2),
-					1 << tz_log2,
-					1 << tz_log2
+					ix << tz_log2,
+					iy << tz_log2,
+					1  << tz_log2,
+					1  << tz_log2
 				};
 				iRect src = {
 					gd.tileset->coords[tile].x,
@@ -423,6 +426,9 @@ ELF_FUNCTION(L_DrawTileMap) {
 			}
 		}
 	}
+
+
+	ApplyTransform(px, py, vertices, num_vertices);
 	return 0;
 }
 
