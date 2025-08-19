@@ -53,7 +53,6 @@ typedef struct R_Draw_State {
 } R_Draw_State;
 
 
-
 typedef struct R_TEXTURE R_TEXTURE;
 struct R_TEXTURE {
 	// to defer clearing until the render target is actually set
@@ -70,16 +69,18 @@ struct R_TEXTURE {
 };
 
 
-typedef struct R_CONSTANTS R_CONSTANTS;
-struct R_CONSTANTS {
+
+typedef struct R_SCB_DEFAULT R_SCB_DEFAULT;
+struct R_SCB_DEFAULT {
 	vec4 transform[4];
 	vec4 texture_color_transform[4];
+	vec4 palette[16];
 };
-STATIC_ASSERT(!(sizeof(R_CONSTANTS) & 15) && sizeof(R_CONSTANTS) >= 64 && sizeof(R_CONSTANTS) <= D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT);
+STATIC_ASSERT(!(sizeof(R_SCB_DEFAULT) & 15) && sizeof(R_SCB_DEFAULT) >= 64 && sizeof(R_SCB_DEFAULT) <= D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT);
 
 
 struct R_Renderer {
-	WID             window;
+	WID                     window;
 	ID3D11InfoQueue        *info_queue;
 
 	ID3D11Device           *device;
@@ -103,16 +104,15 @@ struct R_Renderer {
 	i32                 vertices_submission_buffer_capacity;
 	i32                 vertices_submission_buffer_offset;
 
-	R_Draw_State  draw_prev;
-	R_Draw_State  draw_prox;
-	R_CONSTANTS   draw_constants;
-	b32           draw_constants_changed;
+	R_Draw_State   draw_prev;
+	R_Draw_State   draw_prox;
+	R_SCB_DEFAULT  draw_constants;
+	b32            draw_constants_changed;
 
 	ID3D11BlendState   *blenders[BLENDER_CAPACITY];
 	ID3D11SamplerState *samplers[SAMPLER_CAPACITY];
 	ID3D11PixelShader   *shaders[SHADER_CAPACITY];
-	// special textures
-	R_TEXTURE           textures[RID_SPECIAL_RANGE];
+	R_TEXTURE           window_texture;
 
 	// todo: structure this better!
 	R_Vertex3  *mem_vertices;
@@ -123,11 +123,7 @@ struct R_Renderer {
 
 
 
-// NOTE: never cast RID to texture directly, because it could be a special handle
 static inline R_TEXTURE *TextureFromRID(R_Renderer *rend, RID id) {
-	if (id < RID_FIRST_NONSPECIAL) {
-		return & rend->textures[(uintptr_t) id & RID_SPECIAL_MASK];
-	}
 	return (R_TEXTURE *) id;
 }
 
@@ -305,13 +301,10 @@ R_Renderer *R_InitRenderer(WID window) {
 		ID3D11Device_CreateBuffer(rend->device, &config, NULL, &rend->vertices_submission_buffer);
 	}
 
-	Color color = {255, 255, 255, 255};
-	R_InitTextureEx(rend, RID_TEXTURE_DEFAULT, FORMAT_R8G8B8_UNORM, (vec2i){1,1}, R_BIND_INPUT, &color, 0);
-
 
 	{
 		D3D11_BUFFER_DESC config = {
-			.ByteWidth      = sizeof(R_CONSTANTS),
+			.ByteWidth      = sizeof(R_SCB_DEFAULT),
 			.Usage          = D3D11_USAGE_DYNAMIC,
 			.BindFlags      = D3D11_BIND_CONSTANT_BUFFER,
 			.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
@@ -325,6 +318,7 @@ R_Renderer *R_InitRenderer(WID window) {
 		"cbuffer Constants : register(b0) {\n"
 		"	float4x4	transform;\n"
 		"	float4x4	texture_color_transform;\n"
+		"	float4   g_palette[16];\n"
 		"}\n"
 		"struct Vertex_In {\n"
 		"	float3 position   : POSITION;\n"
@@ -345,31 +339,69 @@ R_Renderer *R_InitRenderer(WID window) {
 		"	output.color = input.color;\n"
 		"	return output;\n"
 		"}\n"
-		"float4 MainPS(Vertex_Out input) : SV_TARGET {\n"
+		"float4 PS_Main(Vertex_Out input) : SV_TARGET {\n"
 		"	float4 color = input.color;\n"
 		"	float4 sample = main_t2d.Sample(main_sampler, input.texcoords);\n"
 		"	float4 final_color = mul(texture_color_transform, sample) * color;\n"
 		"	return final_color;\n"
-		"}\n";
+		"}\n"
+		"float4 PS_Grayscale(Vertex_Out input) : SV_TARGET {\n"
+		"	float4 sample = main_t2d.Sample(main_sampler, input.texcoords);\n"
+		"	sample = mul(texture_color_transform, sample);\n"
+		"	float lumen = dot(sample.rgb, float3(0.2126, 0.7152, 0.0722));\n"
+		"	float4 final_color = float4(lumen,lumen,lumen,sample.a);\n"
+		"	return final_color;\n"
+		"}\n"
+		"static const float3 g_palette2[5] = {\n"
+		"		float3(15 ,  56, 15) / 255.0,\n"
+		"		float3(15 ,  56, 15) / 255.0,\n"
+		"		float3(48 ,  98, 48) / 255.0,\n"
+		"		float3(139, 172, 15) / 255.0,\n"
+		"		float3(155, 188, 15) / 255.0,\n"
+		"};\n"
+		"float4 PS_Palette(Vertex_Out input) : SV_TARGET {\n"
+		"	float4 sample = main_t2d.Sample(main_sampler, input.texcoords);\n"
+		"	sample = mul(texture_color_transform, sample);\n"
+		"	float lumen = dot(sample.rgb, float3(0.2126, 0.7152, 0.0722));\n"
+		"	float4 final_color = float4(g_palette2[(int)(lumen*5)],sample.a);\n"
+		"	return final_color;\n"
+		"}\n"
+		;
+
+
+
+
+
 
 		i32 compilation_flags = D3DCOMPILE_PACK_MATRIX_ROW_MAJOR|D3DCOMPILE_DEBUG|D3DCOMPILE_SKIP_OPTIMIZATION|D3DCOMPILE_WARNINGS_ARE_ERRORS;
 		ID3DBlob *bytecode_b = NULL;
 		ID3DBlob *messages_b = NULL;
 
-		// pixel shader
-		if (SUCCEEDED(D3DCompile(shader_source, strlen(shader_source)
-		,    shader_name, 0, 0, "MainPS", "ps_5_0", compilation_flags, 0, &bytecode_b, &messages_b)))
-		{
-			ID3D11Device_CreatePixelShader(rend->device
-			, bytecode_b->lpVtbl->GetBufferPointer(bytecode_b)
-			, bytecode_b->lpVtbl->GetBufferSize(bytecode_b)
-			, NULL, &rend->shaders[SHADER_DEFAULT]);
+		const char *ps_entries[] = {
+			[SHADER_NONE]      = 0,
+			[SHADER_DEFAULT]   = "PS_Main",
+			[SHADER_GRAYSCALE] = "PS_Grayscale",
+			[SHADER_PALETTE]   = "PS_Palette",
+		};
+
+		int i;
+		for (i=SHADER_NONE+1; i < COUNTOF(ps_entries); ++i) {
+			// pixel shader
+			if (SUCCEEDED(D3DCompile(shader_source, strlen(shader_source)
+			,    shader_name, 0, 0, ps_entries[i], "ps_5_0", compilation_flags, 0, &bytecode_b, &messages_b)))
+			{
+				ID3D11Device_CreatePixelShader(rend->device
+				, bytecode_b->lpVtbl->GetBufferPointer(bytecode_b)
+				, bytecode_b->lpVtbl->GetBufferSize(bytecode_b)
+				, NULL, &rend->shaders[i]);
+			}
+			if (messages_b) {
+				TRACELOG("%s",(char*) messages_b->lpVtbl->GetBufferPointer(messages_b));
+			}
+			DX_RELEASE_MAYBE(bytecode_b);
+			DX_RELEASE_MAYBE(messages_b);
 		}
-		if (messages_b) {
-			TRACELOG("%s",(char*) messages_b->lpVtbl->GetBufferPointer(messages_b));
-		}
-		if (bytecode_b) bytecode_b->lpVtbl->Release(bytecode_b);
-		if (messages_b) messages_b->lpVtbl->Release(messages_b);
+
 
 
    	// vertex shader
@@ -396,8 +428,8 @@ R_Renderer *R_InitRenderer(WID window) {
 		if (messages_b) {
 			TRACELOG("%s",(char*) messages_b->lpVtbl->GetBufferPointer(messages_b));
 		}
-		if (bytecode_b) bytecode_b->lpVtbl->Release(bytecode_b);
-		if (messages_b) messages_b->lpVtbl->Release(messages_b);
+		DX_RELEASE_MAYBE(bytecode_b);
+		DX_RELEASE_MAYBE(messages_b);
 	}
 
 	ID3D11VertexShader *vertex_shader = rend->vertex_shader;
@@ -498,8 +530,8 @@ static void R_InitTextureEx(R_Renderer *rend, RID rid, TextureFormat format, vec
 		D3D11_SUBRESOURCE_DATA *psubresource = 0;
 		if (contents) { psubresource = &subresource; }
 
-		HRESULT hnoerror = ID3D11Device_CreateTexture2D(rend->device, &config, psubresource, &texture->texture);
-		ASSERT(SUCCEEDED(hnoerror));
+		HRESULT hr = ID3D11Device_CreateTexture2D(rend->device, &config, psubresource, &texture->texture);
+		ASSERT(SUCCEEDED(hr));
 	}
 
 	if (flags & R_BIND_INPUT) {
@@ -510,13 +542,13 @@ static void R_InitTextureEx(R_Renderer *rend, RID rid, TextureFormat format, vec
 			.Texture2D.MipLevels       = 1,
 		};
 
-		HRESULT hnoerror = ID3D11Device_CreateShaderResourceView(rend->device, texture->texture_resource, &config, &texture->shader_resource_view);
-		ASSERT(SUCCEEDED(hnoerror));
+		HRESULT hr = ID3D11Device_CreateShaderResourceView(rend->device, texture->texture_resource, &config, &texture->shader_resource_view);
+		ASSERT(SUCCEEDED(hr));
 	}
 
 	if (flags & R_BIND_OUTPUT) {
-		HRESULT hnoerror = ID3D11Device_CreateRenderTargetView(rend->device, texture->texture_resource, 0, &texture->render_target_view);
-		ASSERT(SUCCEEDED(hnoerror));
+		HRESULT hr = ID3D11Device_CreateRenderTargetView(rend->device, texture->texture_resource, 0, &texture->render_target_view);
+		ASSERT(SUCCEEDED(hr));
 	}
 }
 
@@ -554,7 +586,7 @@ static void R_BeginFrame(R_Renderer *rend) {
 	{
 		vec2i target_resolution = OS_GetWindowResolution(rend->window);
 
-		R_TEXTURE *window = TextureFromRID(rend, RID_WINDOW_OT);
+		R_TEXTURE *window = & rend->window_texture;
 
 		b32 resolution_mismatch =
 		window->resolution.x != target_resolution.x ||
@@ -700,7 +732,7 @@ void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number) {
 	{
 		R_TEXTURE *texture = TextureFromRID(rend, prox.texture);
 		R_TEXTURE *texture_prev = TextureFromRID(rend, prev.texture);
-		if (texture->format != texture_prev->format) {
+		if (!texture_prev || texture->format != texture_prev->format) {
 			if (texture->format == FORMAT_R8_UNORM) {
 				rend->draw_constants.texture_color_transform[0] = (vec4){ 1, 0, 0, 0 };
 				rend->draw_constants.texture_color_transform[1] = (vec4){ 1, 0, 0, 0 };
@@ -803,6 +835,14 @@ static b32 rSetDrawStateVar(R_Renderer *rend, i32 index, i64 value) {
 
 	return changed;
 }
+
+
+
+RID R_GetWindowOutput(R_Renderer *rend) {
+	return (RID) & rend->window_texture;
+}
+
+
 
 void R_SetShader(R_Renderer *rend, ShaderId value) {
 	rSetDrawStateVar(rend, STATE_SHADER, value);

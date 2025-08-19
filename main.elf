@@ -1,19 +1,10 @@
 load "tests.elf"
 
 elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
-// load "main.elf"
-load "tmapeditor.elf"
-
-// things := {"a", "b", "c"}
-// for t = things[...] ? {
-// 	elf.pf(#index)
-// }
-// #eof
-
-// elf.change_work_dir("C:\\work\\MicroRJ\\mammoth")
 // load "archive.elf"
 // load "tseteditor.elf"
 // load "tmapeditor.elf"
+load "main.elf"
 
 #eof
 
@@ -160,55 +151,6 @@ for i = arr[...]  ? {
 //
 //
 
-
-N = 1000000
-{
-	global_registry = {}
-	startcounter := elf.get_performance_counter()
-	for i = ...N ? {
-		new_obj := {}
-		// this emits 3 additional function calls
-		hashx := elf.registryhash64(new_obj, "x")
-		global_registry[hashx] = 0
-		hashy := elf.registryhash64(new_obj, "y")
-		global_registry[hashy] = 1
-		hashz := elf.registryhash64(new_obj, "z")
-		global_registry[hashz] = 2
-	}
-	tookseconds := elf.get_performance_counter_elapsed_s(startcounter)
-	elf.pf("global-registry took: ", tookseconds)
-}
-{
-	startcounter := elf.get_performance_counter()
-	for i = ...N ? {
-		// this emits direct bytecode intructions
-		new_obj := {}
-		new_obj.x = 0
-		new_obj.y = 1
-		new_obj.z = 3
-	}
-	tookseconds := elf.get_performance_counter_elapsed_s(startcounter)
-	elf.pf("hash-table per instance took: ", tookseconds)
-}
-
-
-
-#eof
-
-elf.pf("main")
-hash := elf.registryhash64(pathlist, "something")
-elf.pf("hash: ", hash)
-
-#eof
-pathlist := elf.get_path_list(".", 100)
-for p = pathlist[...] ? {
-	elf.pf(p)
-}
-
-
-
-#eof
-#eof
 
 
 #eof

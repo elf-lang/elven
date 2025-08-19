@@ -36,14 +36,19 @@ typedef struct R_Renderer R_Renderer;
 typedef struct {
 	R_Renderer *rend;
 
-	WID  window;
+	WID          window;
+	// mouse coordinates within the output rect
+	vec2         mouse;
+	RID          base;
+	vec2i        base_reso;
+	iRect        output_rect;
+	RID          output_target;
+
 	i64          begin_cycle_clock;
 	f64          clocks_to_seconds;
 	f64          target_seconds_to_sleep;
 	f64          pending_seconds_to_sleep;
-	vec2         mouse;
 
-	vec2i        output_reso;
 
 	// tiles lib
 	struct {
@@ -63,6 +68,7 @@ typedef struct {
 	};
 
 
+	RID         default_texture;
 	FONT_HANDLE font;
 	int         font_size;
 

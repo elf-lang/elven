@@ -23,30 +23,17 @@ typedef enum {
 	BLENDER_CAPACITY,
 } BlenderId;
 
-
-
+#define RID_NONE ((RID)(0))
 typedef u64 RID;
 
-// these are converted into real handles once you pass them in
-// into a renderer function that takes a handle
-#define RID_NONE                 ((RID) 0)
-#define RID_TEXTURE_DEFAULT      ((RID) 1)
-#define RID_WINDOW_OT ((RID) 2)
-
-// we only use 3
-#define RID_SPECIAL_RANGE        (4)
-#define RID_SPECIAL_MASK         (RID_SPECIAL_RANGE - 1)
-#define RID_FIRST_NONSPECIAL     ((RID) RID_SPECIAL_RANGE)
-
-
-// todo: remove!
 typedef enum {
-	SHADER_NONE      =  0,
-	SHADER_DEFAULT       ,
-
-	SHADER_FIRST_UNRESERVED_ID,
-	SHADER_CAPACITY  = 32,
+	SHADER_NONE = 0,
+	SHADER_DEFAULT,
+	SHADER_GRAYSCALE,
+	SHADER_PALETTE,
+	SHADER_CAPACITY,
 } ShaderId;
+
 
 
 typedef enum {
@@ -87,8 +74,13 @@ typedef struct {
 	i32 offset;
 } R_SubmissionTicket;
 
+
+RID R_GetWindowOutput(R_Renderer *rend);
+
 R_SubmissionTicket R_SubmitVertices(R_Renderer *renderer, R_Vertex3 *vertices, i32 number);
 R_Vertex3 *R_QueueVertices(R_Renderer *rend, i32 number);
+
+
 
 void R_DrawVertices(R_Renderer *rend, R_SubmissionTicket offset, i32 number);
 void R_FlushVertices(R_Renderer *rend);
@@ -98,9 +90,9 @@ void R_Synchronize(R_Renderer *rend);
 
 void R_ClearSurface(R_Renderer *rend, Color color);
 
+void R_SetShader(R_Renderer *rend, ShaderId id);
 void R_SetOutput(R_Renderer *rend, RID id);
 void R_SetTexture(R_Renderer *rend, RID id);
-void R_SetShader(R_Renderer *rend, ShaderId id);
 void R_SetTopology(R_Renderer *rend, Topology id);
 void R_SetSampler(R_Renderer *rend, SamplerId id);
 void R_SetBlender(R_Renderer *rend, BlenderId id);

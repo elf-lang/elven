@@ -158,7 +158,7 @@ void D_Clear(Color color) {
 }
 
 void D_SolidFill() {
-	D_SetTexture(RID_TEXTURE_DEFAULT);
+	D_SetTexture(gd.default_texture);
 }
 
 Color D_GetColor() { return gd.color_0; }
@@ -316,7 +316,7 @@ void D_DrawCircle(f32 x, f32 y, f32 r, f32 v) {
 
 
 void D_DrawLine(f32 x0, f32 y0, f32 x1, f32 y1) {
-	D_SetTexture(RID_TEXTURE_DEFAULT);
+	D_SolidFill();
 	R_SetTopology(gd.rend, MODE_LINES);
 
 	R_Vertex3 *vertices = R_QueueVertices(gd.rend, 2);

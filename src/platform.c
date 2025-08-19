@@ -229,6 +229,9 @@ WID OS_InstallWindow(const char *name, vec2i resolution) {
 
 	if (resolution.x == 0) resolution.x = monitorw * 0.90;
 	if (resolution.y == 0) resolution.y = monitorh * 0.90;
+	int scale = MIN(monitorw / resolution.x, monitorh / resolution.y);
+	resolution.x *= scale;
+	resolution.y *= scale;
 
 	RECT window_rect = {
 		.left = 0,

@@ -1,18 +1,9 @@
--- change function signature for elf
-remove fixed size base render target
 
-
--- elven.c: a lot of the functions will now rely on the stack,
-but we don't necessarily want the push and pop stuff happening
-all the time because it introduces uncertainty and noise
-instead use stack ids for as many as possible
-
-
--- elven.c: figure out why we still ASSERT when
-the file isn't found on exec, we should handle it gracefully
+-- parse.c: proper error reporting and recovering!
 
 -- elf.c: we need some sort of way to define symbols
 statically, to make things more convenient and robust.
+
 
 -- core.c: re-enable atomizer and instead of using the
 builtin table use a faster dedicated data structure
