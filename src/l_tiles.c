@@ -179,12 +179,12 @@ ELF_FUNCTION(L_LoadTileSet) {
 
 	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_READ, SYS_OPEN);
 
-	TileSet *tset = malloc(sys_size_file(file));
-	sys_read_file(file, tset, sys_size_file(file));
+	TileSet *tileset = malloc(sys_size_file(file));
+	sys_read_file(file, tileset, sys_size_file(file));
 
 	sys_close_file(file);
 
-	elf_pushint(S, (elf_Integer) tset);
+	elf_pushint(S, (elf_Integer) tileset);
 	return 1;
 }
 

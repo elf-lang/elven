@@ -1,10 +1,12 @@
 load "tests.elf"
 
-elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
+// elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
+elf.change_work_dir("W:\\MicroRJ\\game2")
 // load "archive.elf"
 // load "tseteditor.elf"
 // load "tmapeditor.elf"
 load "main.elf"
+// load "imageedit.elf"
 
 #eof
 

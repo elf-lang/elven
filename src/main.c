@@ -20,6 +20,7 @@
 #include "renderer.h"
 #include "drawstate.h"
 #include "draw_helpers.c"
+#include "l_image.c"
 #include "l_state.c"
 #include "l_tiles.c"
 #include "l_archive.c"
@@ -37,7 +38,7 @@ int main(int nargs, char **args) {
 	elf_State *S = elf_new();
 
 	// todo: to be replaced with a directory with proper function definitions
-	elf_pullglobals(S);
+	elf_pushglobals(S);
 	for (int i = 0; i < COUNTOF(l_state); i ++) {
 		elf_pushtext(S, l_state[i].name);
 		elf_pushfun(S, l_state[i].function);

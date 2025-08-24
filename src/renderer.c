@@ -476,6 +476,25 @@ static const i32 g_format_to_size[] = {
 };
 
 
+
+void R_UpdateTexture(R_Renderer *rend, RID rid, iRect region, Color *contents, int stride)
+{
+	R_TEXTURE *texture = TextureFromRID(rend, rid);
+
+	D3D11_BOX box = {
+		.left = region.x,
+		.right = region.x+region.w,
+		.top = region.y,
+		.bottom = region.y+region.h,
+		.front = 0,
+		.back = 1
+	};
+	ID3D11DeviceContext_UpdateSubresource(rend->context
+	, texture->texture_resource, 0, & box, contents, stride, 0);
+}
+
+
+
 static void R_InitTextureEx(R_Renderer *rend, RID rid, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride)
 {
 	ASSERT(resolution.x != 0);

@@ -1,4 +1,36 @@
 // this should be in elf
+
+{
+	// ensure that the expression is not evaluated twice
+
+	foo := function(value) {
+		counter += 1
+
+		#assert counter < 2
+
+		instance := { name = value }
+		--> instance
+	}
+	counter = 0
+	foo(0).name ?= 1
+
+	counter = 0
+	foo(1).name += 1
+
+	a := 0
+	#assert #getmem(a) == 2
+
+	// the compiler should generate this:
+	//	temp := foo()
+	//	if temp.name == nil ? {
+	//		temp.name = 1
+	//	}
+	// not this:
+	// if foo().name == nil ? {
+	//		foo().name = 1
+	//	}
+}
+
 {
 	#assert 0 < 1
 	#assert 1 > 0

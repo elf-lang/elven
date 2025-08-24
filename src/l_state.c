@@ -196,7 +196,8 @@ D_DrawState gd;
 
 // L_GetTranslation
 // L_SetFlipOnce
-// L_GetTextureResolution
+//
+// L_GetTextureInfo
 // L_LoadTexture
 //
 // L_NewOutputTexture
@@ -467,8 +468,8 @@ ELF_FUNCTION(L_DrawRectOutline) {
 
 
 
-ELF_FUNCTION(L_GetTextureResolution) {
-	RID id = (RID) elf_loadint(S, 1);
+ELF_FUNCTION(L_GetTextureInfo) {
+	RID id = (RID) elf_loadsys(S, 1);
 	vec2i reso = R_GetTextureInfo(gd.rend, id);
 
 	elf_pushtab(S);
@@ -483,6 +484,23 @@ ELF_FUNCTION(L_GetTextureResolution) {
 	return 1;
 }
 
+
+
+
+
+ELF_FUNCTION(L_UpdateTexture)
+{
+	RID     id = (RID)     elf_loadsys(S, 1);
+	Image *img = (Image *) elf_loadsys(S, 2);
+	int x      =           elf_loadint(S, 3);
+	int y      =           elf_loadint(S, 4);
+	int w      =           elf_loadint(S, 5);
+	int h      =           elf_loadint(S, 6);
+	R_UpdateTexture(gd.rend,id,(iRect){x,y,w,h}
+	,img->data+x+y*img->reso.x
+	,img->reso.x*sizeof(*img->data));
+	return 0;
+}
 
 
 ELF_FUNCTION(L_LoadTexture) {
@@ -927,8 +945,13 @@ static const elf_Binding l_state[] = {
 	{ "SetOutput"                        , L_SetOutput                            },
 	{ "SetOutputWindow"                  , L_SetOutputWindow                      },
 
+	{ "LoadImage"                        , L_LoadImage                            },
+	{ "SaveImage"                        , L_SaveImage                            },
+	{ "SetPixel"                         , L_SetPixel                             },
+
+	{ "UpdateTexture"                    , L_UpdateTexture                        },
 	{ "LoadTexture"                      , L_LoadTexture                          },
-	{ "GetTextureResolution"             , L_GetTextureResolution                 },
+	{ "GetTextureInfo"                   , L_GetTextureInfo                       },
 
 
 	{ "Translate"                        , L_Translate                            },

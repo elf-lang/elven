@@ -69,6 +69,9 @@ enum {
 RID R_InstallTextureEx(R_Renderer *rend, TextureFormat format, vec2i resolution, int flags, void *contents, i32 contentsstride);
 RID R_InstallTexture(R_Renderer *rend, TextureFormat format, vec2i resolution, void *contents);
 RID R_InstallSurface(R_Renderer *rend, TextureFormat format, vec2i resolution);
+void R_UpdateTexture(R_Renderer *rend, RID rid, iRect region, Color *contents, int stride);
+
+
 
 typedef struct {
 	i32 offset;
