@@ -2,10 +2,6 @@ typedef struct {
 	vec2i reso;
 	Color data[];
 } Image;
-static inline Color _get_color_args2(elf_State *S, int index, int nargs);
-
-
-
 
 
 ELF_FUNCTION(L_SetPixel)
@@ -51,3 +47,11 @@ ELF_FUNCTION(L_LoadImage)
 	elf_pushsys(S, (elf_Handle) image);
 	return 1;
 }
+
+
+
+elf_Binding l_image[] = {
+	{ "LoadImage"   , L_LoadImage   },
+	{ "SaveImage"   , L_SaveImage   },
+	{ "SetPixel"    , L_SetPixel    },
+};

@@ -1,3 +1,19 @@
+{
+	myarray := {0,0,0,0,0}
+	myarray[[0]] = 1
+	myarray[[1]] = 2
+	myarray[[2]] = 3
+	myarray[[3]] = 4
+	myarray[[4]] = 5
+
+	#assert myarray[[0]] == 1
+	#assert myarray[[1]] == 2
+	#assert myarray[[2]] == 3
+	#assert myarray[[3]] == 4
+	#assert myarray[[4]] == 5
+}
+
+#eof
 load "tests.elf"
 
 // elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")

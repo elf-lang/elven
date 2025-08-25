@@ -19,11 +19,14 @@
 #include "platform.h"
 #include "renderer.h"
 #include "drawstate.h"
-#include "draw_helpers.c"
+#include "lib_helpers.c"
+
 #include "l_image.c"
 #include "l_state.c"
 #include "l_tiles.c"
 #include "l_archive.c"
+#include "l_font.c"
+#include "l_audio.c"
 
 
 int main(int nargs, char **args) {
@@ -53,6 +56,25 @@ int main(int nargs, char **args) {
 	for (int i = 0; i < COUNTOF(l_arch); i ++) {
 		elf_pushtext(S, l_arch[i].name);
 		elf_pushfun(S, l_arch[i].function);
+		elf_setfield(S);
+	}
+
+	for (int i = 0; i < COUNTOF(l_font); i ++) {
+		elf_pushtext(S, l_font[i].name);
+		elf_pushfun(S, l_font[i].function);
+		elf_setfield(S);
+	}
+
+	for (int i = 0; i < COUNTOF(l_image); i ++) {
+		elf_pushtext(S, l_image[i].name);
+		elf_pushfun(S, l_image[i].function);
+		elf_setfield(S);
+	}
+
+
+	for (int i = 0; i < COUNTOF(l_audio); i ++) {
+		elf_pushtext(S, l_audio[i].name);
+		elf_pushfun(S, l_audio[i].function);
 		elf_setfield(S);
 	}
 

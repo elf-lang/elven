@@ -103,16 +103,16 @@
 typedef struct {
 	short x, y;
 	int   tags;
-} TileCoords;
+} TileData;
 
 
 typedef struct TileSet TileSet;
 struct TileSet {
 	// remember texture
-	u64        resource;
-	short      tile_size_log2;
-	short      num_tiles;
-	TileCoords coords[];
+	u64       resource;
+	short     tile_size_log2;
+	short     num_tiles;
+	TileData  data[];
 };
 
 
@@ -153,7 +153,7 @@ ELF_FUNCTION(L_NewTileSet) {
 	ASSERT(ISPOW2(tile_size));
 	ASSERT(ISPOW2(num_tiles));
 
-	TileSet *tileset = calloc(1, sizeof(*tileset) + sizeof(tileset->coords[0]) * num_tiles);
+	TileSet *tileset = calloc(1, sizeof(*tileset) + sizeof(tileset->data[0]) * num_tiles);
 	tileset->resource = resource;
 	tileset->tile_size_log2 = unshift(tile_size);
 	tileset->num_tiles = num_tiles;
@@ -167,7 +167,7 @@ ELF_FUNCTION(L_NewTileSet) {
 ELF_FUNCTION(L_SaveTileSet) {
 	const char *name = elf_loadtext(S, 1);
 	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_WRITE, SYS_OPEN_ALWAYS);
-	i64 extra = sizeof(gd.tileset->coords[0]) * gd.tileset->num_tiles;
+	i64 extra = sizeof(gd.tileset->data[0]) * gd.tileset->num_tiles;
 	sys_write_file(file, gd.tileset, sizeof(*gd.tileset) + extra);
 	sys_close_file(file);
 	return 0;
@@ -263,8 +263,8 @@ ELF_FUNCTION(L_SetTileCoords) {
 	int x = elf_loadint(S, 2);
 	int y = elf_loadint(S, 3);
 	assert(tile < gd.tileset->num_tiles);
-	gd.tileset->coords[tile].x = x;
-	gd.tileset->coords[tile].y = y;
+	gd.tileset->data[tile].x = x;
+	gd.tileset->data[tile].y = y;
 	return 0;
 }
 
@@ -274,7 +274,7 @@ ELF_FUNCTION(L_SetTileTags) {
 	int tile = elf_loadint(S, 1);
 	int tags = elf_loadint(S, 2);
 	assert(tile < gd.tileset->num_tiles);
-	gd.tileset->coords[tile].tags = tags;
+	gd.tileset->data[tile].tags = tags;
 	return 0;
 }
 
@@ -283,7 +283,7 @@ ELF_FUNCTION(L_SetTileTags) {
 ELF_FUNCTION(L_GetTileTags) {
 	int tile = elf_loadint(S, 1);
 	assert(tile < gd.tileset->num_tiles);
-	elf_pushint(S, gd.tileset->coords[tile].tags);
+	elf_pushint(S, gd.tileset->data[tile].tags);
 	return 1;
 }
 
@@ -308,7 +308,7 @@ ELF_FUNCTION(L_GetMapTags) {
 	int z = elf_loadint(S, 3);
 
 	int tile = accesstile(x, y, z, false, 0);
-	int tags = gd.tileset->coords[tile].tags;
+	int tags = gd.tileset->data[tile].tags;
 	elf_pushint(S, tags);
 	return 1;
 }
@@ -399,8 +399,8 @@ ELF_FUNCTION(L_DrawTileMap) {
 					1  << tz_log2
 				};
 				iRect src = {
-					gd.tileset->coords[tile].x,
-					gd.tileset->coords[tile].y,
+					gd.tileset->data[tile].x,
+					gd.tileset->data[tile].y,
 					1 << tz_log2,
 					1 << tz_log2
 				};
