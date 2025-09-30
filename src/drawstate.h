@@ -21,6 +21,9 @@
 //
 //
 
+typedef struct R_Renderer R_Renderer;
+
+
 // todo: remove from here
 typedef struct {
 	vec4 rows[4];
@@ -41,11 +44,6 @@ struct BFF_FILE_HEADER {
 
 
 
-
-
-
-
-typedef struct R_Renderer R_Renderer;
 typedef struct {
 	R_Renderer *rend;
 

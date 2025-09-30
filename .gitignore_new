@@ -1,0 +1,16 @@
+DIARY.txt
+*.lnk
+.vs\
+*.vcxproj.user
+*.vcxproj.filters
+*.aps
+*.idb
+*.ipch
+*.res
+*.sln.docstates
+*.sdf
+*.opendb
+src\l_archive.c
+play\collision\colors.elf
+play\collision\editor\math.elf
+play\memory.elf

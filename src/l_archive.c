@@ -1,8 +1,11 @@
 //
+// $git.notrack
 // allows the user to write a script to package
 // all their files into one single archive.
 //
 // todo: additional safety checks!
+//
+//
 //
 
 typedef struct {

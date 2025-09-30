@@ -4,6 +4,8 @@
 # Visual Studio generated files
 .vs/
 DIARY.txt
+play/
+buildscripts/
 *.vcxproj.user
 *.vcxproj.filters
 *.aps
