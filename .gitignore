@@ -1,13 +1,14 @@
-# Windows shortcut files
 *.lnk
 
-# Visual Studio generated files
 .vs/
 DIARY.txt
 play/
 buildscripts/
 *.vcxproj.user
 *.vcxproj.filters
+*.ilk
+*.pdb
+*.exe
 *.aps
 *.idb
 *.ipch
