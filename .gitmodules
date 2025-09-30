@@ -1,6 +1,6 @@
 [submodule "elf"]
 	path = elf
-	url = https://github.com/MicroRJ/elf
+	url = https://github.com/elf-lang/elf.git
 [submodule "miniaudio"]
 	path = miniaudio
 	url = https://github.com/mackron/miniaudio
