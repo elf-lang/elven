@@ -1,4 +1,43 @@
 //
+//	TEXTURE API:
+//
+// NewTexture(w, h, config ?= ...)
+//	LoadTexture(file_name)
+//	LoadTextureFromImage(image)
+//
+//	NewSamplingRegionMapper(w, h, size)
+//	SetMapperRegion(region_id, x, y, w, h)
+//	SetMapperRegionUV(region_id, x, y, w, h)
+//
+//
+//
+// get number of texture registers
+//	GetNumTextureRegisters()
+//
+// get a texture from a texture register
+//	GetTexture(register ?= 0)
+//
+// register a texture
+//	SetTexture(texture_handle, register ?= 0)
+//
+//	register a region mapper, region_mapper_registers == texture_registers
+//	SetTextureRegionMapper(mapper, register ?= 0)
+// 	or SetRegionMapper(mapper, register ?= 0)
+//
+//	set the texture region to sample from
+//	SetTextureRegion(x, y, w, h, register ?= 0)
+// 	or SetRegion(x, y, w, h, register ?= 0)
+//
+//	set the texture region to sample from, but it takes
+// the id of the region which is looked up in the region mapper
+//	SetTextureRegion(id, register ?= 0)
+//		or SetRegion(id, register ?= 0)
+//
+//
+
+
+
+//
 // Where to put this?
 //
 //	== LONG TERM DATA STORAGE ==
@@ -100,6 +139,21 @@
 //
 
 
+
+
+static int unshift(int x) {
+	unsigned long index;
+	_BitScanForward(&index, x);
+	return index;
+}
+
+
+
+#define ispow2(x) ((x) != 0 && !((x) & ((x) - 1)))
+#define log2mask(x) ((1 << (x)) - 1)
+
+
+
 typedef struct {
 	short x, y;
 	int   tags;
@@ -108,15 +162,16 @@ typedef struct {
 
 typedef struct TileSet TileSet;
 struct TileSet {
-	// remember texture
 	u64       resource;
-	short     tile_size_log2;
-	short     num_tiles;
+	u16       tile_size_log2;
+	u16       num_tiles;
 	TileData  data[];
 };
 
 
 
+
+#if 0
 typedef struct TileStack TileStack;
 struct TileStack {
 	u8 e[4];
@@ -131,27 +186,71 @@ struct TileMap {
 	u8         unused;
 	TileStack  tiles[];
 };
-
-
-#define ISPOW2(x) ((x) != 0 && !((x) & ((x) - 1)))
-#define L2MASK(x) ((1 << (x)) - 1)
+#endif
 
 
 
-static int unshift(int x) {
-	unsigned long index;
-	_BitScanForward(&index, x);
-	return index;
-}
+
+//
+// TileTexture is way to remove overhead from the script
+// when rendering tile grids.
+//
+//	This is purely a runtime structure, you load whatever data
+// you have, you store it here and then you draw with this bound.
+//
+// It doesn't do any culling or clipping for you, think of this
+// as an image that is made up of tiles instead of pixels.
+//
+//
+
+
+
+typedef u32 Tile;
+
+
+
+typedef struct TileTexture TileTexture;
+struct TileTexture {
+	// size in log for virtually no reason...
+	int   w_log2;
+	int   h_log2;
+
+	// I guess to support different tile formats,
+	// the user can always just modify the data
+	// before sending it here
+	Tile   v_mask; // = 0
+	Tile   h_mask; // = 0
+	Tile  id_mask; // = u32 max
+
+	int   tile_w;
+	int   tile_h;
+	Tile tiles[];
+
+	// you can imagine in the future, additional GPU
+	// resources, like a vertex buffer or a shader or
+	// something, to make this faster than generating
+	// vertices dynamically
+};
+
+
+
+
+
+
+
 
 
 ELF_FUNCTION(L_NewTileSet) {
 	int tile_size = elf_loadint(S, 1);
 	int num_tiles = elf_loadint(S, 2);
-	u64 resource = elf_loadint(S, 3);
+	u64 resource  = elf_loadint(S, 3);
 
-	ASSERT(ISPOW2(tile_size));
-	ASSERT(ISPOW2(num_tiles));
+	ASSERT(tile_size <= U16_MAX);
+	ASSERT(num_tiles <= U16_MAX);
+
+
+	ASSERT(ispow2(tile_size));
+	// ASSERT(ispow2(num_tiles));
 
 	TileSet *tileset = calloc(1, sizeof(*tileset) + sizeof(tileset->data[0]) * num_tiles);
 	tileset->resource = resource;
@@ -164,6 +263,7 @@ ELF_FUNCTION(L_NewTileSet) {
 }
 
 
+
 ELF_FUNCTION(L_SaveTileSet) {
 	const char *name = elf_loadtext(S, 1);
 	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_WRITE, SYS_OPEN_ALWAYS);
@@ -172,6 +272,47 @@ ELF_FUNCTION(L_SaveTileSet) {
 	sys_close_file(file);
 	return 0;
 }
+
+
+ELF_FUNCTION(L_GetTileSetInfo) {
+	TileSet *tset = gd.tileset;
+
+	elf_pushtab(S);
+
+	elf_pushtext(S, "tile_size");
+	elf_pushint(S, 1 << tset->tile_size_log2);
+	elf_setfield(S);
+
+	elf_pushtext(S, "num_tiles");
+	elf_pushint(S, tset->num_tiles);
+	elf_setfield(S);
+
+	elf_pushtext(S, "tiles");
+	elf_pushtab(S);
+
+	for (int i = 0; i < tset->num_tiles; ++ i) {
+		elf_pushtab(S);
+
+		elf_pushtext(S, "x");
+		elf_pushint(S, tset->data[i].x);
+		elf_setfield(S);
+
+		elf_pushtext(S, "y");
+		elf_pushint(S, tset->data[i].y);
+		elf_setfield(S);
+
+		elf_pushtext(S, "tags");
+		elf_pushint(S, tset->data[i].tags);
+		elf_setfield(S);
+
+		elf_arrayadd(S);
+	}
+
+	elf_setfield(S);
+
+	return 1;
+}
+
 
 
 ELF_FUNCTION(L_LoadTileSet) {
@@ -186,59 +327,6 @@ ELF_FUNCTION(L_LoadTileSet) {
 
 	elf_pushint(S, (elf_Integer) tileset);
 	return 1;
-}
-
-
-
-
-ELF_FUNCTION(L_SaveTileMap) {
-	const char *name = elf_loadtext(S, 1);
-	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_WRITE, SYS_OPEN_ALWAYS);
-	i64 tiles_size = sizeof(gd.tilemap->tiles[0]) << (gd.tilemap->w_log2 + gd.tilemap->h_log2);
-	sys_write_file(file, gd.tilemap, sizeof(*gd.tilemap) + tiles_size);
-	sys_close_file(file);
-	return 0;
-}
-
-
-ELF_FUNCTION(L_LoadTileMap) {
-	const char *name = elf_loadtext(S, 1);
-
-	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_READ, SYS_OPEN);
-
-	TileMap *tilemap = malloc(sys_size_file(file));
-	sys_read_file(file, tilemap, sys_size_file(file));
-
-	sys_close_file(file);
-
-	elf_pushint(S, (elf_Integer) tilemap);
-	return 1;
-}
-
-
-
-ELF_FUNCTION(L_NewTileMap) {
-	int w = elf_loadint(S, 1);
-	int h = elf_loadint(S, 1);
-
-	ASSERT(ISPOW2(w));
-	ASSERT(ISPOW2(h));
-
-	TileMap *tilemap = calloc(1, sizeof(*tilemap) + sizeof(tilemap->tiles[0]) * (w * h));
-	tilemap->w_log2 = unshift(w);
-	tilemap->h_log2 = unshift(h);
-
-	// todo: integer as pointer
-	elf_pushint(S, (elf_Integer) tilemap);
-	return 1;
-}
-
-
-
-ELF_FUNCTION(L_SetTileMap) {
-	// todo: integers as pointers
-	gd.tilemap = (TileMap *) elf_loadint(S, 1);
-	return 0;
 }
 
 
@@ -258,11 +346,22 @@ ELF_FUNCTION(L_GetTileSetResource) {
 
 
 
+ELF_FUNCTION(L_GetTileCoords) {
+	int tile = elf_loadint(S, 1);
+	vec2i coords;
+	coords.x=gd.tileset->data[tile].x;
+	coords.y=gd.tileset->data[tile].y;
+	_push_vec2i(S, coords);
+	return 1;
+}
+
+
+
 ELF_FUNCTION(L_SetTileCoords) {
 	int tile = elf_loadint(S, 1);
 	int x = elf_loadint(S, 2);
 	int y = elf_loadint(S, 3);
-	assert(tile < gd.tileset->num_tiles);
+	checkindex(S, tile, gd.tileset->num_tiles);
 	gd.tileset->data[tile].x = x;
 	gd.tileset->data[tile].y = y;
 	return 0;
@@ -289,9 +388,63 @@ ELF_FUNCTION(L_GetTileTags) {
 
 
 
+#if 0
+ELF_FUNCTION(L_SaveTileMap) {
+	const char *name = elf_loadtext(S, 1);
+	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_WRITE, SYS_OPEN_ALWAYS);
+	i64 tiles_size = sizeof(gd.tilemap->tiles[0]) << (gd.tilemap->w_log2 + gd.tilemap->h_log2);
+	sys_write_file(file, gd.tilemap, sizeof(*gd.tilemap) + tiles_size);
+	sys_close_file(file);
+	return 0;
+}
+
+
+
+ELF_FUNCTION(L_LoadTileMap) {
+	const char *name = elf_loadtext(S, 1);
+
+	FILE_HANDLE file = sys_open_file(name, SYS_OPEN_READ, SYS_OPEN);
+
+	TileMap *tilemap = malloc(sys_size_file(file));
+	sys_read_file(file, tilemap, sys_size_file(file));
+
+	sys_close_file(file);
+
+	elf_pushint(S, (elf_Integer) tilemap);
+	return 1;
+}
+
+
+
+ELF_FUNCTION(L_NewTileMap) {
+	int w = elf_loadint(S, 1);
+	int h = elf_loadint(S, 1);
+
+	ASSERT(ispow2(w));
+	ASSERT(ispow2(h));
+
+	TileMap *tilemap = calloc(1, sizeof(*tilemap) + sizeof(tilemap->tiles[0]) * (w * h));
+	tilemap->w_log2 = unshift(w);
+	tilemap->h_log2 = unshift(h);
+
+	// todo: integer as pointer
+	elf_pushint(S, (elf_Integer) tilemap);
+	return 1;
+}
+
+
+
+ELF_FUNCTION(L_SetTileMap) {
+	// todo: integers as pointers
+	gd.tilemap = (TileMap *) elf_loadint(S, 1);
+	return 0;
+}
+
+
+
 static inline int accesstile(int x, int y, int z, int write, int data) {
-	int tx = x & L2MASK(gd.tilemap->w_log2);
-	int ty = y & L2MASK(gd.tilemap->h_log2);
+	int tx = x & log2mask(gd.tilemap->w_log2);
+	int ty = y & log2mask(gd.tilemap->h_log2);
 	int tz = z & 3;
 	int tile = gd.tilemap->tiles[tx | ty << gd.tilemap->w_log2].e[tz];
 	if (write) {
@@ -339,12 +492,6 @@ ELF_FUNCTION(L_SetMapTile) {
 
 
 
-ELF_FUNCTION(L_ToggleLayer) {
-	int layer = elf_loadint(S, 1);
-	gd.layers_off ^= 1 << layer;
-	return 0;
-}
-
 
 
 ELF_FUNCTION(L_DrawTileMap) {
@@ -384,8 +531,8 @@ ELF_FUNCTION(L_DrawTileMap) {
 		for (iy=0; iy<map_ny; ++iy){
 			for (ix=0; ix<map_nx; ++ix){
 
-				int map_tile_x = (map_x + ix) & L2MASK(w_log2);
-				int map_tile_y = (map_y + iy) & L2MASK(h_log2);
+				int map_tile_x = (map_x + ix) & log2mask(w_log2);
+				int map_tile_y = (map_y + iy) & log2mask(h_log2);
 
 				int tile = gd.tilemap->tiles[map_tile_x | map_tile_y << w_log2].e[map_tile_z];
 
@@ -406,10 +553,10 @@ ELF_FUNCTION(L_DrawTileMap) {
 				};
 
 
-				vec3 r_p0 = { dst.x +     0, dst.y +     0, 0 };
-				vec3 r_p1 = { dst.x +     0, dst.y + dst.h, 0 };
-				vec3 r_p2 = { dst.x + dst.w, dst.y + dst.h, 0 };
-				vec3 r_p3 = { dst.x + dst.w, dst.y +     0, 0 };
+				vec3 r_p0 = { px + dst.x +     0, py + dst.y +     0, 0 };
+				vec3 r_p1 = { px + dst.x +     0, py + dst.y + dst.h, 0 };
+				vec3 r_p2 = { px + dst.x + dst.w, py + dst.y + dst.h, 0 };
+				vec3 r_p3 = { px + dst.x + dst.w, py + dst.y +     0, 0 };
 
 				f32 u0 = src.x * inv_resolution.x;
 				f32 v0 = src.y * inv_resolution.y;
@@ -428,33 +575,202 @@ ELF_FUNCTION(L_DrawTileMap) {
 	}
 
 
-	ApplyTransform(px, py, vertices, num_vertices);
+	ApplyTransform(vertices, num_vertices);
+	return 0;
+}
+
+
+#endif
+
+
+
+
+
+
+#define layermask_x(l) (log2mask((l)->w_log2))
+#define layermask_y(l) (log2mask((l)->h_log2))
+#define layerwrap_x(l,x) (layermask_x(l) & (x))
+#define layerwrap_y(l,y) (layermask_y(l) & (y))
+#define layerhash(l, x, y) (layerwrap_x(l, x) | layerwrap_y(l, y) << (l)->w_log2)
+
+
+
+static inline Tile layerread(TileTexture *l, int x, int y) {
+	return l->tiles[layerhash(l, x, y)];
+}
+
+
+static inline void layerwrite(TileTexture *l, int x, int y, int tile) {
+	l->tiles[layerhash(l, x, y)] = tile;
+}
+
+
+
+static inline TileTexture *loadtilelayer(elf_State *S, int x) {
+	TileTexture *layer = (TileTexture *) elf_loadint(S, x);
+	return layer;
+}
+
+
+
+// non-pow two guarantee for tile dimensions means we can't simply
+// & when scrolling, but if the user does scrolling themselves,
+// they can...
+// NewTileLayer(lw, lh, tile_w, tile_h ?= tile_w)
+ELF_FUNCTION(L_NewTileTexture) {
+	int w = elf_loadint(S, 1);
+	int h = elf_loadint(S, 2);
+	int tile_w = elf_loadint(S, 3);
+	int tile_h = tile_w;
+	if (nargs > 4) {
+		tile_h = elf_loadint(S, 4);
+	}
+
+	TileTexture *layer = calloc(1, sizeof(*layer) + sizeof(layer->tiles[0]) * (w * h));
+	layer->w_log2 = unshift(w);
+	layer->h_log2 = unshift(h);
+	layer->tile_w = tile_w;
+	layer->tile_h = tile_h;
+
+	// todo: integer as pointer
+	elf_pushint(S, (elf_Integer) layer);
+	return 1;
+}
+
+
+
+
+
+ELF_FUNCTION(L_SetLayerTile) {
+	TileTexture *l = loadtilelayer(S, 1);
+	int x = elf_loadint(S, 2);
+	int y = elf_loadint(S, 3);
+	Tile tile = elf_loadint(S, 4);
+
+	layerwrite(l, x, y, tile);
+	return 0;
+}
+
+
+
+
+ELF_FUNCTION(L_GetLayerTile) {
+	TileTexture *l = loadtilelayer(S, 1);
+	int x = elf_loadint(S, 2);
+	int y = elf_loadint(S, 3);
+
+	Tile tile = layerread(l, x, y);
+	elf_pushint(S, tile);
+	return 1;
+}
+
+
+
+
+// todo: do something more efficient for rendering large
+// numbers of tiles!
+ELF_FUNCTION(L_DrawTileLayer) {
+	TileTexture *l = loadtilelayer(S, 1);
+	int l_x = elf_loadint(S, 2);
+	int l_y = elf_loadint(S, 3);
+	int l_w = elf_loadint(S, 4);
+	int l_h = elf_loadint(S, 5);
+
+
+	// todo:
+	vec2 inv_resolution = gd.texture_inv_resolution;
+
+	int w_log2 = l->w_log2;
+	int h_log2 = l->h_log2;
+	int tile_w = l->tile_w;
+	int tile_h = l->tile_h;
+
+
+	int num_vertices = l_w * l_h * 6;
+	R_Vertex3 *vertices = R_QueueVertices(gd.rend, num_vertices);
+	R_Vertex3 *cursor = vertices;
+
+
+	// todo: per tile coloring?
+	Color color = gd.color_0;
+
+
+	int ix, iy;
+	for (iy=0; iy<l_h; ++iy) {
+		for (ix=0; ix<l_w; ++ix) {
+			int tile_x = (l_x + ix) & log2mask(w_log2);
+			int tile_y = (l_y + iy) & log2mask(h_log2);
+			Tile tile = layerread(l, tile_x, tile_y);
+			// todo: *1 we can't do this because we've already reserved the vertices!
+			// if (!tile) continue;
+
+			Rect dst = { ix * tile_w, iy * tile_h, tile_w, tile_h };
+
+
+			// todo: we're still using the tilset API thing, which is deprecated
+			// now!
+			iRect src = {
+				gd.tileset->data[tile].x,
+				gd.tileset->data[tile].y,
+				tile_w,
+				tile_h
+			};
+
+
+			vec3 r_p0 = { dst.x +     0, dst.y +     0, 0 };
+			vec3 r_p1 = { dst.x +     0, dst.y + dst.h, 0 };
+			vec3 r_p2 = { dst.x + dst.w, dst.y + dst.h, 0 };
+			vec3 r_p3 = { dst.x + dst.w, dst.y +     0, 0 };
+
+			f32 u0 = src.x * inv_resolution.x;
+			f32 v0 = src.y * inv_resolution.y;
+			f32 u1 = (src.x + src.w) * inv_resolution.x;
+			f32 v1 = (src.y + src.h) * inv_resolution.y;
+
+			cursor[0]=(R_Vertex3){r_p0,{u0,v1},color};
+			cursor[1]=(R_Vertex3){r_p1,{u0,v0},color};
+			cursor[2]=(R_Vertex3){r_p2,{u1,v0},color};
+			cursor[3]=(R_Vertex3){r_p0,{u0,v1},color};
+			cursor[4]=(R_Vertex3){r_p2,{u1,v0},color};
+			cursor[5]=(R_Vertex3){r_p3,{u1,v1},color};
+			cursor += 6;
+		}
+	}
+
+
+	ApplyTransform(vertices, num_vertices);
 	return 0;
 }
 
 
 elf_Binding l_tiles[] = {
-	{"NewTileSet" , L_NewTileSet    },
-	{"ToggleLayer", L_ToggleLayer   },
-	{"NewTileMap" , L_NewTileMap    },
+	{"NewTileSet"         , L_NewTileSet         },
+	{"SaveTileSet"        , L_SaveTileSet        },
+	{"LoadTileSet"        , L_LoadTileSet        },
+	{"GetTileSetInfo"     , L_GetTileSetInfo     },
+	{"SetTileSet"         , L_SetTileSet         },
+	{"GetTileSetResource" , L_GetTileSetResource },
+	{"SetTileCoords"      , L_SetTileCoords      },
+	{"GetTileCoords"      , L_GetTileCoords      },
+	{"SetTileTags"        , L_SetTileTags        },
+	{"GetTileTags"        , L_GetTileTags        },
 
-	{"SaveTileMap", L_SaveTileMap},
-	{"LoadTileMap", L_LoadTileMap},
-	{"SaveTileSet", L_SaveTileSet},
-	{"LoadTileSet", L_LoadTileSet},
+	{"NewTileTexture"      , L_NewTileTexture    },
+	{"SetLayerTile"        , L_SetLayerTile      },
+	{"GetLayerTile"        , L_GetLayerTile      },
+	{"DrawTileLayer"       , L_DrawTileLayer     },
 
-	{"GetTileSetResource", L_GetTileSetResource},
+#if 0
+	{"NewTileMap" , L_NewTileMap  },
+	{"SaveTileMap", L_SaveTileMap },
+	{"LoadTileMap", L_LoadTileMap },
+	{"SetTileMap",  L_SetTileMap  },
+	{"GetMapTile",  L_GetMapTile  },
+	{"GetMapTags",  L_GetMapTags  },
+	{"SetMapTile",  L_SetMapTile  },
+	{"DrawTileMap", L_DrawTileMap },
+#endif
 
-	{"SetTileMap", L_SetTileMap},
-	{"SetTileSet", L_SetTileSet},
 
-	{"SetTileCoords", L_SetTileCoords },
-	{"SetTileTags"  , L_SetTileTags   },
-	{"GetTileTags"  , L_GetTileTags   },
 
-	{"GetMapTile", L_GetMapTile },
-	{"GetMapTags", L_GetMapTags },
-	{"SetMapTile", L_SetMapTile },
-
-	{"DrawTileMap", L_DrawTileMap},
 };

@@ -1,5 +1,6 @@
 // this should be in elf
 
+
 {
 	// ensure that the expression is not evaluated twice
 
@@ -29,6 +30,75 @@
 	// if foo().name == nil ? {
 	//		foo().name = 1
 	//	}
+}
+
+
+
+
+
+
+{
+	a := (function() --> 777, 2, 3, 4) ()
+	#assert a == 777
+
+	min3 := function(a, b, c) {
+		a, b := min(a, b)
+		b, c := min(b, c)
+		a, b := min(a, b)
+		--> a, b, c
+	}
+
+	min4 := function(a, b, c, d) {
+		// swap outer pairs, swap edge pairs, swap inner pair
+		a, b := min(a, b)
+		c, d := min(c, d)
+		a, c := min(a, c)
+		b, d := min(b, d)
+		b, c := min(b, c)
+		--> a, b, c, d
+	}
+
+	random_10 := function() --> 1 + ntoi(elf.random() * 10)
+
+	for i = ... 2000 ? {
+		a, b, c, d := random_10(), random_10(), random_10(), random_10()
+		a, b, c, d := min4(a, b, c, d)
+		#assert a <= b
+		#assert b <= c
+		#assert c <= d
+	}
+}
+
+
+{
+	#assert { 1, 2, 3, 4 }:trim(-2) == 3
+	#assert { 1, 2, 3, 4 }:trim(-1) == 4
+	#assert { 1, 2, 3, 4 }:trim( 2) == 2
+	#assert { 1, 2, 3, 4 }:trim( 1) == 1
+}
+
+{
+	#assert elf.slice_path("W:\\MicroRJ\\folder\\main.elf", -1) == "main.elf"
+	#assert elf.slice_path("W:\\MicroRJ\\folder\\main.elf", -2) == "folder\\main.elf"
+	#assert elf.slice_path("W:\\MicroRJ\\folder\\main.elf",  1) == "W:"
+	#assert elf.slice_path("W:\\MicroRJ\\folder\\main.elf",  2) == "W:\\MicroRJ"
+	#assert elf.get_file_extension("W:\\MicroRJ\\folder\\main.elf") == "elf"
+	#assert elf.get_file_extension("") == ""
+}
+
+{
+	myarray := {0,0,0,0,0}
+	myarray[[0]] = 1
+	myarray[[1]] = 2
+	myarray[[2]] = 3
+	myarray[[3]] = 4
+	myarray[[4]] = 5
+
+	#assert myarray[[0]] == 1
+	#assert myarray[[1]] == 2
+	#assert myarray[[2]] == 3
+	#assert myarray[[3]] == 4
+	#assert myarray[[4]] == 5
 }
 
 {
@@ -208,7 +278,7 @@
 {
 	values := { 1, 2, 3, 5, 7, 11 }
 	step := 0
-	for i = 1, 2, 3, 5, 7, 11  ? {
+	for i = 1; 2; 3; 5; 7; 11  ? {
 		#assert(#index == 0)
 		#assert(#value == values:idx(step))
 		step += 1
@@ -258,20 +328,20 @@
 
 
 {
-	global foo = fun(...) ? {
+	foo := fun(...) ? {
 		#assert(elf.nargs() == 1)
 		#assert(elf.nvargs() == 0)
 	}
-	global foo()
+	foo()
 }
 
 {
-	global foo = fun(...) ? {
+	foo := fun(...) ? {
 		#assert(elf.nargs() == 6)
 		// 6 - 1 because 'this'
 		#assert(elf.nvargs() == 5)
 	}
-	global foo(1, 2, 3, 4, 5)
+	foo(1, 2, 3, 4, 5)
 }
 
 

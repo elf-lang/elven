@@ -16,10 +16,26 @@
 #include <stdlib.h>
 
 #include "elements.h"
+
+
+#include "src/dynamic_array.c"
+
+
 #include "platform.h"
 #include "renderer.h"
+
+#include "fonts.h"
+
 #include "drawstate.h"
 #include "lib_helpers.c"
+
+
+#include "ttf.h"
+#include "ttf_stb.c"
+#include "fonts.c"
+
+
+
 
 #include "l_image.c"
 #include "l_state.c"
@@ -27,6 +43,9 @@
 #include "l_archive.c"
 #include "l_font.c"
 #include "l_audio.c"
+
+
+
 
 
 int main(int nargs, char **args) {
@@ -79,7 +98,7 @@ int main(int nargs, char **args) {
 	}
 
 	// todo: expect one return for the exit code
-	elf_pushcodefile(S, name);
+	elf_pushcodefile(S, name, 0);
 	elf_pushnil(S);
 
 	// todo: proper parser for this!
@@ -92,7 +111,7 @@ int main(int nargs, char **args) {
 			arg = asstr;
 			i ++;
 		}
-		elf_load_const_expr_from_text(S, "arg", arg);
+		elf_pushconstexpr(S, "arg", arg);
 		ncallargs ++;
 	}
 

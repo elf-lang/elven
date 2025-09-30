@@ -2,9 +2,21 @@
 // common definitions used everywhere
 //
 
+
+
+
 #if !defined(TAU)
 #define TAU 6.283185307179586
 #endif
+
+
+
+#define U8_MAX  ((u8)  ~0)
+#define U16_MAX ((u16) ~0)
+#define U32_MAX ((u32) ~0)
+#define U64_MAX ((u64) ~0)
+
+
 
 
 // printf
@@ -45,7 +57,7 @@
 #define STATIC_ASSERT(x) typedef char _static_assert_[x ? 1 : -1]
 #endif
 
-#define    internal static
+// #define    internal static
 #define      global static
 #define thread_decl __declspec(thread)
 
@@ -101,10 +113,12 @@ typedef union {
 	struct{ u8 r, g, b, a; };
 	u8  xyzw[4];
 	u8  rgba[4];
-	i32 x_i32;
+	u32 packed;
 } vec4_u8;
 
+#define PACK_COLOR(c) ((c).r << 24 | (c).g << 16 | (c).b << 8 | (c).a << 0)
 typedef vec4_u8 Color;
+
 
 typedef union {
 	struct { vec2i xy, wh; };
@@ -116,11 +130,13 @@ typedef union {
 	struct { f32 x, y, w, h; };
 } Rect;
 
-#define vec2(x,y) (vec2){(x),(y)}
-#define vec2_add(a,b) ((vec2){(a).x+(b).x,(a).y+(b).y})
-#define vec2_sub(a,b) ((vec2){(a).x-(b).x,(a).y-(b).y})
-#define vec2_mul(a,b) ((vec2){(a).x*(b).x,(a).y*(b).y})
-#define v2_dot(a,b) ((a).x*(b).x + (a).y*(b).y)
+
+
+typedef struct {
+	vec2i reso;
+	Color data[];
+} Image;
+
 
 
 enum {
@@ -130,10 +146,20 @@ enum {
 	BUTTON_REPEAT   = 8,
 };
 
-
 typedef struct {
 	u8 u;
 } Button;
+
+
+
+
+#define vec2(x,y) (vec2){(x),(y)}
+#define vec2_add(a,b) ((vec2){(a).x+(b).x,(a).y+(b).y})
+#define vec2_sub(a,b) ((vec2){(a).x-(b).x,(a).y-(b).y})
+#define vec2_mul(a,b) ((vec2){(a).x*(b).x,(a).y*(b).y})
+#define v2_dot(a,b) ((a).x*(b).x + (a).y*(b).y)
+
+
 
 
 static inline void update_button(Button *btn, i32 state) {

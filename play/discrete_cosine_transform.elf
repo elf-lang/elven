@@ -1,0 +1,229 @@
+// !HOT
+PI ::= 3.141592653589793
+
+InitWindow("DCT")
+
+fnt := LoadFont("Fonts\\BIG JOHN.otf", 32)
+SetFont(fnt)
+// image := LoadImage("test_image.jpg")
+// elf.printl(image)
+
+
+
+//
+// todo: we don't have builtin matrices or vectors yet!
+// so we have to use tables!
+//
+transpose := function(e: non_nil, n: int) {
+	rows := {}
+	for y := ... n ? {
+		row := {}
+		for x := ... n ? {
+			row:add(e[[x]][[y]])
+		}
+		rows:add(row)
+	}
+	--> rows
+}
+
+
+dot := function(x: non_nil, y: non_nil, n: int) {
+	sum := 0
+	for i := ... n ? {
+		sum += x:idx(i) * y:idx(i)
+	}
+	--> sum
+}
+
+
+
+
+mul_matrix_vector := function(m: non_nil, v: non_nil) {
+	new_v := {}
+	for i := ... v:length() ? {
+		d := dot(m[[i]], v, v:length())
+		new_v:add(d)
+	}
+	--> new_v
+}
+
+
+
+mul_matrices := function(a, b, n: int) {
+	t := transpose(b, n)
+	r := {}
+	for i := ... n ? {
+		r:add(mul_matrix_vector(a, t[[i]]))
+	}
+	--> r
+}
+
+
+
+printmatrix := function(rows) {
+	for row := rows[...] ? {
+		for v := row[...] ? {
+			if #index != 0 ? {
+				elf.print(" ")
+			}
+			elf.print(v)
+		}
+		elf.printl()
+	}
+}
+
+
+
+
+
+
+
+
+// todo: table initializers should not add keys by default,
+// if the user wants to "autokey" then they should do use some keyword,
+// like "autokey {}" or something...
+
+//
+// Tell me if there's anything wrong with this logic:
+//
+// So we have the data matrix, it is made up of rows,
+// row 0 is data[[0]], row 1 is data[[1]].
+//
+//	The layout also corresponds to layout of this same
+// data in the image.
+//
+//
+//
+//	We also have a matrix of frequencies, in the same layout
+// as data, every row is a vector made up of cosine values.
+// So row 0 is a vector at frequencies[[0]].
+//
+// Our goal is to figure out how much a data row resonates
+// with each corresponding frequency row.
+//
+//	resonance[[j]] := dot(data[[i]], frequencies[[j]])
+//
+//	* The frequencies vector already has the normalization
+// factor applied to it.
+//
+//
+// So we take the dot product of each row from data against
+// all frequency rows.
+//
+//	Resulting in a new matrix.
+//
+// The resonance matrix.
+//
+//	The layout of the resonance matrix is such that:
+//
+// resonance[[i]][[j]] = dot(data[[i]], frequencies[[j]])
+//
+//
+//
+//
+//
+data := {
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+	{ 255, 0, 255, 0, 255, 0, 255, 0 } :clear_entries(),
+} :clear_entries()
+
+
+generate_cosine_matrix := function(n) {
+	rows := {}
+	for y := ... n ? {
+		normalizer := sqrt((1.0 + (y > 0.0)) / n)
+
+		row := {}
+		for x := ... n ? {
+			a := (PI / n) * (x + 0.5) * y
+			v := cos(a) * normalizer
+			row:add(v)
+		}
+		rows:add(row)
+	}
+	--> rows
+}
+
+n := 8
+cosine_matrix := generate_cosine_matrix(n)
+cosine_matrix_transposed := transpose(cosine_matrix, n)
+
+elf.printl("data matrix:")
+printmatrix(data)
+
+elf.printl("cosine matrix (normalized):")
+printmatrix(cosine_matrix)
+
+elf.printl("cosine matrix transposed (normalized):")
+printmatrix(cosine_matrix_transposed)
+
+{
+	rows := {}
+	for i := ... n ? {
+		row := {}
+		for j := ... n ? {
+			row:add(dot(data[[i]], cosine_matrix[[j]], n))
+		}
+		rows:add(row)
+	}
+	elf.printl("raw resonance matrix: ")
+	printmatrix(rows)
+
+	// elf.printl("matrix multiply: ")
+	// rows = mul_matrices(data, cosine_matrix, n)
+	// printmatrix(rows)
+}
+
+while PollWindow() ? {
+	BeginDrawing()
+	Clear(32,32,32)
+
+	SetColor(255,255,255,255)
+	for y := ... n ? {
+		for x := ... n ? {
+			DrawText(x * (64+8), y * 32, elf.ntos(cosine_matrix[[y]][[x]], 2))
+		}
+	}
+	EndDrawing()
+}
+
+
+#eof
+
+
+resonance_matrix := {}
+{
+	temp := mul_matrices(cosine_matrix, data, n)
+	temp_t := temp // transpose(temp, n)
+	resonance_matrix = mul_matrices(cosine_matrix, temp_t, n)
+}
+
+
+elf.printl("resonance matrix:")
+printmatrix(resonance_matrix)
+
+
+
+
+reconstructed_matrix := {}
+{
+	temp := mul_matrices(cosine_matrix_transposed, resonance_matrix, n)
+	temp_t := temp // transpose(temp, n)
+	reconstructed_matrix = mul_matrices(cosine_matrix_transposed, temp_t, n)
+}
+
+
+elf.printl("reconstructed matrix:")
+printmatrix(reconstructed_matrix)
+
+
+
+
+// elf.printl("Done!")
+// while true ? {}

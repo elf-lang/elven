@@ -1,0 +1,88 @@
+Power Series:
+A power series is an infinite polynomial centered at some point a:
+
+	sum(n = 0, n < inf) {
+		C_n * pow(x - a, n)
+	}
+
+	-- Where C_n are the coefficients chosen however you'd like.
+
+	-- a is the center, where expansion is anchored
+
+	-- x is the variable
+
+Key things:
+	-- They are a series because they may have infinitely many terms.
+
+	-- A power series is not automatically equal to a function, but for
+	many functions, especially smooth ones, you can find a power series
+	that equals the function, (at least within some radius around a).
+
+
+	-- The Taylor series tells you what the coefficients are,
+	using derivatives.
+
+	-- Power series = general form, (just coefficients)
+
+	-- Taylor series = special case where the coefficients come
+	from derivatives of a function.
+
+
+Geometric Series:
+	A geometric series is the simplest kind of power series - it's just powers
+	of x stacked up with constant ratio 'r'.
+
+			pow(r, 0) + pow(r, 1) + pow(r, 2) + pow(r, 3)
+
+Key thing:
+	when abs(r) < 1, the sum converges to the closed form: 1 / (1 - r)
+
+
+	S = pow(x, 0) + pow(x, 1) + pow(x, 2) + ...
+
+	xS = pow(x, 1) + pow(x, 2) + pow(x, 3) + ...
+
+	S - xS =  (pow(x, 0) + pow(x, 1) + pow(x, 2) + ...) -
+	          (pow(x, 1) + pow(x, 2) + pow(x, 3) + ...)
+
+ 	S - xS = 1
+
+ 	(1 - x) S = 1
+
+ 	S = 1 / (1 - x)
+
+
+
+
+1. What is the general form of the Taylor series expansion of a function f(x) about a
+point a?
+
+
+I don't remember the exact formula, but I think I remember the idea?
+
+
+The Taylor series is an infinite series of:
+	((the nth derivative of a function at a) divided by n!)
+	times (x - a).
+
+2. Why do we divide by n! in the Taylor series coefficients?
+
+	This is the answer I was writing:
+
+	Computing the nth derivative of a function produces a derivative with
+a coefficient that is the result of multiplying all the previous
+coefficients from all the previous derivatives.
+
+	Given the product rule:
+
+	(UV)' = U'V + UV'
+	(UVK)' = U'VK + UV'K + UVK'
+
+
+	Then I was gonna write out why nth' of f(a) expands to large coefficients
+	but I got stuck here.
+
+
+We're interested in getting the coefficient for a term in this infinite
+series, dividing by n! tells us the proper coefficient for this term.
+

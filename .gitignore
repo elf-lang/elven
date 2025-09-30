@@ -3,6 +3,7 @@
 
 # Visual Studio generated files
 .vs/
+DIARY.txt
 *.vcxproj.user
 *.vcxproj.filters
 *.aps

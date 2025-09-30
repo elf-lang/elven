@@ -1,4 +1,32 @@
 
+
+-- core.c: whenever you call '__new' and __new isn't
+defined it will just say cannot call 'nil'. Which is a really
+obtuse error message to see!
+
+
+
+-- core.c: metagenerate virtual machine!
+
+
+
+
+-- core.c: contracts!!!!!!!
+omg so many stupid bugs could be prevented!
+
+foo = function(name: int, value: non_nil, some_other_thing: positive_int, any_number: numeric)
+
+
+
+-- core.c: metagenerate interpreter, I hate those long macros! And a simple metagenerator
+should not be too much work!
+
+
+-- parse.c: replace "function" with "functions" and you get some really
+weird parsing behavior
+
+
+
 -- parse.c: proper error reporting and recovering!
 
 -- elf.c: we need some sort of way to define symbols

@@ -901,9 +901,12 @@ void R_SetOutput(R_Renderer *rend, RID value) {
 	}
 }
 
+
+
 void R_SetTexture(R_Renderer *rend, RID value) {
 
 	R_TEXTURE *texture = TextureFromRID(rend, value);
+	ASSERT(texture);
 	ASSERT(texture->shader_resource_view);
 
 	rSetDrawStateVar(rend, STATE_INPUT, value);

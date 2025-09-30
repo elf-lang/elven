@@ -1,4 +1,5 @@
-
+// todo: this is bugged!
+// todo: can we stop using mini-audio?
 #define WIN32_LEAN_AND_MEAN
 #define MINIAUDIO_IMPLEMENTATION
 #define MA_API static

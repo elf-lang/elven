@@ -1,3 +1,4 @@
+// this is old stuff
 #define WHITE   _rgb(255,255,255)
 #define RED     _rgb(255,0,0)
 #define GREEN   _rgb(0,255,0)
@@ -237,7 +238,7 @@ void raster_demo() {
 			kit_draw_rect(test, (kit_Color){255,255,0,64}, (kit_Rect){x0,y0,x1-x0,y1-y0});
 
 			int _text_y = 0;
-#define _text(text,...) kit_draw_text(test, KIT_WHITE, elf_tpf(text,__VA_ARGS__), 0,_text_y), _text_y += 15;
+#define _text(text,...) kit_draw_text(test, KIT_WHITE, tpf(text,__VA_ARGS__), 0,_text_y), _text_y += 15;
 
 			_text("ru: %.2f,%.2f",pr,pu);
 			_text("bu: %.2f,%.2f",bu.x,bu.y);

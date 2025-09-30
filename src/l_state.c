@@ -291,7 +291,7 @@ static vec4 MultiplyMatrixVector(Matrix m, vec4 v) {
 
 
 
-void D_LoadIdentity() {
+static inline void LoadIdentity() {
 	Matrix c = {
 		1, 0, 0, 0,
 		0, 1, 0, 0,
@@ -302,22 +302,22 @@ void D_LoadIdentity() {
 }
 
 
-
+#define vec4_3(v,w) (vec4){(v).x,(v).y,(v).z,w}
 // todo: this is so weird!
-static void ApplyTransform(f32 x, f32 y, R_Vertex3 *vertices, int num) {
+static void ApplyTransform(R_Vertex3 *vertices, int num) {
 	for (int i = 0; i < num; i ++) {
-		vec4 position = { vertices[i].position.x, vertices[i].position.y, vertices[i].position.z, 1.0 };
+		vec4 position = vec4_3(vertices[i].position, 1.0);
 		position = MultiplyMatrixVector(gd.transform, position);
-		vertices[i].position.x = position.x + x;
-		vertices[i].position.y = position.y + y;
+		vertices[i].position.x = position.x;
+		vertices[i].position.y = position.y;
 		vertices[i].position.z = position.z;
 	}
 }
 
 
 
-static void EndDrawCall(f32 x, f32 y, R_Vertex3 *vertices, int num) {
-	ApplyTransform(x, y, vertices, num);
+static void EndDrawCall(R_Vertex3 *vertices, int num) {
+	ApplyTransform(vertices, num);
 	gd.mirrortextureonce.x = 0;
 	gd.mirrortextureonce.y = 0;
 }
@@ -348,10 +348,10 @@ void D_EndQuads() {
 		iRect src = gd.quads[i].src;
 		Rect dst = gd.quads[i].dst;
 
-		vec3 r_p0 = {     0,     0, 0 };
-		vec3 r_p1 = {     0, dst.h, 0 };
-		vec3 r_p2 = { dst.w, dst.h, 0 };
-		vec3 r_p3 = { dst.w,     0, 0 };
+		vec3 r_p0 = { dst.x +     0, dst.y +     0, 0 };
+		vec3 r_p1 = { dst.x +     0, dst.y + dst.h, 0 };
+		vec3 r_p2 = { dst.x + dst.w, dst.y + dst.h, 0 };
+		vec3 r_p3 = { dst.x + dst.w, dst.y +     0, 0 };
 
 		f32 u0 = src.x * gd.texture_inv_resolution.x;
 		f32 v0 = src.y * gd.texture_inv_resolution.y;
@@ -365,7 +365,7 @@ void D_EndQuads() {
 		cursor[4]=(R_Vertex3){r_p2,{u1,v0},gd.color_2};
 		cursor[5]=(R_Vertex3){r_p3,{u1,v1},gd.color_3};
 		// todo:
-		ApplyTransform(dst.x, dst.y, cursor, 6);
+		ApplyTransform(cursor, 6);
 		cursor += 6;
 	}
 
@@ -439,8 +439,8 @@ void D_SetFlipOnce(int x, int y) {
 }
 
 
-
 void D_SetTexture(RID id) {
+	ASSERT(id != RID_NONE);
 	R_SetTexture(gd.rend, id);
 
 	vec2i resolution = R_GetTextureInfo(gd.rend, id);
@@ -454,18 +454,12 @@ void D_SetTexture(RID id) {
 	gd.region.v1 = 1;
 }
 
+
 void D_SetRegion(i32 x0, i32 y0, i32 x1, i32 y1) {
 	gd.region.u0 = x0 * gd.texture_inv_resolution.x;
 	gd.region.v0 = y0 * gd.texture_inv_resolution.y;
 	gd.region.u1 = x1 * gd.texture_inv_resolution.x;
 	gd.region.v1 = y1 * gd.texture_inv_resolution.y;
-}
-
-
-
-void D_SetRotation(f32 radians) {
-	// todo: set transform directly here
-	gd.transform = MultiplyMatrices(gd.transform, RotationMatrix(radians));
 }
 
 
@@ -486,13 +480,13 @@ void D_DrawRectangle(f32 x, f32 y, f32 w, f32 h) {
 	if (gd.mirrortextureonce.y) { temp = v0; v0 = v1, v1 = temp; }
 
 	R_Vertex3 *vertices = R_QueueVertices(gd.rend, 6);
-	vertices[0]=(R_Vertex3){{ 0, 0 },{ u0, v1 }, gd.color_0 };
-	vertices[1]=(R_Vertex3){{ 0, h },{ u0, v0 }, gd.color_1 };
-	vertices[2]=(R_Vertex3){{ w, h },{ u1, v0 }, gd.color_2 };
-	vertices[3]=(R_Vertex3){{ 0, 0 },{ u0, v1 }, gd.color_0 };
-	vertices[4]=(R_Vertex3){{ w, h },{ u1, v0 }, gd.color_2 };
-	vertices[5]=(R_Vertex3){{ w, 0 },{ u1, v1 }, gd.color_3 };
-	EndDrawCall(x, y, vertices, 6);
+	vertices[0]=(R_Vertex3){{ x + 0, y + 0 },{ u0, v1 }, gd.color_0 };
+	vertices[1]=(R_Vertex3){{ x + 0, y + h },{ u0, v0 }, gd.color_1 };
+	vertices[2]=(R_Vertex3){{ x + w, y + h },{ u1, v0 }, gd.color_2 };
+	vertices[3]=(R_Vertex3){{ x + 0, y + 0 },{ u0, v1 }, gd.color_0 };
+	vertices[4]=(R_Vertex3){{ x + w, y + h },{ u1, v0 }, gd.color_2 };
+	vertices[5]=(R_Vertex3){{ x + w, y + 0 },{ u1, v1 }, gd.color_3 };
+	EndDrawCall(vertices, 6);
 }
 
 
@@ -538,7 +532,7 @@ void D_DrawLine(f32 x0, f32 y0, f32 x1, f32 y1) {
 	R_Vertex3 *vertices = R_QueueVertices(gd.rend, 2);
 	vertices[0] = (R_Vertex3){{x0,y0},{0,0},gd.color_0};
 	vertices[1] = (R_Vertex3){{x1,y1},{1,1},gd.color_1};
-	EndDrawCall(0, 0, vertices, 2);
+	EndDrawCall(vertices, 2);
 }
 
 
@@ -656,6 +650,7 @@ ELF_FUNCTION(L_SolidFill) {
 
 ELF_FUNCTION(L_SetTexture) {
 	RID id = (RID) elf_loadsys(S, 1);
+	ASSERT(id != RID_NONE);
 	D_SetTexture(id);
 	return 0;
 }
@@ -681,8 +676,24 @@ ELF_FUNCTION(L_SetRegion) {
 
 
 
+ELF_FUNCTION(L_LoadIdentity) {
+	gd.transform.rows[0] = (vec4){ 1, 0, 0, 0 };
+	gd.transform.rows[1] = (vec4){ 0, 1, 0, 0 };
+	gd.transform.rows[2] = (vec4){ 0, 0, 1, 0 };
+	gd.transform.rows[3] = (vec4){ 0, 0, 0, 1 };
+	return 0;
+}
+
+
+
 ELF_FUNCTION(L_SetRotation) {
-	D_SetRotation(elf_loadnum(S, 1));
+	f32 radians = elf_loadnum(S, 1);
+	f32 co = cosf(radians);
+	f32 si = sinf(radians);
+	gd.transform.rows[0].x =   co;
+	gd.transform.rows[0].y =   si;
+	gd.transform.rows[1].x =   si;
+	gd.transform.rows[1].y = - co;
 	return 0;
 }
 
@@ -818,11 +829,15 @@ ELF_FUNCTION(L_DrawRectOutline) {
 	f32 y = elf_loadnum(S, 2);
 	f32 w = elf_loadnum(S, 3);
 	f32 h = elf_loadnum(S, 4);
+	//	D_DrawLine(x  , y-1, x   + w, y-1 + 1);
+	//	D_DrawLine(x  , y+h, x   + w, y+h + 1);
+	//	D_DrawLine(x-1, y  , x-1 + 1, y   + h);
+	//	D_DrawLine(x+w, y  , x+w + 1, y   + h);
 
-	D_DrawRectangle(x, y-1, w, 1);
-	D_DrawRectangle(x, y+h, w, 1);
-	D_DrawRectangle(x-1, y, 1, h);
-	D_DrawRectangle(x+w, y, 1, h);
+	D_DrawLine(x,y, x+w, y);
+	D_DrawLine(x, y+h, x+w, y+h);
+	D_DrawLine(x,y, x, y+h);
+	D_DrawLine(x+w, y, x+w, y+h);
 	return 0;
 }
 
@@ -844,20 +859,68 @@ ELF_FUNCTION(L_GetTextureInfo) {
 	return 1;
 }
 
+static inline RID _load_texture(elf_State *S, int index) {
+	return (RID) elf_loadsys(S, index);
+}
 
 
-ELF_FUNCTION(L_UpdateTexture)
+
+ELF_FUNCTION(L_CopyImageToTexture)
 {
-	RID     id = (RID)     elf_loadsys(S, 1);
-	Image *img = (Image *) elf_loadsys(S, 2);
-	int x      =           elf_loadint(S, 3);
-	int y      =           elf_loadint(S, 4);
-	int w      =           elf_loadint(S, 5);
-	int h      =           elf_loadint(S, 6);
-	R_UpdateTexture(gd.rend, id, (iRect){x,y,w,h}
-	, img->data+x+y*img->reso.x
-	, img->reso.x*sizeof(*img->data));
+	int index = 1;
+	RID dst_t = _load_texture(S, index ++);
+
+	vec2i dst_v;
+	index += _load_vec2i(S, index, nargs, &dst_v);
+
+	Image *src_i = (Image *) elf_loadsys(S, index ++);
+
+	iRect src_r = { 0, 0, src_i->reso.x, src_i->reso.y };
+	if (nargs - index >= 4) {
+		index += _load_irect(S, index, nargs, &src_r);
+	}
+
+	ASSERT(src_r.x>=0);
+	ASSERT(src_r.y>=0);
+
+	ASSERT(dst_v.x>=0);
+	ASSERT(dst_v.y>=0);
+
+	ASSERT(src_r.x+src_r.w<=src_i->reso.x);
+	ASSERT(src_r.y+src_r.h<=src_i->reso.y);
+
+	ASSERT(dst_v.x+src_r.w<=R_GetTextureInfo(gd.rend, dst_t).x);
+	ASSERT(dst_v.y+src_r.h<=R_GetTextureInfo(gd.rend, dst_t).y);
+
+
+	iRect dst_r = (iRect){ dst_v.x, dst_v.y, src_r.w, src_r.h };
+
+	R_UpdateTexture(gd.rend, dst_t, dst_r
+	, src_i->data + src_r.x + src_r.y * src_i->reso.x
+	, src_i->reso.x * sizeof(*src_i->data));
 	return 0;
+}
+
+
+
+ELF_FUNCTION(L_NewTexture)
+{
+	vec2i resolution;
+	_load_vec2i(S, 1, nargs, &resolution);
+
+	RID rid = R_InstallTexture(gd.rend, FORMAT_R8G8B8_UNORM, resolution, 0);
+	elf_pushsys(S, rid);
+
+	return 1;
+}
+
+
+
+ELF_FUNCTION(L_LoadTextureFromImage) {
+	Image *img = load_image(S, 1);
+	RID rid = R_InstallTexture(gd.rend, FORMAT_R8G8B8_UNORM, img->reso, img->data);
+	elf_pushsys(S, rid);
+	return 1;
 }
 
 
@@ -933,6 +996,16 @@ ELF_FUNCTION(L_SetVirtualRes) {
 	reso.x = elf_loadint(S, 1);
 	reso.y = elf_loadint(S, 2);
 	R_SetVirtualReso(gd.rend, reso);
+	return 0;
+}
+
+
+
+ELF_FUNCTION(L_SetTextScale) {
+
+	f32 scale = elf_loadnum(S, 1);
+	gd.text_scale = scale;
+
 	return 0;
 }
 
@@ -1071,17 +1144,9 @@ ELF_FUNCTION(L_EndDrawing) {
 
 ELF_FUNCTION(L_BeginDrawing) {
 	R_BeginFrame(gd.rend);
-
-	// todo: load identity will do this
-	D_SetScale(1, 1);
-	D_SetOffset(0, 0);
-	D_SetCenter(0, 0);
-
-	D_LoadIdentity();
+	// why do we do this
 	D_SolidFill();
-
 	R_SetOutput(gd.rend, gd.output_target);
-
 	R_SetSampler(gd.rend, SAMPLER_POINT);
 	R_SetTopology(gd.rend, TOPO_TRIANGLES);
 	R_SetBlender(gd.rend, BLENDER_ALPHA_BLEND);
@@ -1113,6 +1178,10 @@ ELF_FUNCTION(L_InitWindow) {
 
 	gd.target_seconds_to_sleep = 1.0 / 60.0;
 	gd.begin_cycle_clock = OS_GetTickCounter();
+
+
+	gd.text_scale = 1.0;
+	LoadIdentity();
 	return 0;
 }
 
@@ -1217,12 +1286,17 @@ elf_Binding l_state[] = {
 	{ "SetOutput"                        , L_SetOutput                            },
 	{ "SetOutputWindow"                  , L_SetOutputWindow                      },
 
-	{ "UpdateTexture"                    , L_UpdateTexture                        },
+	{ "SetTextScale"                     , L_SetTextScale                         },
+
+	{ "CopyImageToTexture"               , L_CopyImageToTexture                   },
 	{ "LoadTexture"                      , L_LoadTexture                          },
+	{ "LoadTextureFromImage"             , L_LoadTextureFromImage                 },
+	{ "NewTexture"                       , L_NewTexture                           },
 	{ "GetTextureInfo"                   , L_GetTextureInfo                       },
 
 	{ "PushMatrix"                       , L_PushMatrix                           },
 	{ "PopMatrix"                        , L_PopMatrix                            },
+	{ "LoadIdentity"                     , L_LoadIdentity                         },
 	{ "SetScale"                         , L_SetScale                             },
 	{ "SetOffset"                        , L_SetOffset                            },
 	{ "SetRotation"                      , L_SetRotation                          },

@@ -224,12 +224,14 @@ WID OS_InstallWindow(const char *name, vec2i resolution) {
 	MWINDOW *window = calloc(1, sizeof(*window));
 
 
-	i32 monitorw = GetSystemMetrics(SM_CXSCREEN);
-	i32 monitorh = GetSystemMetrics(SM_CYSCREEN);
+	int monitorw = GetSystemMetrics(SM_CXSCREEN);
+	int monitorh = GetSystemMetrics(SM_CYSCREEN);
+	int maxw = monitorw * 0.75;
+	int maxh = monitorh * 0.75;
 
-	if (resolution.x == 0) resolution.x = monitorw * 0.90;
-	if (resolution.y == 0) resolution.y = monitorh * 0.90;
-	int scale = MIN(monitorw / resolution.x, monitorh / resolution.y);
+	if (resolution.x == 0) resolution.x = maxw;
+	if (resolution.y == 0) resolution.y = maxh;
+	int scale = MIN(maxw / resolution.x, maxh / resolution.y);
 	resolution.x *= scale;
 	resolution.y *= scale;
 
@@ -246,8 +248,8 @@ WID OS_InstallWindow(const char *name, vec2i resolution) {
 	resolution.x = window_rect.right - window_rect.left;
 	resolution.y = window_rect.bottom - window_rect.top;
 
-	i32 windowx = (monitorw - resolution.x) * 0.5;
-	i32 windowy = (monitorh - resolution.y) * 0.5;
+	int windowx = (monitorw - resolution.x) * 0.5;
+	int windowy = (monitorh - resolution.y) * 0.5;
 
 	window->resolution = resolution;
 

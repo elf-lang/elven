@@ -1,30 +1,300 @@
-{
-	myarray := {0,0,0,0,0}
-	myarray[[0]] = 1
-	myarray[[1]] = 2
-	myarray[[2]] = 3
-	myarray[[3]] = 4
-	myarray[[4]] = 5
+elf.change_work_dir("W:\\MicroRJ\\mammoth")
+load "main.elf"
+#eof
 
-	#assert myarray[[0]] == 1
-	#assert myarray[[1]] == 2
-	#assert myarray[[2]] == 3
-	#assert myarray[[3]] == 4
-	#assert myarray[[4]] == 5
+// todo: would be really cool if we did this globally!
+if elf.change_work_dir("play") ? {
+	elf.printl("Running Hot File")
+
+	paths := elf.get_path_list(".")
+
+	files := {}
+	for path := paths[...] ? {
+		if path:match("*.elf") ? {
+			file := elf.open_file(path, "r")
+			text := elf.read_file(file, 256)
+			if text:match("*!HOT*") ? {
+				times := elf.get_file_times(file)
+				files:add { name = path, __rank = times.created }
+			}
+			elf.close_file(file)
+		}
+	}
+
+	files:rank()
+
+	elf.printl("Running: ", files[[-1]].name)
+	elf.load_file(files[[-1]].name)
 }
 
 #eof
+else {
+	elf.printl("could not change work dir")
+}
+
+
+
+#eof
+
+// o := elf.new_buffer()
+
+// __mod_i := function(x, y) {
+
+// }
+
+
+// functions := {
+// 	"__mod_i" = __mod_i,
+// }
+// signatures := {
+// 	"__mod int int" = "__mod_i",
+// 	"__mod num num" = "__mod_r"
+// 	"__min int int" = "__min_i"
+// 	"__min num num" = "__min_r"
+// 	"__max int int" = "__max_i"
+// 	"__max num num" = "__max_r"
+// }
+
+// findbinaryfunc := function(name, x, y) {
+// 	sig := f"%{name} %{x} %{y}"
+// 	func := signatures[sig]
+// 	if func ? {
+
+// 	}
+// 	else {
+// 		elf.error("S!")
+// 	}
+// 	--> func
+// }
+
+// {
+// 	V vx = %{ stack }[ %{ x } ];
+// 	V vy = %{ stack }[ %{ y } ];
+// 	if (is_numeric(vx)) {
+// 		checknumeric(vy);
+
+// 		if (is_num(vx) || is_num(vy)) {
+// 			Num x = int_to_num(vx);
+// 			Num y = int_to_num(vy);
+// 			generatefunc(name, x, y)
+// 		}
+// 		else {
+// 			Int x = as_int(vx);
+// 			Int y = as_int(vy);
+// 			generatefunc(name, x, y)
+// 		}
+// 	}
+// }
+
+
+
+// o:insert("welcome")
+
+// elf.printl(o)
+
+
+
+
 load "tests.elf"
 
 // elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
-elf.change_work_dir("W:\\MicroRJ\\game2")
-// load "archive.elf"
-// load "tseteditor.elf"
-// load "tmapeditor.elf"
+elf.change_work_dir("W:\\MicroRJ\\ninja-world")
 load "main.elf"
-// load "imageedit.elf"
+
+
+
+
+
 
 #eof
+
+if 0 ? {
+	tab := {
+		"this_thing"          = 1,
+		"this_other_thing"    = 2,
+		"some_other_thing"    = 3,
+		"and_the_final_thing" = 4,
+	}
+
+	tab:array_remove(3)
+	elf.printl(tab)
+}
+
+
+
+if 0 ? {
+	tab := {
+		"this_thing"          = 1,
+		"this_other_thing"    = 2,
+		"some_other_thing"    = 3,
+		"and_the_final_thing" = 4,
+	}
+
+	elf.printl("length: ", tab:length())
+	elf.printl(tab)
+
+
+	elf.printl("delete: this_thing")
+	tab:delete("this_thing")
+
+
+	elf.printl("[[0]]: ", tab[[0]])
+	elf.printl("[[1]]: ", tab[[1]])
+	elf.printl("[[2]]: ", tab[[2]])
+	elf.printl("length: ", tab:length())
+	elf.printl(tab)
+}
+
+
+#eof
+
+
+
+// my_array[0 ... 8] = 1, 2, 3, 4
+
+//	(warning excess initializer)
+i, j, k := 0, 1, 2, 3, 4, 5
+
+//	(warning excess initializer)
+// i, j, k := 0 ... 6
+
+//	(no excess, just loops)
+for i, j, k = 0 ... 6 ? {
+	elf.printl("i: ", i, ", j: ", j, ", k: ", k)
+}
+
+//	expanded:
+for i, j, k = 0 ... 3; 3 ... 6 ? {
+	elf.printl("i: ", i, ", j: ", j, ", k: ", k)
+}
+
+
+// and steps
+for i, j = 1, 2 ? {
+
+	elf.printl("i: ", i, ", j: ", j)
+}
+
+
+// in a regular assignment, i takes on the value on the right hand side
+i := 0
+
+// in a multi assignment, i takes on the value on the right hand side
+// that matches its index, such that i becomes 0 and j 1.
+i, j := 0, 1
+
+
+// conceptually, an assignment is of this form:
+
+sequence := sequence
+
+
+
+// in this for statement i takes on 1.
+for i = 1 ? {
+}
+
+
+// in this for statement i takes on 1 and then 2 and then 3.
+for i = 1; 2; 3 ? {
+	// ...
+}
+
+// this is the same as:
+i := 1
+i := 2
+i := 3
+
+
+
+// A range is also a sequence, a dynamically generated sequence:
+//
+// x ... x + n  =  x, x + 1, x + 2, ..., x + n - 1
+//
+// so using ... is a way to generate an entire sequence
+//
+for i = 0 ... 8  ? {
+}
+
+// same goes for ranged index
+my_array := { 1, 2, 3, 4, 5, 6, 7, 8, 9 }
+for i = my_array[0 ... 8]  ? {
+}
+
+
+// you can mix, here we're piecing together sequences to build
+// one larger sequence: 1, 2, 3, 4, 5, 6, 7
+for i = 1; 2; 3; 4; 5 ... 8  ? {
+}
+
+
+// you can do multi-values, or tuples
+for i, j = 1, 2 ? {
+}
+
+
+//
+//
+for i, j = 0 ... 8 ? {
+}
+// is the same as:
+for i, j = (0, 1); (2, 3); (4, 5); (6, 7) ? {
+}
+//
+// (parenthesis are to make it clearer)
+//
+
+
+
+// the assignment rules apply, j is nil for the first
+// 3 steps, however, for ranges, i takes on index, j on index + 1
+for i, j = 1;  2;  3;  4 ... 7 ? {
+	elf.printl(i)
+	elf.printl(j)
+	elf.printl(k)
+}
+
+
+//	for k, v = (1, 2), (3, 4), (5, 6) ? {
+//		elf.printl(k, ": ", v)
+//	}
+
+
+#eof
+
+
+my_array := {1,2,3}
+
+for i,j,k = my_array[...] ? {
+	elf.printl(i)
+	elf.printl(j)
+	elf.printl(k)
+}
+#eof
+
+
+for i,j,k = 0...100 ? {
+	elf.printl(i)
+	elf.printl(j)
+	elf.printl(k)
+}
+
+mytable = {
+	"x"            = 1,
+	"y"            = 2,
+	"stable_id"    = 3,
+}
+elf.printl(mytable:ranked_pairs())
+#eof
+//	t := {}
+//	for i = ... 100 ? {
+//		t:add(ntoi(elf.random() * 100 * i))
+//	}
+//	// elf.printl(t:sort(function(a,b) --> b - a))
+//	elf.printl(t:rank(function(a) --> - a))
+//	#eof
+
+
 
 TAU ::= 6.283185307179586
 retfoo = fun(x) --> x
