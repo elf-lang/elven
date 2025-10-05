@@ -1,8 +1,16 @@
 #include "elements.h"
-#include "platform.h"
+#include "platform_api.h"
 
 #include <malloc.h>
 
+// stuff that's shared across platforms but not visible to the user
+
+
+#define UpdateWindowKey(w, i, d) ((w)->public.keys[i] = NewButton((w)->public.keys[i], d))
+
+
+
+// eventually split into a different files for different platforms
 
 #define WIN32_LEAN_AND_MEAN
 #include     <windows.h>
@@ -12,47 +20,35 @@
 
 
 enum {
-	MAX_WINDOWS   = 8,
 	MAX_FILEDROPS = 8,
 };
 
 
 typedef struct {
+	OS_Window        public;
 	HWND             window;
-	vec2i            resolution;
-	b32              closed;
-	vec2i            mouse_wheel;
-	vec2i            mouse;
-	Button           perpollkeys[256];
 	int              nextdropindex;
 } MWINDOW;
 
 
 
 typedef struct {
-	WID window;
-	char      name[256];
+	WID    window;
+	char   name[256];
 } MFILEDROP;
 
 
 
 struct {
-	f64       clocks_to_seconds;
 	u8        key_remapper[256];
-	// todo:
+
+	// todo: this system, might actually just be silly, just store
+	// this per window on a linked list, no one cares...
 	MFILEDROP filedrops[MAX_FILEDROPS];
 	int       dropindex;
 } global g;
 
 
-
-static LRESULT Win32_WindowProcedure(HWND window, UINT msg, WPARAM w, LPARAM l);
-
-
-typedef BOOL win32_SetProcessDPIAwarenessContext(void* value);
-typedef UINT win32_GetDPIForWindow(HWND hwnd);
-#define WIN32_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((void*)-4)
-#define WIN32_WINDOW_CLASS_NAME L"graphical-window"
 
 
 #define KEYMAPDEF(_)                          \
@@ -71,43 +67,48 @@ _(VK_ESCAPE         , KEY_ESCAPE       ,   1) \
 
 
 
+static LRESULT Win32_WindowProcedure(HWND window, UINT msg, WPARAM w, LPARAM l);
+
+
+typedef BOOL win32_SetProcessDPIAwarenessContext(void* value);
+typedef UINT win32_GetDPIForWindow(HWND hwnd);
+#define WIN32_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((void*)-4)
+#define WIN32_WINDOW_CLASS_NAME L"graphical-window"
+
+
+
+
+
 MWINDOW *WindowFromWID(WID id) {
 	return (MWINDOW *) id;
 }
 
+// So I don't cache this in the global platform state because I think it
+// doesn't matter.
+// People cache this regardless because no one wants to call a function
+// everytime they want to convert to seconds - unless, they do...
+// in which case, it still doesn't matter...
+i64 OS_GetTicksPerSecond() {
+	LARGE_INTEGER i = {};
+	QueryPerformanceFrequency(&i);
 
-
-f64 OS_GetClocksToSeconds() {
-	return g.clocks_to_seconds;
+	return i.QuadPart;
 }
 
-
-int OS_GetWindowKey(WID id, int index) {
-	return WindowFromWID(id)->perpollkeys[index].u;
+void OS_ShowWindow(WID id) {
+	MWINDOW *w = WindowFromWID(id);
+	if (~w->public.status & OS_WINDOW_VISIBLE) {
+		w->public.status |= OS_WINDOW_VISIBLE;
+		ShowWindow(w->window, SW_SHOW);
+	}
 }
-
-
-vec2i OS_GetWindowMouseWheel(WID id) {
-	return WindowFromWID(id)->mouse_wheel;
-}
-
-
-vec2i OS_GetWindowMouse(WID id) {
-	return WindowFromWID(id)->mouse;
-}
-
-
-vec2i OS_GetWindowResolution(WID id) {
-	return WindowFromWID(id)->resolution;
-}
-
 
 HWND OS_GetWindowHandle(WID id) {
 	return WindowFromWID(id)->window;
 }
 
-
-void OS_Sleep(int ms) {
+void OS_Sleep(i32 ms) {
+	ASSERT(ms > 0);
 	Sleep(ms);
 }
 
@@ -148,13 +149,10 @@ void OS_InitPlatform() {
 
 	timeBeginPeriod(1);
 
-	LARGE_INTEGER i = {};
-	QueryPerformanceFrequency(&i);
 
-	f64 frequency = i.QuadPart;
-	g.clocks_to_seconds = (f64) 1.0 / frequency;
 
-	// prevent windows from using DPI scaling
+
+	// prevent windows from using DPI scaling, I think...
 	{
 		HMODULE user32 = LoadLibraryA("user32.dll");
 		if (user32) {
@@ -196,11 +194,11 @@ b32 OS_PollWindow(WID id) {
 	window->nextdropindex = 0;
 
 
-	window->mouse_wheel.x = 0;
-	window->mouse_wheel.y = 0;
+	window->public.mouse_wheel.x = 0;
+	window->public.mouse_wheel.y = 0;
 
-	for (i32 i = 0; i < COUNTOF(window->perpollkeys); i ++) {
-		window->perpollkeys[i].u &= BUTTON_DOWN;
+	for (i32 i = 0; i < COUNTOF(window->public.keys); i ++) {
+		window->public.keys[i] &= BUTTON_DOWN;
 	}
 
 	MSG msg = {};
@@ -212,10 +210,10 @@ b32 OS_PollWindow(WID id) {
 	RECT window_r;
 	GetClientRect(hWindow, &window_r);
 
-	window->resolution.x = window_r.right - window_r.left;
-	window->resolution.y = window_r.bottom - window_r.top;
+	window->public.resolution.x = window_r.right - window_r.left;
+	window->public.resolution.y = window_r.bottom - window_r.top;
 
-	return ! window->closed;
+	return window->public.status & OS_WINDOW_OPEN;
 }
 
 
@@ -251,7 +249,7 @@ WID OS_InstallWindow(const char *name, vec2i resolution) {
 	int windowx = (monitorw - resolution.x) * 0.5;
 	int windowy = (monitorh - resolution.y) * 0.5;
 
-	window->resolution = resolution;
+	window->public.resolution = resolution;
 
 
 	HWND hWindow;
@@ -269,11 +267,11 @@ WID OS_InstallWindow(const char *name, vec2i resolution) {
 	}
 
 	if (IsWindow(hWindow)) {
-		// todo: only show the window once we've got something to render!?
-		ShowWindow(hWindow, SW_SHOW);
+
 		DragAcceptFiles(hWindow, TRUE);
 
 		window->window = hWindow;
+		window->public.status = OS_WINDOW_OPEN;
 
 		TRACELOG("Install Window... %ix%i", resolution.x, resolution.y);
 	} else {
@@ -355,39 +353,38 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 
 			DragFinish(hDrop);
 		} break;
-		case WM_CLOSE: {
-			TRACELOG("Close Window");
 
-			window->closed = true;
+		case WM_CLOSE: {
+			window->public.status &= ~OS_WINDOW_OPEN;
 		} break;
+
 		case WM_ENTERSIZEMOVE:
 		case WM_EXITSIZEMOVE: {
          // app->resizing = msg == WM_ENTERSIZEMOVE;
 		} break;
 
 		case WM_LBUTTONUP: case WM_LBUTTONDOWN: {
-			update_button(&window->perpollkeys[KEY_MOUSE_LEFT], msg == WM_LBUTTONDOWN);
+			UpdateWindowKey(window, KEY_MOUSE_LEFT, msg == WM_LBUTTONDOWN);
 		} break;
 		case WM_MBUTTONUP: case WM_MBUTTONDOWN: {
-			update_button(&window->perpollkeys[KEY_MOUSE_MIDDLE], msg == WM_MBUTTONDOWN);
+			UpdateWindowKey(window, KEY_MOUSE_MIDDLE, msg == WM_MBUTTONDOWN);
 		} break;
 		case WM_RBUTTONUP: case WM_RBUTTONDOWN: {
-			update_button(&window->perpollkeys[KEY_MOUSE_RIGHT], msg == WM_RBUTTONDOWN);
+			UpdateWindowKey(window, KEY_MOUSE_RIGHT, msg == WM_RBUTTONDOWN);
 		} break;
 
 		case WM_SYSKEYUP: case WM_KEYUP: {
-			update_button(&window->perpollkeys[g.key_remapper[w]], FALSE);
+			UpdateWindowKey(window, g.key_remapper[w], FALSE);
 		} break;
 		case WM_SYSKEYDOWN: case WM_KEYDOWN: {
-			update_button(&window->perpollkeys[g.key_remapper[w]], TRUE);
+			UpdateWindowKey(window, g.key_remapper[w], TRUE);
 		} break;
 		case WM_MOUSEMOVE: {
-			window->mouse.x = LOWORD(l);
-			window->mouse.y = HIWORD(l);
+			window->public.mouse.x = LOWORD(l);
+			window->public.mouse.y = HIWORD(l);
 		} break;
 		case WM_MOUSEWHEEL: {
-			window->mouse_wheel.y = GET_WHEEL_DELTA_WPARAM(w);
-			window->mouse_wheel.y = window->mouse_wheel.y < 0 ? -1 : 1;
+			window->public.mouse_wheel.y = GET_WHEEL_DELTA_WPARAM(w) < 0 ? -1 : 1;
 		} break;
 		case WM_MOUSEHWHEEL: {
 			// window->mouse_wheel.x = HIWORD(w);
@@ -418,7 +415,7 @@ static LRESULT Win32_WindowProcedure(HWND hwnd, UINT msg, WPARAM w, LPARAM l) {
 // 	/* key is OS cursor */
 // 	HCURSOR cursors[OS_Cursor_COUNT];
 // 	HCURSOR cursor;
-// 	f64 clocks_to_seconds;
+// 	f64 seconds_per_tick;
 // } global platform;
 
 // #define WIN32_CURSOR_XMAP(_)               \

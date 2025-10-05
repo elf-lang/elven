@@ -36,7 +36,24 @@ enum {
 
 
 
-typedef u64 WID;
+enum {
+	OS_WINDOW_OPEN = 1,
+	OS_WINDOW_VISIBLE = 2,
+};
+
+// pretend these are all readonly from the outside in...
+typedef struct {
+	u32       status;
+	vec2i     resolution;
+	vec2i     mouse_wheel;
+	vec2i     mouse;
+	Button    keys[256];
+} OS_Window;
+
+
+
+
+typedef OS_Window *WID;
 
 
 
@@ -55,11 +72,12 @@ struct Controller_State {
 
 // todo: elf already has this!
 i64 OS_GetTickCounter();
-f64 OS_GetClocksToSeconds();
+i64 OS_GetTicksPerSecond();
 
 
 void OS_Sleep(int ms);
 
+void OS_ShowWindow(WID id);
 
 void OS_ShowErrorMessage(char *text);
 b32 OS_OpenFileDialog(char *path, char *buf, int zbuf);
@@ -82,16 +100,11 @@ HWND OS_GetWindowHandle(WID window);
 
 
 b32 OS_PollWindow(WID window);
-// the following functions return state that is updated
-// once the window is polled
-b32 OS_ShouldWindowClose(WID window);
-vec2i OS_GetWindowResolution(WID window);
-int OS_GetWindowKey(WID window, int index);
-vec2i OS_GetWindowMouse(WID window);
-vec2i OS_GetWindowMouseWheel(WID window);
-int OS_GetNextFileDrop(WID id);
 
-
+#define OS_GetWindowResolution(w) ((w)->resolution)
+#define OS_GetWindowKey(w, i) ((w)->keys[i])
+#define OS_GetWindowMouse(w) ((w)->mouse)
+#define OS_GetWindowMouseWheel(w) ((w)->mouse_wheel)
 
 // this is for all windows
 char *OS_GetFileDrop(int index);
@@ -99,5 +112,7 @@ int OS_GetNumFileDrops();
 // reset file drop counter, do once all windows are polled.
 void OS_ForgetFileDrops();
 
+
+int OS_GetNextFileDrop(WID id);
 
 

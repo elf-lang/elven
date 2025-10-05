@@ -21,28 +21,29 @@
 #include "src/dynamic_array.c"
 
 
-#include "platform.h"
-#include "renderer.h"
+#include "platform_api.h"
+#include "renderer_api.h"
 
 #include "fonts.h"
 
-#include "drawstate.h"
 #include "lib_helpers.c"
 
 
 #include "ttf.h"
 #include "ttf_stb.c"
-#include "fonts.c"
 
 
+#include "drawstate.c"
 
-
-#include "l_image.c"
 #include "l_state.c"
-#include "l_tiles.c"
+
+#include "fonts.c"
+#include "tile_texture.c"
+#include "l_image.c"
 #include "l_archive.c"
 #include "l_font.c"
 #include "l_audio.c"
+#include "l_tile_texture.c"
 
 
 
@@ -64,11 +65,6 @@ int main(int nargs, char **args) {
 	for (int i = 0; i < COUNTOF(l_state); i ++) {
 		elf_pushtext(S, l_state[i].name);
 		elf_pushfun(S, l_state[i].function);
-		elf_setfield(S);
-	}
-	for (int i = 0; i < COUNTOF(l_tiles); i ++) {
-		elf_pushtext(S, l_tiles[i].name);
-		elf_pushfun(S, l_tiles[i].function);
 		elf_setfield(S);
 	}
 
@@ -97,11 +93,16 @@ int main(int nargs, char **args) {
 		elf_setfield(S);
 	}
 
-	// todo: expect one return for the exit code
+	for (int i = 0; i < COUNTOF(l_tile_texture); i ++) {
+		elf_pushtext(S, l_tile_texture[i].name);
+		elf_pushfun(S, l_tile_texture[i].function);
+		elf_setfield(S);
+	}
+
 	elf_pushcodefile(S, name, 0);
 	elf_pushnil(S);
 
-	// todo: proper parser for this!
+	// todo: proper!
 	int ncallargs = 1;
 	for (int i=2; i<nargs; ++i) {
 		char *arg = args[i];
@@ -115,6 +116,7 @@ int main(int nargs, char **args) {
 		ncallargs ++;
 	}
 
+	// todo: expect one return for the exit code
 	int nrets = elf_call(S, ncallargs, 0);
 	return 0;
 }

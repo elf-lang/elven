@@ -1,14 +1,12 @@
 //
-// common definitions used everywhere
+// common stuff
 //
-
 
 
 
 #if !defined(TAU)
 #define TAU 6.283185307179586
 #endif
-
 
 
 #define U8_MAX  ((u8)  ~0)
@@ -19,9 +17,10 @@
 
 
 
-// printf
 #include <stdio.h>
 #include <assert.h>
+
+
 
 
 #if !defined(TRACELOG)
@@ -57,6 +56,16 @@
 #define STATIC_ASSERT(x) typedef char _static_assert_[x ? 1 : -1]
 #endif
 
+
+#if !defined(true)
+#define true ((i32) 1)
+#endif
+
+#if !defined(false)
+#define false ((i32) 0)
+#endif
+
+
 // #define    internal static
 #define      global static
 #define thread_decl __declspec(thread)
@@ -73,14 +82,6 @@ typedef unsigned             char         u8;
 typedef   signed             char         i8;
 typedef                     float        f32;
 typedef                    double        f64;
-
-#if !defined(true)
-#define true ((i32) 1)
-#endif
-
-#if !defined(false)
-#define false ((i32) 0)
-#endif
 
 typedef union {
 	struct{ f32 x, y; };
@@ -116,8 +117,31 @@ typedef union {
 	u32 packed;
 } vec4_u8;
 
-#define PACK_COLOR(c) ((c).r << 24 | (c).g << 16 | (c).b << 8 | (c).a << 0)
+
+typedef struct {
+	vec4 rows[4];
+} Matrix;
+
+
+#define IDENTITY_MATRIX() ((Matrix) { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 })
+
+
 typedef vec4_u8 Color;
+
+
+// todo: proper struct order to avoid having to do this...
+static inline u32 __color_pack(Color c) {
+	return c.r << 24 | c.g << 16 | c.b << 8 | c.a << 0;
+}
+
+static inline Color __color_unpack(u32 p) {
+	return (Color){ p >> 24, p >> 16, p >> 8, p >> 0 };
+}
+
+
+#define COLOR_PACK   __color_pack
+#define COLOR_UNPACK	__color_unpack
+
 
 
 typedef union {
@@ -139,19 +163,36 @@ typedef struct {
 
 
 
+
+
+
+#define DOWN_SHIFT     0
+#define PRESSED_SHIFT  1
+#define RELEASED_SHIFT 2
+#define REPEAT_SHIFT   3
 enum {
-	BUTTON_DOWN     = 1,
-	BUTTON_PRESSED  = 2,
-	BUTTON_RELEASED = 4,
-	BUTTON_REPEAT   = 8,
+	BUTTON_DOWN     = 1 << DOWN_SHIFT,
+	BUTTON_PRESSED  = 1 << PRESSED_SHIFT,
+	BUTTON_RELEASED = 1 << RELEASED_SHIFT,
+	BUTTON_REPEAT   = 1 << REPEAT_SHIFT,
 };
 
-typedef struct {
-	u8 u;
-} Button;
+typedef u8 Button;
 
 
+static inline Button NewButton(Button b, int d) {
+	int r_bit = d << REPEAT_SHIFT;
+	int d_bit = d << DOWN_SHIFT;
+	int p_bit = (b ^ d & 1) << (RELEASED_SHIFT - d);
+	return p_bit | d_bit | r_bit;
+}
 
+
+#define ASSERT assert
+
+
+#define BLACK (Color) { 0  ,   0,   0,   0 }
+#define WHITE (Color) { 255, 255, 255, 255 }
 
 #define vec2(x,y) (vec2){(x),(y)}
 #define vec2_add(a,b) ((vec2){(a).x+(b).x,(a).y+(b).y})
@@ -162,17 +203,11 @@ typedef struct {
 
 
 
-static inline void update_button(Button *btn, i32 state) {
-	if (state) {
-		btn->u = (~btn->u & 1) << 1 | 1 | 8;
-	} else {
-		btn->u = (btn->u & 1) << 2;
-	}
+static int unshift(int x) {
+	// todo:!
+	return __builtin_ffsll(x);
 }
 
-#define ASSERT assert
 
-
-#define BLACK (Color) { 0  ,   0,   0,   0 }
-#define WHITE (Color) { 255, 255, 255, 255 }
-
+#define ISPOW2(x) ((x) != 0 && !((x) & ((x) - 1)))
+#define LOG2MASK(x) ((1 << (x)) - 1)

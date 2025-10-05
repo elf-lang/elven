@@ -1,4 +1,4 @@
-elf.change_work_dir("W:\\MicroRJ\\mammoth")
+elf.change_work_dir("W:\\MicroRJ\\elven-demos")
 load "main.elf"
 #eof
 

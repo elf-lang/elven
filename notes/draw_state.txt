@@ -1,0 +1,3 @@
+The entire application state, rendering state and draw
+registers and are in a single global struct.
+

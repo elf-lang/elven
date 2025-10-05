@@ -80,7 +80,7 @@ ELF_FUNCTION(L_GetPixelPacked) {
 	int x = elf_loadint(S, 2);
 	int y = elf_loadint(S, 3);
 	Color color = get_color(img, x, y);
-	elf_pushint(S, PACK_COLOR(color));
+	elf_pushint(S, COLOR_PACK(color));
 	return 1;
 }
 
@@ -330,11 +330,14 @@ ELF_FUNCTION(L_LoadImage)
 		free(data);
 
 		elf_pushsys(S, (elf_Handle) image);
+		elf_pushint(S, reso.x);
+		elf_pushint(S, reso.y);
+		return 3;
 	}
 	else {
 		elf_pushnil(S);
+		return 1;
 	}
-	return 1;
 }
 
 

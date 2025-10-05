@@ -1,7 +1,4 @@
 
-
-
-
 ELF_FUNCTION(L_SetFont)
 {
 	// todo:
@@ -10,72 +7,30 @@ ELF_FUNCTION(L_SetFont)
 	return 0;
 }
 
-//
-//
-//
-//
-//
-//
-//
-//
-
 ELF_FUNCTION(L_NewFont) {
 	int num_glyphs = elf_loadint(S, 1);
 
 	FONT_HANDLE font = NewFont(num_glyphs);
 	elf_pushsys(S, (elf_Handle) font);
-
 	return 1;
 }
 
-//
-//
-//
-//
-//
-//
-//
-//
-
-ELF_FUNCTION(L_SetFontTexture) {
-	RID texture = (RID) elf_loadsys(S, 1);
-	SetFontTexture(gd.font, texture);
-	return 0;
-}
-
-//
-//
-//
-//
-//
-//
-//
-//
-
 ELF_FUNCTION(L_SetFontGlyph) {
 	int nextarg = 1;
-	int rune = elf_loadint(S, nextarg ++);
-	Font_Glyph_Data data = {};
-	data.x         = elf_loadint(S, nextarg ++);
-	data.y         = elf_loadint(S, nextarg ++);
-	data.w         = elf_loadint(S, nextarg ++);
-	data.h         = elf_loadint(S, nextarg ++);
-	data.x_bearing = elf_loadint(S, nextarg ++);
-	data.y_bearing = elf_loadint(S, nextarg ++);
-	data.x_advance = elf_loadint(S, nextarg ++);
-	data.user_data = elf_loadint(S, nextarg ++);
-	SetFontGlyph(gd.font, rune, data);
+	ADD_FONT_GLYPH params = {};
+	params.rune      = elf_loadint(S, nextarg ++);
+	params.src       =  load_image(S, nextarg ++);
+	params.src_x     = elf_loadint(S, nextarg ++);
+	params.src_y     = elf_loadint(S, nextarg ++);
+	params.src_w     = elf_loadint(S, nextarg ++);
+	params.src_h     = elf_loadint(S, nextarg ++);
+	params.x_bearing = elf_loadint(S, nextarg ++);
+	params.y_bearing = elf_loadint(S, nextarg ++);
+	params.x_advance = elf_loadint(S, nextarg ++);
+	params.user_data = elf_loadint(S, nextarg ++);
+	SetFontGlyph(gd.font, params);
 	return 0;
 }
-
-//
-//
-//
-//
-//
-//
-//
-//
 
 ELF_FUNCTION(L_LoadFont) {
 
@@ -101,11 +56,6 @@ ELF_FUNCTION(L_LoadFont) {
 	return 1;
 }
 
-//
-//
-//
-//
-
 ELF_FUNCTION(L_MeasureText) {
 	const char *text = elf_loadtext(S, 1);
 
@@ -114,41 +64,59 @@ ELF_FUNCTION(L_MeasureText) {
 	return 1;
 }
 
-//
-//
-//
-//
-//
-//
-//
-//
+static void DrawTextQuads(f32 x, f32 y, Text_Quad *quads, int nquads) {
+	i32 num_verts = nquads * 6;
+	R_Vertex3 *verts = BeginDrawCall(TOPO_TRIANGLES, num_verts);
+	R_Vertex3 *cursor = verts;
+
+	for (int i = 0; i < nquads; i ++) {
+		Rect dst = quads[i].dst;
+
+		vec3 r_p0 = { x + dst.x +     0, y + dst.y +     0, 0 };
+		vec3 r_p1 = { x + dst.x +     0, y + dst.y + dst.h, 0 };
+		vec3 r_p2 = { x + dst.x + dst.w, y + dst.y + dst.h, 0 };
+		vec3 r_p3 = { x + dst.x + dst.w, y + dst.y +     0, 0 };
+
+		f32 u0 = quads[i].src.u0;
+		f32 v0 = quads[i].src.v0;
+		f32 u1 = quads[i].src.u1;
+		f32 v1 = quads[i].src.v1;
+
+		cursor[0]=(R_Vertex3){r_p0,{u0,v1},gd.color_0};
+		cursor[1]=(R_Vertex3){r_p1,{u0,v0},gd.color_1};
+		cursor[2]=(R_Vertex3){r_p2,{u1,v0},gd.color_2};
+		cursor[3]=(R_Vertex3){r_p0,{u0,v1},gd.color_0};
+		cursor[4]=(R_Vertex3){r_p2,{u1,v0},gd.color_2};
+		cursor[5]=(R_Vertex3){r_p3,{u1,v1},gd.color_3};
+		cursor += 6;
+	}
+
+	EndDrawCall(verts, num_verts);
+}
 
 ELF_FUNCTION(L_DrawText) {
 
 	f32 x = elf_loadnum(S, 1);
 	f32 y = elf_loadnum(S, 2);
-	const char *text = elf_loadtext(S, 3);
 
-	DrawText(D_GetFont(), x, y, text);
+	int textl;
+	const char *text = elf_loadtextl(S, 3, &textl);
+
+	Draw_Text_Pass *pass = DrawText(D_GetFont(), text, textl);
+	Text_Run *run;
+
+	for (run = pass->runs; run < pass->runs + pass->nruns; ++ run) {
+		D_SetTexture(run->texture);
+		DrawTextQuads(x, y, run->quads, run->nquads);
+	}
 	return 0;
 }
-
-//
-//
-//
-//
-//
-//
-//
-//
 
 elf_Binding l_font[] = {
 	{ "NewFont"              , L_NewFont           },
 	{ "SetFontGlyph"         , L_SetFontGlyph      },
-	{ "SetFontTexture"       , L_SetFontTexture    },
 	{ "DrawText"             , L_DrawText          },
 	{ "MeasureText"          , L_MeasureText       },
 	{ "LoadFont"             , L_LoadFont          },
 	{ "SetFont"              , L_SetFont           },
 };
-

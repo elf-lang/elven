@@ -99,7 +99,7 @@ static void TTF_RasterizeGlyph(TTF_RUNTIME_FACE *ttf, TTF_RASTER_PARAMS *raster)
 	if (gbm.w && gbm.h) {
 		float flatness = 0.35f / MIN(scale_x, scale_y);
 
-
+		// convert curves to points
 		int  winding_count = 0;
    	int *winding_lengths = NULL;
    	stbtt__point *windings = stbtt_FlattenCurves(vertices, num_verts, flatness, &winding_lengths, &winding_count, info->userdata);
@@ -107,6 +107,7 @@ static void TTF_RasterizeGlyph(TTF_RUNTIME_FACE *ttf, TTF_RASTER_PARAMS *raster)
 
 		int invert = true;
 
+		// rasterize points
    	if (windings) {
    		stbtt__rasterize(&gbm, windings, winding_lengths, winding_count, scale_x, scale_y, shift_x, shift_y, x_off, y_off, invert, info->userdata);
 

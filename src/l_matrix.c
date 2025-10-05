@@ -3,8 +3,8 @@
 
 
 typedef struct {
-	int  w, h;
-	f32 *rows;
+	int w, h;
+	f32 rows[];
 } D_Matrix;
 
 
@@ -71,15 +71,4 @@ static vec4 MultiplyMatrixVector(Matrix m, vec4 v) {
 	return c;
 }
 
-
-
-static inline void LoadIdentity() {
-	Matrix c = {
-		1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1,
-	};
-	gd.transform = c;
-}
 
