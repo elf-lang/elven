@@ -14,16 +14,16 @@
 
 // ELF_FUNCTION(L_SetTileSet) {
 // 	// todo: integers as pointers
-// 	gd.tileset = (UV_Map *) elf_loadint(S, 1);
+// 	g_core.tileset = (UV_Map *) elf_loadint(S, 1);
 // 	return 0;
 // }
 
 // ELF_FUNCTION(L_GetTileCoords) {
 // 	i32 id = elf_loadint(S, 1);
 
-// 	checkindex(S, id, gd.tileset->nregions);
+// 	checkindex(S, id, g_core.tileset->nregions);
 
-// 	UV_Coords coords = GetRegionCoords(gd.tileset, id);
+// 	UV_Coords coords = GetRegionCoords(g_core.tileset, id);
 // 	elf_pushnum(S, coords.u0);
 // 	elf_pushnum(S, coords.v0);
 // 	elf_pushnum(S, coords.u1);
@@ -34,7 +34,7 @@
 // ELF_FUNCTION(L_SetTileCoords) {
 
 // 	i32 id = elf_loadint(S, 1);
-// 	checkindex(S, id, gd.tileset->nregions);
+// 	checkindex(S, id, g_core.tileset->nregions);
 
 // 	i32 x = elf_loadint(S, 2);
 // 	i32 y = elf_loadint(S, 3);
@@ -42,7 +42,7 @@
 // 	i32 h = elf_loadint(S, 5);
 
 
-// 	SetRegionCoords(gd.tileset, id, x, y, w, h);
+// 	SetRegionCoords(g_core.tileset, id, x, y, w, h);
 // 	return 0;
 // }
 

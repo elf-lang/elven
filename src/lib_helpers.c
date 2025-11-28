@@ -47,7 +47,7 @@ static inline int _load_vec2i(elf_State *S, int index, int nargs, vec2i *v) {
 
 
 
-static inline int _load_irect(elf_State *S, int index, int nargs, iRect *rect) {
+static inline int _load_irect(elf_State *S, int index, int nargs, rect_i32 *rect) {
 	ASSERT(nargs - index >= 4);
 	rect->x = elf_loadint(S, index + 0);
 	rect->y = elf_loadint(S, index + 1);

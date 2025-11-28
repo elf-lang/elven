@@ -1,4 +1,27 @@
 
+
+#define DOWN_SHIFT     0
+#define PRESSED_SHIFT  1
+#define RELEASED_SHIFT 2
+#define REPEAT_SHIFT   3
+enum {
+	BUTTON_DOWN     = 1 << DOWN_SHIFT,
+	BUTTON_PRESSED  = 1 << PRESSED_SHIFT,
+	BUTTON_RELEASED = 1 << RELEASED_SHIFT,
+	BUTTON_REPEAT   = 1 << REPEAT_SHIFT,
+};
+
+typedef u8 Button;
+
+static inline Button NewButton(Button b, int d) {
+	int r_bit = d << REPEAT_SHIFT;
+	int d_bit = d << DOWN_SHIFT;
+	int p_bit = (b ^ d & 1) << (RELEASED_SHIFT - d);
+	return p_bit | d_bit | r_bit;
+}
+
+
+
 enum {
 	KEY_NONE = 0,
 
@@ -90,11 +113,7 @@ void OS_EndPlatform();
 WID OS_InstallWindow(const char *name, vec2i resolution);
 
 
-
-#if defined(_WIN32_API)
-// expose this for the renderer
-HWND OS_GetWindowHandle(WID window);
-#endif
+#define OS_GET_WINDOW_HANDLE_API HWND OS_GetWindowHandle(WID window);
 
 
 

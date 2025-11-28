@@ -1,4 +1,5 @@
-#include "elements.h"
+
+#include "base.h"
 #include "platform_api.h"
 
 #include <malloc.h>
@@ -7,8 +8,6 @@
 
 
 #define UpdateWindowKey(w, i, d) ((w)->public.keys[i] = NewButton((w)->public.keys[i], d))
-
-
 
 // eventually split into a different files for different platforms
 

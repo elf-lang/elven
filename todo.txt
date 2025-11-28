@@ -168,7 +168,7 @@ And the named argument call's syntax can be:
 expression, which does not do proper grouping of terms,
 like for instance:
 
-;		new Rect(...):overalps()
+;		new rect_i32(...):overalps()
 So figure out what to do here...
 
 - parse.c: multi nodes with binary expressions,

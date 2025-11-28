@@ -1,5 +1,6 @@
-elf.change_work_dir("W:\\MicroRJ\\elven-demos")
-load "main.elf"
+if elf.change_work_dir("W:\\MicroRJ\\ninja-world") ? {
+	load "main.elf"
+}
 #eof
 
 // todo: would be really cool if we did this globally!
@@ -100,9 +101,6 @@ load "tests.elf"
 // elf.change_work_dir("C:\\work\\MicroRJ\\escapethecult")
 elf.change_work_dir("W:\\MicroRJ\\ninja-world")
 load "main.elf"
-
-
-
 
 
 

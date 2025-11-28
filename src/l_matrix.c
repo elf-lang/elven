@@ -59,7 +59,7 @@ static Matrix MultiplyMatrices(Matrix a, Matrix b) {
 
 
 
-static vec4 MultiplyMatrixVector(Matrix m, vec4 v) {
+static vec4 mul_matrix_v4(Matrix m, vec4 v) {
 	vec4 c;
 	for (int i = 0; i < 4; i ++) {
 		c.xyzw[i] =

@@ -1,21 +1,7 @@
 
-
-
-
-
-
 static inline Color get_color(Image *img, int x, int y) {
 	return img->data[x + y * img->reso.x];
 }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -64,17 +50,6 @@ ELF_FUNCTION(L_GetImageRegionAsString) {
 	return 1;
 }
 
-
-
-
-
-
-
-
-
-
-
-
 ELF_FUNCTION(L_GetPixelPacked) {
 	Image *img = load_image(S, 1);
 	int x = elf_loadint(S, 2);
@@ -84,17 +59,6 @@ ELF_FUNCTION(L_GetPixelPacked) {
 	return 1;
 }
 
-
-
-
-
-
-
-
-
-
-
-
 ELF_FUNCTION(L_GetPixelAlpha) {
 	Image *img = load_image(S, 1);
 	int x = elf_loadint(S, 2);
@@ -103,18 +67,6 @@ ELF_FUNCTION(L_GetPixelAlpha) {
 	elf_pushint(S, color.a);
 	return 1;
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 ELF_FUNCTION(L_SetPixel)
 {
@@ -126,17 +78,6 @@ ELF_FUNCTION(L_SetPixel)
 	img->data[x + y * img->reso.x] = color;
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 ELF_FUNCTION(L_SaveImage)
 {
@@ -203,7 +144,7 @@ ELF_FUNCTION(L_CopyImageRegion)
 
 	Image *src_i = (Image *) elf_loadsys(S, nextarg ++);
 
-	iRect src_r = { 0, 0, src_i->reso.x, src_i->reso.y };
+	rect_i32 src_r = { 0, 0, src_i->reso.x, src_i->reso.y };
 	if (nargs - nextarg >= 4) {
 		nextarg += _load_irect(S, nextarg, nargs, &src_r);
 	}

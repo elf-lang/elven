@@ -3,6 +3,7 @@
 // todo: do streaming!
 // todo: lazy loading?!
 // todo: remove file io from here!?
+// todo: proper clipping, I still hear glitches!
 #define WIN32_LEAN_AND_MEAN
 
 // it's not like it saves compilation time
@@ -31,9 +32,7 @@
 #define DR_FLAC_IMPLEMENTATION
 #include "dr_flac.h"
 
-#include "elements.h"
-
-
+#include "base.h"
 #include "audio_api.h"
 
 enum {
@@ -126,15 +125,17 @@ static const char *get_file_extension(const char *p) {
 }
 
 #define FILETYPEDEF(_) \
-_(OGG, "ogg") \
-_(WAV, "wav") \
-_(MP3, "mp3") \
+_(OGG ,  "ogg") \
+_(WAV ,  "wav") \
+_(MP3 ,  "mp3") \
+_(FLAC, "flac") \
 /* end */
 
 #define FILEDISPATCHDEF(_) \
-_(WAV,  WAV) \
-_(MP3,  MP3) \
-_(OGG, FLAC) \
+_(WAV ,  WAV) \
+_(MP3 ,  MP3) \
+_(OGG , FLAC) \
+_(FLAC, FLAC) \
 /* end */
 
 typedef enum {
@@ -146,12 +147,15 @@ typedef enum {
 
 
 
-// if only there was some sort of binary search algorithm
+// if only this mattered
 static inline FileType get_file_type(const char *name) {
 	const char *extension = get_file_extension(name);
 	switch (*extension) {
 		case 'm': {
 			if (!strcmp(extension, "mp3")) return FILETYPE_MP3;
+		} break;
+		case 'f': {
+			if (!strcmp(extension, "flac")) return FILETYPE_FLAC;
 		} break;
 		case 'o': {
 			if (!strcmp(extension, "ogg")) return FILETYPE_OGG;
@@ -273,7 +277,7 @@ int A_PlaySound(Sound *s, PLAY_SOUND play) {
 static inline f32 clip(f32 x) {
 	if (x > 1.0f) x = 1.0f + tanhf(x - 1.0f);
 	else if (x < -1.0f) x = -1.0f + tanhf(x + 1.0f);
-	return x;
+	return CLAMP(x, -1.0f, 1.0f);
 }
 
 static void Mixer(Audio_Frame *dst, int num_frames, int sample_rate) {

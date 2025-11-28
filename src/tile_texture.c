@@ -76,7 +76,7 @@ static Tile GetLayerTile(TileTexture *tt, int x, int y) {
 //
 static void DrawTileTexture(TileTexture *tt, i32 l_x, i32 l_y, i32 l_w, i32 l_h) {
 
-	RID texture = R_GetTexture(gd.rend);
+	RID texture = D_GetTexture(& g_core.ctx);
 	ASSERT(texture->uv_map);
 	UV_Coords *uv_coords = texture->uv_map->coords;
 
@@ -88,12 +88,11 @@ static void DrawTileTexture(TileTexture *tt, i32 l_x, i32 l_y, i32 l_w, i32 l_h)
 
 
 	i32 nverts = l_w * l_h * 6;
-	R_Vertex3 *verts = BeginDrawCall(TOPO_TRIANGLES, nverts);
 
-	R_Vertex3 *cursor = verts;
+	D_SetTopology(&g_core.ctx, R_TOPO_TRIANGLES);
 
 	// todo: per tile coloring?
-	Color color = gd.color_0;
+	Color color = g_core.color_0;
 
 	i32 ix, iy;
 	for (iy=0; iy<l_h; ++iy) {
@@ -104,7 +103,7 @@ static void DrawTileTexture(TileTexture *tt, i32 l_x, i32 l_y, i32 l_w, i32 l_h)
 			// todo: *1 we can't do this because we've already reserved the verts!
 			// if (!tile) continue;
 
-			Rect dst = { ix * tile_w, iy * tile_h, tile_w, tile_h };
+			rect_i32 dst = { ix * tile_w, iy * tile_h, tile_w, tile_h };
 
 			UV_Coords coords = uv_coords[tile];
 
@@ -118,18 +117,16 @@ static void DrawTileTexture(TileTexture *tt, i32 l_x, i32 l_y, i32 l_w, i32 l_h)
 			f32 u1 = coords.u1;
 			f32 v1 = coords.v1;
 
-			cursor[0]=(R_Vertex3){r_p0,{u0,v1},color};
-			cursor[1]=(R_Vertex3){r_p1,{u0,v0},color};
-			cursor[2]=(R_Vertex3){r_p2,{u1,v0},color};
-			cursor[3]=(R_Vertex3){r_p0,{u0,v1},color};
-			cursor[4]=(R_Vertex3){r_p2,{u1,v0},color};
-			cursor[5]=(R_Vertex3){r_p3,{u1,v1},color};
-			cursor += 6;
+			D_PushVertex(&g_core.ctx, (R_Vertex){r_p0,{u0,v1},color});
+			D_PushVertex(&g_core.ctx, (R_Vertex){r_p1,{u0,v0},color});
+			D_PushVertex(&g_core.ctx, (R_Vertex){r_p2,{u1,v0},color});
+			D_PushVertex(&g_core.ctx, (R_Vertex){r_p0,{u0,v1},color});
+			D_PushVertex(&g_core.ctx, (R_Vertex){r_p2,{u1,v0},color});
+			D_PushVertex(&g_core.ctx, (R_Vertex){r_p3,{u1,v1},color});
 		}
 	}
 
-
-	EndDrawCall(verts, nverts);
+	ResetPerDrawState();
 }
 
 

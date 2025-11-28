@@ -2,6 +2,8 @@
 #include "include/elf.h"
 #include "src/platform/system.h"
 
+#define MSF_GIF_IMPL
+#include "msf_gif.h"
 
 // <3
 // #define STB_IMAGE_STATIC
@@ -15,29 +17,35 @@
 
 #include <stdlib.h>
 
+#include "base/base.h"
+#include "platform_api.h"
+#include "renderer/renderer_api.h"
+
+
 #include "elements.h"
+
+
+#define vec4_3(v,w) (vec4){(v).x,(v).y,(v).z,w}
+
+
+typedef struct R_Renderer R_Renderer;
+
+
+#include "fonts_api.h"
+#include "core.h"
+global CoreState g_core;
+#include "core_state.c"
+
 
 
 #include "src/dynamic_array.c"
 
-
-#include "platform_api.h"
-#include "renderer_api.h"
-
-#include "fonts.h"
-
 #include "lib_helpers.c"
-
-
-#include "ttf.h"
-#include "ttf_stb.c"
-
 
 #include "drawstate.c"
 
 #include "l_state.c"
 
-#include "fonts.c"
 #include "tile_texture.c"
 #include "l_image.c"
 #include "l_archive.c"
@@ -57,7 +65,26 @@ int main(int nargs, char **args) {
 		name = args[1];
 	}
 
+	g_core.main_stack = stack_new(0, "core main stack");
+
+
 	OS_InitPlatform();
+
+	g_core.rend = R_InitRenderer();
+	g_core.f_cache = F_NewFontCache();
+
+	{
+		Color data[2][2] = {
+			{ { 1.f, 1.f, 1.f, 1.f }, { 1.f, 1.f, 1.f, 1.f } },
+			{ { 1.f, 1.f, 1.f, 1.f }, { 1.f, 1.f, 1.f, 1.f } },
+		};
+		g_core.default_texture = R_CreateTexture(g_core.rend, R_FORMAT_RGBA_U8, (vec2i){ 2, 2 }, 0, &data);
+	}
+	D_Init(&g_core.ctx);
+	D_SetTexture(&g_core.ctx, g_core.default_texture);
+
+
+
 	elf_State *S = elf_new();
 
 	// todo: to be replaced with a directory with proper function definitions
